@@ -1,0 +1,76 @@
+# Pytania rzucane sali w trakcie wykładu. Prowadzący wybiera je w /panel.
+- id: cloud-po-co
+  lecture: "wykład 1"
+  question: "Firma ma 30 serwerów. Co jest najtrudniejsze we własnej serwerowni?"
+  options:
+    - {id: a, text: "Kupno sprzętu"}
+    - {id: b, text: "Prąd, chłodzenie i łącza"}
+    - {id: c, text: "Ludzie, którzy to utrzymają o 3 w nocy"}
+    - {id: d, text: "Skalowanie w górę i w dół"}
+  reveal: "Sprzęt to najmniejszy problem - płaci się głównie za c) i za to, że b) musi działać zawsze."
+
+- id: dc-redundancja
+  lecture: "wykład 1"
+  question: "Serwer ma dwa uplinki do dwóch różnych switchy. Co się dzieje, gdy jeden switch pada?"
+  options:
+    - {id: a, text: "Nic, ruch leci drugim linkiem"}
+    - {id: b, text: "Połowa połączeń się rwie i wraca po kilku sekundach"}
+    - {id: c, text: "Zależy, jak skonfigurowany jest bonding i BGP"}
+  reveal: "c). Redundancja jest tak dobra, jak jej konfiguracja i czasy zbieżności."
+
+- id: fib-overflow
+  lecture: "wykład 2"
+  question: "Whitebox mieści 32k tras w FIB. W sieci jest ich 300k. Co robimy?"
+  options:
+    - {id: a, text: "Kupujemy większy sprzęt"}
+    - {id: b, text: "Filtrujemy - trzymamy specyfiki lokalnie, reszta idzie defaultem"}
+    - {id: c, text: "Przenosimy część routingu do overlayu"}
+    - {id: d, text: "Ignorujemy, jakoś to będzie"}
+  reveal: "b) + c). a) kosztuje jak małe mieszkanie, d) kończy się Sev1."
+
+- id: overlay-jak
+  lecture: "wykład 2"
+  question: "VMka w Warszawie wysyła pakiet do VMki we Frankfurcie. Sieć fizyczna nie zna tych adresów. Jak to dowieźć?"
+  options:
+    - {id: a, text: "Rozgłosić adresy VMek w sieci fizycznej"}
+    - {id: b, text: "Zapakować pakiet w drugi pakiet z adresami hostów"}
+    - {id: c, text: "Trzymać w każdym hoście tablicę wszystkich VMek"}
+  reveal: "b) - to jest właśnie enkapsulacja. Koperta z adresem hosta, w środku paczka z adresem VMki."
+
+- id: route-server-sesje
+  lecture: "wykład 2"
+  question: "100 hostów ma wymienić się trasami po BGP. Ile sesji w pełnej siatce?"
+  options:
+    - {id: a, text: "100"}
+    - {id: b, text: "~1000"}
+    - {id: c, text: "4950"}
+    - {id: d, text: "10000"}
+  reveal: "c) = n(n-1)/2. Z route serverem: 100. Dlatego route server istnieje."
+
+- id: srv6-sid
+  lecture: "wykład 3"
+  question: "Czym jest SID w SRv6?"
+  options:
+    - {id: a, text: "Nowym nagłówkiem w IPv6"}
+    - {id: b, text: "Adresem IPv6, który znaczy 'zrób coś', nie tylko 'idź tam'"}
+    - {id: c, text: "Etykietą MPLS zapisaną w IPv6"}
+  reveal: "b). Adres IPv6 jest jednocześnie instrukcją - stąd cała siła i całe zamieszanie."
+
+- id: gpu-adresacja
+  lecture: "wykład 3"
+  question: "Po co komu adres per interfejs zamiast jednego loopbacka na hoście?"
+  options:
+    - {id: a, text: "Żeby ruch rozłożył się na wiele ścieżek"}
+    - {id: b, text: "Żeby dało się wskazać konkretną kartę sieciową przy GPU"}
+    - {id: c, text: "Bo tak było w dokumentacji"}
+  reveal: "a) i b). Przy trenowaniu modeli chcemy wiedzieć dokładnie, którym NIC-iem lecimy."
+
+- id: rekrutacja-wrazenie
+  lecture: "wykład 3"
+  question: "Co robi większe wrażenie na rozmowie na staż?"
+  options:
+    - {id: a, text: "Znajomość wszystkich flag danego narzędzia"}
+    - {id: b, text: "Własny projekt, o którym umiesz szczerze opowiedzieć"}
+    - {id: c, text: "Sensowne dobrnięcie do rozwiązania z podpowiedziami"}
+    - {id: d, text: "Przyznanie 'nie wiem, ale sprawdziłbym tak i tak'"}
+  reveal: "b), c) i d). a) sprawdzisz w manualu w 10 sekund."

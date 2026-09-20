@@ -1,0 +1,53 @@
+{{/* Widok prowadzącego na salę: kto pisze, z jakiego adresu i jak go uciszyć.
+     Ban nie kasuje tego, co ktoś już napisał - od tego jest "usuń" przy
+     pytaniu. */}}
+{{define "panel-moderation"}}
+  <form class="lockswitch" hx-post="/panel/pytania"
+        hx-target="#panel-moderation" hx-swap="innerHTML">
+    {{if .QuestionsLocked}}
+      <span class="warn">Pisanie zamknięte — sala może tylko głosować i podbijać.</span>
+      <button class="btn tiny" name="locked" value="nie" type="submit">otwórz pytania</button>
+    {{else}}
+      <span class="muted">Pisanie otwarte.</span>
+      <button class="btn tiny danger" name="locked" value="tak" type="submit">zamknij pytania</button>
+    {{end}}
+  </form>
+
+  {{if .Participants}}
+    <table class="people">
+      <thead>
+        <tr><th>ksywka</th><th>adres</th><th title="pytania / odpowiedzi">pyt./odp.</th><th></th></tr>
+      </thead>
+      <tbody>
+        {{range .Participants}}
+        <tr class="{{if .Blocked}}banned{{end}}">
+          <td>{{.Nick}}</td>
+          <td class="ip">{{.IP}}</td>
+          <td>{{.Questions}} / {{.Answers}}</td>
+          <td class="qactions">
+            {{if .Banned}}
+              <button class="btn tiny" hx-post="/panel/uczestnik/{{.ID}}/odbanuj"
+                      hx-target="#panel-moderation" hx-swap="innerHTML">odbanuj</button>
+            {{else}}
+              <button class="btn tiny danger" hx-post="/panel/uczestnik/{{.ID}}/ban"
+                      hx-target="#panel-moderation" hx-swap="innerHTML">ban</button>
+            {{end}}
+            {{if .IPBanned}}
+              <button class="btn tiny" hx-post="/panel/uczestnik/{{.ID}}/odbanuj-ip"
+                      hx-target="#panel-moderation" hx-swap="innerHTML">odbanuj adres</button>
+            {{else}}
+              <button class="btn tiny danger" hx-post="/panel/uczestnik/{{.ID}}/ban-ip"
+                      hx-target="#panel-moderation" hx-swap="innerHTML">ban adresu</button>
+            {{end}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    <p class="muted small">
+      Ban po ciasteczku znika, gdy ktoś je wyczyści — wtedy zostaje ban adresu.
+    </p>
+  {{else}}
+    <p class="muted">Nikt jeszcze nie otworzył strony na żywo.</p>
+  {{end}}
+{{end}}

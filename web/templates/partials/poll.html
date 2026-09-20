@@ -1,0 +1,42 @@
+{{/* The voting card. Sent to everybody when the presenter changes the
+     question, and re-rendered for one browser after it votes. */}}
+{{define "vote-card"}}
+  {{if .Active}}
+    <p class="kicker">pytanie do sali</p>
+    <h2 class="question">{{.Poll.Question}}</h2>
+    {{if .Open}}
+      <div class="options">
+        {{range .Results}}
+        <button class="option {{if eq .ID $.Chosen}}chosen{{end}}"
+                hx-post="/live/glos" hx-vals='{"option": "{{.ID}}"}'
+                hx-target="#vote" hx-swap="innerHTML">
+          <span class="key">{{.ID}}</span> {{.Text}}
+        </button>
+        {{end}}
+      </div>
+      {{if .Chosen}}<p class="muted">Zagłosowano. Możesz zmienić zdanie — kliknij inną odpowiedź.</p>{{end}}
+    {{else}}
+      <p class="muted">Głosowanie zamknięte.</p>
+      {{if .Poll.Reveal}}<p class="reveal">{{.Poll.Reveal}}</p>{{end}}
+    {{end}}
+  {{else}}
+    <p class="kicker">pytanie do sali</p>
+    <p class="muted waiting">Czekamy na pytanie od prowadzącego…</p>
+  {{end}}
+{{end}}
+
+{{/* Live tally, pushed to every browser on each vote. */}}
+{{define "poll-results"}}
+  {{if .Active}}
+    <div class="results">
+      {{range .Results}}
+      <div class="bar-row {{if .Leading}}leading{{end}}">
+        <span class="bar-label">{{.Text}}</span>
+        <span class="bar"><span class="fill" style="width: {{.Percent}}%"></span></span>
+        <span class="bar-count">{{.Count}}</span>
+      </div>
+      {{end}}
+      <p class="muted">głosów: {{.Total}}</p>
+    </div>
+  {{end}}
+{{end}}

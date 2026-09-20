@@ -1,0 +1,14 @@
+{{define "hint-revealed"}}
+  <div class="hint">
+    <h4>Podpowiedź {{add .Index 1}}{{if .Hint.Title}}: {{.Hint.Title}}{{end}}</h4>
+    <div class="prose">{{.Hint.HTML}}</div>
+  </div>
+  {{if lt .Next (len .Task.Hints)}}
+  <div id="hint-slot">
+    <button class="btn" hx-post="/zadania/{{.Task.Slug}}/podpowiedz/{{.Next}}"
+            hx-target="#hint-slot" hx-swap="outerHTML">
+      Kolejna podpowiedź {{add .Next 1}}/{{len .Task.Hints}}
+    </button>
+  </div>
+  {{end}}
+{{end}}

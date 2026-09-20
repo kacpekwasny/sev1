@@ -1,0 +1,15 @@
+{{define "content"}}
+{{$lib := .Lib}}
+<article class="page">
+  {{with .Topo}}
+  <p class="kicker">topologia · <a href="/topologie/">wszystkie</a></p>
+  <h1>{{.Title}}</h1>
+  <p class="lead">{{.Summary}}</p>
+  {{if .Note}}
+  <p class="meta"><a class="chip" href="/notatki/{{.Note}}">{{noteTitle $lib .Note}}</a></p>
+  {{end}}
+  {{end}}
+
+  {{template "topology-figure" .Figure}}
+</article>
+{{end}}

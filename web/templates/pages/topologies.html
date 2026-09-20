@@ -1,0 +1,22 @@
+{{define "content"}}
+<article class="page">
+  <h1>Topologie</h1>
+  <p class="lead">
+    Sieci z wykładu, do obejrzenia z bliska. Każdą można przełączyć między kablami,
+    widokiem z whiteboardu, adresami i przykładem routingu — rysunek, adresy i wypis
+    z routera liczą się z tego samego pliku, więc nie mogą się rozjechać.
+  </p>
+  <div class="cards">
+    {{range .Topologies}}
+    <a class="card" href="/topologie/{{.Slug}}">
+      <div class="card-head">
+        <span class="chip">{{len .Cables}} kabli</span>
+        <span class="meta">{{len .Tiers}} warstwy</span>
+      </div>
+      <h3>{{.Title}}</h3>
+      <p class="muted">{{.Summary}}</p>
+    </a>
+    {{end}}
+  </div>
+</article>
+{{end}}

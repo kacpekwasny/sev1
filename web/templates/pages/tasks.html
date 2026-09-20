@@ -1,0 +1,22 @@
+{{define "content"}}
+<article class="page">
+  <h1>Zadania</h1>
+  <p class="lead">
+    Każde zadanie wyrosło z prawdziwego problemu z pracy. Nie ma tu punktów ani terminów —
+    są podpowiedzi, które odkrywasz dopiero, gdy naprawdę utkniesz.
+  </p>
+  <div class="cards">
+    {{range .Tasks}}
+    <a class="card" href="/zadania/{{.Slug}}">
+      <div class="card-head">
+        <span class="tag {{.Difficulty}}">{{.Difficulty}}</span>
+        {{if .Time}}<span class="meta">~{{.Time}}</span>{{end}}
+      </div>
+      <h3>{{.Title}}</h3>
+      <p class="muted">{{.Summary}}</p>
+      <p class="meta">{{range .Tags}}<span class="chip">{{.}}</span>{{end}}</p>
+    </a>
+    {{end}}
+  </div>
+</article>
+{{end}}

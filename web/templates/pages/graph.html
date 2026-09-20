@@ -1,0 +1,14 @@
+{{define "content"}}
+<article class="page">
+  <h1>Graf notatek</h1>
+  <p class="lead">
+    Każda kropka to notatka, każda linia to link <code>[[tak]]</code>. Kliknij kropkę,
+    żeby otworzyć notatkę; możesz też przeciągać.
+  </p>
+  <div id="graph-wrap">
+    <canvas id="graph" width="1000" height="620"></canvas>
+    <p id="graph-hint" class="muted">ładowanie…</p>
+  </div>
+</article>
+<script src="/static/graph.js" defer></script>
+{{end}}

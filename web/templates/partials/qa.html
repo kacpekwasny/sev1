@@ -1,0 +1,121 @@
+{{/* Ksywka jest losowana przy wejściu na stronę, ale każdy może wpisać swoją.
+     Formularz leży poza częścią odświeżaną przez SSE - stan jest osobisty. */}}
+{{define "whoami"}}
+  <form class="whoami" hx-post="/live/ksywka" hx-target="#whoami" hx-swap="innerHTML">
+    <label for="nick">Podpisujesz się jako</label>
+    <input id="nick" name="nick" value="{{.Me.Nick}}" maxlength="24" required>
+    <button class="btn tiny" type="submit">zmień</button>
+    {{if .Error}}<span class="warn">{{.Error}}</span>{{end}}
+    {{if .Saved}}<span class="sent">zapisane</span>{{end}}
+  </form>
+{{end}}
+
+{{define "ask-form"}}
+  {{if .Problem}}
+    <p class="warn">{{.Problem}}</p>
+  {{else}}
+    {{if .Sent}}<p class="sent">Poszło. Pytanie jest niżej — inni mogą je podbić.</p>{{end}}
+    <form hx-post="/live/pytanie" hx-target="#ask" hx-swap="innerHTML">
+      <textarea name="text" rows="2" maxlength="400" required
+                placeholder="Pytanie do prowadzącego, podpisane ksywką {{.Me.Nick}}…"></textarea>
+      <button class="btn primary" type="submit">Wyślij</button>
+    </form>
+  {{end}}
+{{end}}
+
+{{/* Pudełko na odpowiedź. Leży poza listą pytań, której nie da się odświeżyć
+     bez wyrzucenia tego, co ktoś właśnie pisze. */}}
+{{define "answer-box"}}
+  {{if .Sent}}
+    <p class="sent">Dzięki! Twoja odpowiedź jest pod pytaniem — sala może ją podbić.</p>
+  {{else if .Problem}}
+    <p class="warn">{{.Problem}}</p>
+  {{else if .Question}}
+    <div class="answer-form">
+      <p class="kicker">odpowiadasz na</p>
+      <blockquote>{{.Question.Text}}</blockquote>
+      <form hx-post="/live/pytanie/{{.Question.ID}}/odpowiedz"
+            hx-target="#answer-box" hx-swap="innerHTML">
+        <textarea name="text" rows="2" maxlength="400" required autofocus
+                  placeholder="Wiesz, jak to działa? Napisz."></textarea>
+        <button class="btn primary" type="submit">Wyślij odpowiedź</button>
+        <button class="btn" type="button" hx-get="/live/odpowiedz"
+                hx-target="#answer-box" hx-swap="innerHTML">Anuluj</button>
+      </form>
+    </div>
+  {{end}}
+{{end}}
+
+{{define "questions"}}
+  {{if .Questions}}
+    <ul class="questions">
+      {{range .Questions}}
+      {{$q := .}}
+      <li class="{{if .Answered}}answered{{end}}">
+        <button class="upvote" hx-post="/live/pytanie/{{.ID}}/glos"
+                hx-target="#questions" hx-swap="innerHTML" title="podbij">▲ {{.Votes}}</button>
+        <div class="qbody">
+          <span class="qtext">{{.Text}}</span>
+          <span class="nick">— {{.Nick}}</span>
+          {{if .Answered}}<span class="chip done">odpowiedziane</span>{{end}}
+          {{if .Comments}}
+          <ul class="answers">
+            {{range .Comments}}
+            <li>
+              <button class="upvote tiny" hx-post="/live/pytanie/{{$q.ID}}/odpowiedz/{{.ID}}/glos"
+                      hx-target="#questions" hx-swap="innerHTML"
+                      title="ta odpowiedź jest dobra">▲ {{.Votes}}</button>
+              <span>{{.Text}} <span class="nick">— {{.Nick}}</span></span>
+            </li>
+            {{end}}
+          </ul>
+          {{end}}
+          <button class="btn link" hx-get="/live/odpowiedz?pytanie={{.ID}}"
+                  hx-target="#answer-box" hx-swap="innerHTML">znam odpowiedź</button>
+        </div>
+      </li>
+      {{end}}
+    </ul>
+  {{else}}
+    <p class="muted">Nikt jeszcze o nic nie zapytał. Bądź pierwszy.</p>
+  {{end}}
+{{end}}
+
+{{define "panel-questions"}}
+  {{if .Questions}}
+    <ul class="questions panel">
+      {{range .Questions}}
+      {{$q := .}}
+      <li class="{{if .Answered}}answered{{end}}">
+        <span class="upvote static">▲ {{.Votes}}</span>
+        <div class="qbody">
+          <span class="qtext">{{.Text}}</span>
+          <span class="nick">— {{.Nick}}</span>
+          {{if .Comments}}
+          <ul class="answers">
+            {{range .Comments}}
+            <li>
+              <span class="upvote static tiny">▲ {{.Votes}}</span>
+              <span>{{.Text}} <span class="nick">— {{.Nick}}</span></span>
+              <button class="btn tiny danger" hx-post="/panel/pytanie/{{$q.ID}}/odpowiedz/{{.ID}}/usun"
+                      hx-target="#panel-questions" hx-swap="innerHTML">usuń</button>
+            </li>
+            {{end}}
+          </ul>
+          {{end}}
+        </div>
+        <span class="qactions">
+          <button class="btn tiny" hx-post="/panel/pytanie/{{.ID}}/odpowiedziane"
+                  hx-target="#panel-questions" hx-swap="innerHTML">
+            {{if .Answered}}cofnij{{else}}odpowiedziane{{end}}
+          </button>
+          <button class="btn tiny danger" hx-post="/panel/pytanie/{{.ID}}/usun"
+                  hx-target="#panel-questions" hx-swap="innerHTML">usuń</button>
+        </span>
+      </li>
+      {{end}}
+    </ul>
+  {{else}}
+    <p class="muted">Brak pytań.</p>
+  {{end}}
+{{end}}

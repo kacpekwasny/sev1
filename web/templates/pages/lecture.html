@@ -1,0 +1,38 @@
+{{define "content"}}
+{{$lib := .Lib}}
+{{with .Lecture}}
+<article class="page">
+  <p class="kicker">Wykład #{{.Number}} · {{.Date}} · {{.Place}} · {{.Duration}} min</p>
+  <h1>{{.Title}}</h1>
+  <p class="lead">{{.Summary}}</p>
+
+  <div class="prose">{{.Body}}</div>
+
+  <h2>Agenda</h2>
+  <ol class="agenda">
+    {{range .Agenda}}
+    <li>
+      <span class="mins">{{.Minutes}}′</span>
+      <div class="agenda-body">
+        <h3>{{.Title}}</h3>
+        {{if .Desc}}<p class="muted">{{.Desc}}</p>{{end}}
+        <p class="agenda-links">
+          {{if .Poll}}
+          <span class="chip poll" title="{{pollQuestion $lib .Poll}}">pytanie do sali</span>
+          {{end}}
+          {{range .Notes}}<a class="chip" href="/notatki/{{.}}">{{noteTitle $lib .}}</a>{{end}}
+          {{range .Topologies}}<a class="chip topo" href="/topologie/{{.}}">{{topologyTitle $lib .}}</a>{{end}}
+          {{range .Tasks}}<a class="chip task" href="/zadania/{{.}}">{{taskTitle $lib .}}</a>{{end}}
+        </p>
+      </div>
+    </li>
+    {{end}}
+  </ol>
+
+  <p class="callout">
+    W trakcie wykładu otwórz <a href="/live/">stronę na żywo</a> — tam pojawiają się pytania
+    do sali i można anonimowo dopytać o cokolwiek.
+  </p>
+</article>
+{{end}}
+{{end}}

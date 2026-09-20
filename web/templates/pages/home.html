@@ -1,0 +1,63 @@
+{{define "content"}}
+<section class="hero">
+  <p class="kicker">Otwarte wykłady · WIET AGH · budynek D6</p>
+  <h1>Jak rozpętałem drugą Sev1</h1>
+  <p class="lead">
+    Seria wykładów o tym, jak naprawdę wygląda praca w cloud networkingu: centra obliczeniowe,
+    BGP, overlay, SRv6 i klastry GPU — a obok tego codzienność inżyniera: incydenty, planingi,
+    rozmowy o pracę i drabinka w Akamai.
+  </p>
+  <div class="hero-actions">
+    <a class="btn primary" href="/live/">Dołącz na żywo</a>
+    <a class="btn" href="/notatki/vault.zip">Pobierz notatki (.zip)</a>
+    <a class="btn" href="/zadania/">Zadania do domu</a>
+  </div>
+</section>
+
+<section>
+  <h2>Wykłady</h2>
+  <div class="cards">
+    {{range .Lectures}}
+    <a class="card lecture" href="/wyklady/{{.Slug}}">
+      <div class="card-head">
+        <span class="badge">#{{.Number}}</span>
+        <span class="status {{.Status}}">{{.Status}}</span>
+      </div>
+      <h3>{{.Title}}</h3>
+      <p class="muted">{{.Summary}}</p>
+      <p class="meta">{{.Date}} · {{.Place}} · {{.Duration}} min</p>
+    </a>
+    {{else}}
+    <p class="muted">Jeszcze nic tu nie ma.</p>
+    {{end}}
+  </div>
+</section>
+
+<section class="two-col">
+  <div>
+    <h2>Zadania z prawdziwej pracy</h2>
+    <ul class="list">
+      {{range .Tasks}}
+      <li>
+        <a href="/zadania/{{.Slug}}">{{.Title}}</a>
+        <span class="tag {{.Difficulty}}">{{.Difficulty}}</span>
+        <p class="muted">{{.Summary}}</p>
+      </li>
+      {{end}}
+    </ul>
+  </div>
+  <div>
+    <h2>Notatki</h2>
+    <p class="muted">
+      Zwykłe pliki <code>.md</code> z linkami <code>[[tak]]</code>. Rozpakuj jako vault
+      w Obsidianie albo czytaj tutaj.
+    </p>
+    <ul class="list compact">
+      {{range .Notes}}
+      <li><a href="/notatki/{{.Slug}}">{{.Title}}</a></li>
+      {{end}}
+    </ul>
+    <p><a class="btn small" href="/notatki/graf">Zobacz graf notatek</a></p>
+  </div>
+</section>
+{{end}}

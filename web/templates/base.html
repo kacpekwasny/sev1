@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} · Sev1 @ WIET</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/vendor/htmx.min.js" defer></script>
+  <script src="/static/vendor/htmx-ext-sse.js" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/"><span class="sev">SEV1</span> <span class="brand-sub">wykłady @ WIET AGH</span></a>
+  <nav>
+    <a href="/" {{if eq .Path "/"}}class="on"{{end}}>Wykłady</a>
+    <a href="/notatki/" {{if eq .Path "/notatki/"}}class="on"{{end}}>Notatki</a>
+    <a href="/notatki/graf" {{if eq .Path "/notatki/graf"}}class="on"{{end}}>Graf</a>
+    <a href="/topologie/" {{if eq .Path "/topologie/"}}class="on"{{end}}>Topologie</a>
+    <a href="/zadania/" {{if eq .Path "/zadania/"}}class="on"{{end}}>Zadania</a>
+    <a class="livelink" href="/live/" {{if eq .Path "/live/"}}class="on"{{end}}>● Na żywo</a>
+  </nav>
+</header>
+
+<main>
+  {{template "content" .}}
+</main>
+
+<footer>
+  <span>Routing Services · Akamai</span>
+  <span>Materiały: <a href="/notatki/vault.zip">vault .zip</a> dla Obsidiana</span>
+</footer>
+</body>
+</html>

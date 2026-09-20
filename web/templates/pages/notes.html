@@ -1,0 +1,26 @@
+{{define "content"}}
+<article class="page">
+  <h1>Notatki</h1>
+  <p class="lead">
+    Notatki są zwykłymi plikami markdown z linkami <code>[[tak]]</code> — dokładnie tak, jak
+    leżą w vaulcie. Możesz je czytać tutaj albo pobrać i wrzucić do Obsidiana.
+  </p>
+  <p>
+    <a class="btn primary" href="/notatki/vault.zip">Pobierz cały vault (.zip)</a>
+    <a class="btn" href="/notatki/graf">Graf połączeń</a>
+  </p>
+
+  <div class="cards">
+    {{range .Notes}}
+    <a class="card" href="/notatki/{{.Slug}}">
+      <h3>{{.Title}}</h3>
+      {{if .Summary}}<p class="muted">{{.Summary}}</p>{{end}}
+      <p class="meta">
+        {{range .Tags}}<span class="chip">{{.}}</span>{{end}}
+        <span class="links-count">{{len .Links}} → · ← {{len .Backlinks}}</span>
+      </p>
+    </a>
+    {{end}}
+  </div>
+</article>
+{{end}}

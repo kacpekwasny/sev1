@@ -1,0 +1,36 @@
+{{define "content"}}
+{{$lib := .Lib}}
+{{with .Note}}
+<article class="page note">
+  <p class="kicker">notatka · <a href="/notatki/">wszystkie</a></p>
+  <h1>{{.Title}}</h1>
+  <p class="meta">
+    {{range .Tags}}<span class="chip">{{.}}</span>{{end}}
+    <a class="chip dl" href="/notatki/{{.Slug}}/md">pobierz .md</a>
+  </p>
+
+  <div class="prose">{{.Body}}</div>
+
+  <aside class="linkbox">
+    {{if .Links}}
+    <div>
+      <h4>Prowadzi do</h4>
+      <ul>{{range .Links}}<li><a href="/notatki/{{.}}">{{noteTitle $lib .}}</a></li>{{end}}</ul>
+    </div>
+    {{end}}
+    {{if .Backlinks}}
+    <div>
+      <h4>Linkują tutaj</h4>
+      <ul>{{range .Backlinks}}<li><a href="/notatki/{{.}}">{{noteTitle $lib .}}</a></li>{{end}}</ul>
+    </div>
+    {{end}}
+    {{if .Missing}}
+    <div>
+      <h4>Jeszcze nienapisane</h4>
+      <ul class="missing">{{range .Missing}}<li>{{.}}</li>{{end}}</ul>
+    </div>
+    {{end}}
+  </aside>
+</article>
+{{end}}
+{{end}}
