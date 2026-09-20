@@ -39,6 +39,30 @@ type Lecture struct {
 	Body    template.HTML `yaml:"-"`
 }
 
+// Kolejne stany wykładu w serii. Sterują tym, co strona główna wysuwa na
+// przód: promocja ma pokazywać najbliższy termin, a nie pierwszy z listy.
+const (
+	StatusPlanned = "planowany"
+	StatusNext    = "najblizszy"
+	StatusDone    = "odbyty"
+)
+
+// Upcoming is the lecture the front page advertises: the one marked as next,
+// or - if nobody remembered to move the marker - the first one not yet given.
+func (l *Library) Upcoming() *Lecture {
+	for _, lec := range l.Lectures {
+		if lec.Status == StatusNext {
+			return lec
+		}
+	}
+	for _, lec := range l.Lectures {
+		if lec.Status != StatusDone {
+			return lec
+		}
+	}
+	return nil
+}
+
 // AgendaItem is one block of a lecture. It may point at the interactive poll
 // that gets shown to the audience while this block is on screen.
 type AgendaItem struct {

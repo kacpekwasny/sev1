@@ -101,6 +101,25 @@ func (s *Server) templates() *templates {
 	return tpl
 }
 
+// defaultDescription is what Facebook, Messenger and Slack show when somebody
+// pastes a link to the site. Every page gets it unless it sets its own - an
+// empty preview under a shared link is a wasted poster.
+const defaultDescription = "Otwarte wykłady na WIET AGH o pracy w cloud networkingu: " +
+	"prawdziwe incydenty, BGP, centra obliczeniowe i klastry GPU. Wstęp wolny, bez zapisów."
+
+// baseURL is the address this page was reached at, taken from the request so
+// that nothing has to be configured. Facebook and Slack refuse to fetch a
+// relative og:image, so the preview needs the whole thing spelled out.
+func baseURL(r *http.Request) string {
+	scheme := "http"
+	if forwarded := r.Header.Get("X-Forwarded-Proto"); forwarded != "" {
+		scheme = forwarded
+	} else if r.TLS != nil {
+		scheme = "https"
+	}
+	return scheme + "://" + r.Host
+}
+
 func (s *Server) render(w http.ResponseWriter, r *http.Request, page string, data map[string]any) {
 	tpl := s.templates()
 	set, ok := tpl.pages[page]
@@ -109,6 +128,10 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, page string, dat
 		return
 	}
 	data["Path"] = r.URL.Path
+	data["BaseURL"] = baseURL(r)
+	if _, ok := data["Description"]; !ok {
+		data["Description"] = defaultDescription
+	}
 	// Render into a buffer first: a template error halfway through would
 	// otherwise leave a half-written page on the wire.
 	var buf bytes.Buffer

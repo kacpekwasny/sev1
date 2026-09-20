@@ -4,6 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{.Title}} · Sev1 @ WIET</title>
+  <meta name="description" content="{{.Description}}">
+  {{/* Podgląd linku wklejonego na fejsa albo na grupę - plakat rozchodzi się
+       linkiem, więc to jest część promocji, nie ozdoba. Obrazek podmień na
+       eksport plakatu: web/static/og.png, 1200×630. */}}
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{{.Title}} · Sev1 @ WIET AGH">
+  <meta property="og:description" content="{{.Description}}">
+  <meta property="og:url" content="{{.BaseURL}}{{.Path}}">
+  <meta property="og:image" content="{{.BaseURL}}/static/og.png">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/vendor/htmx.min.js" defer></script>
   <script src="/static/vendor/htmx-ext-sse.js" defer></script>

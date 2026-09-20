@@ -1,16 +1,98 @@
+{{/* Strona główna jest plakatem serii. Pierwszy ekran ma odpowiedzieć na
+     cztery pytania osoby, która właśnie zeskanowała kod QR na korytarzu:
+     co to jest, kiedy, gdzie i czy trzeba się zapisywać. Reszta strony jest
+     dla tych, którzy już przyszli. */}}
 {{define "content"}}
-<section class="hero">
-  <p class="kicker">Otwarte wykłady · WIET AGH · budynek D6</p>
+<section class="hero promo">
+  <p class="kicker">Otwarte wykłady · WIET AGH · budynek D6 · wstęp wolny, bez zapisów</p>
   <h1>Jak rozpętałem drugą Sev1</h1>
   <p class="lead">
-    Seria wykładów o tym, jak naprawdę wygląda praca w cloud networkingu: centra obliczeniowe,
-    BGP, overlay, SRv6 i klastry GPU — a obok tego codzienność inżyniera: incydenty, planingi,
-    rozmowy o pracę i drabinka w Akamai.
+    Trzy wieczory o tym, jak naprawdę wygląda praca w cloud networkingu — opowiedziane
+    przez incydenty, które się wydarzyły. Centra obliczeniowe, BGP, overlay, SRv6
+    i klastry GPU, a obok tego codzienność inżyniera: dyżury, planingi i rekrutacja.
   </p>
-  <div class="hero-actions">
-    <a class="btn primary" href="/live/">Dołącz na żywo</a>
-    <a class="btn" href="/notatki/vault.zip">Pobierz notatki (.zip)</a>
-    <a class="btn" href="/zadania/">Zadania do domu</a>
+
+  {{with .Upcoming}}
+  <div class="next-up">
+    <p class="kicker">najbliższy wykład</p>
+    <p class="when">{{.Date}}</p>
+    <p class="where">{{.Place}} · {{.Duration}} min</p>
+    <h2><a href="/wyklady/{{.Slug}}">#{{.Number}} {{.Title}}</a></h2>
+    <p class="muted">{{.Summary}}</p>
+    <p><a class="btn primary" href="/wyklady/{{.Slug}}">Zobacz program</a></p>
+  </div>
+  {{end}}
+
+  <p class="muted small">
+    Nie trzeba nic umieć wcześniej i nie trzeba być na wszystkich trzech —
+    każdy wykład da się zrozumieć osobno. Wpadnij, posłuchaj, wyjdź z notatkami.
+  </p>
+</section>
+
+<section>
+  <h2>Po co przychodzić</h2>
+  <div class="cards why">
+    <div class="card">
+      <h3>Prawdziwe incydenty</h3>
+      <p class="muted">
+        Nie slajdy z podręcznika, tylko awarie, które widziałem z bliska: co się zepsuło,
+        co pokazywały wykresy i dlaczego oczywista przyczyna była nie ta.
+      </p>
+    </div>
+    <div class="card">
+      <h3>Trzecia tabletka</h3>
+      <p class="muted">
+        Frontend, backend… i network software engineer. Ścieżka, o której na studiach
+        raczej nie usłyszysz, a na której pisze się C i Go i debuguje się cudzy internet.
+      </p>
+    </div>
+    <div class="card">
+      <h3>Wychodzisz z materiałami</h3>
+      <p class="muted">
+        Notatki jako zwykłe pliki <code>.md</code> — vault do Obsidiana z linkami
+        i grafem — plus zadania domowe wyjęte z prawdziwych problemów z pracy.
+      </p>
+    </div>
+    <div class="card">
+      <h3>Wykład jest interaktywny</h3>
+      <p class="muted">
+        Z telefonu głosujesz w ankietach, zadajesz pytania anonimowo i odpowiadasz na
+        cudze. Możesz też jednym kliknięciem powiedzieć „zgubiłem się”.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="two-col">
+  <div>
+    <h2>Kto to opowiada</h2>
+    <p>
+      <strong>Kacper Kwaśny</strong> — absolwent tego wydziału, dziś Network Software
+      Engineer w <strong>Akamai</strong>, w zespole Routing Services. Piszę w C i Go,
+      na co dzień siedzę w BGP, EVPN i SRv6, czyli w tym, czym gada ze sobą sieć
+      pod spodem chmury.
+    </p>
+    <p class="muted">
+      Robię te wykłady, bo sam siedziałem na tej sali i nikt mi wtedy nie powiedział,
+      że taka praca w ogóle istnieje.
+    </p>
+  </div>
+  <div>
+    <h2>Gdzie i kiedy</h2>
+    <ul class="list compact terms">
+      {{range .Lectures}}
+      <li>
+        <span class="status {{.Status}}">{{.Status}}</span>
+        <a href="/wyklady/{{.Slug}}">#{{.Number}} {{.Title}}</a>
+        <p class="meta">{{.Date}} · {{.Place}}</p>
+      </li>
+      {{else}}
+      <li class="muted">Terminy wkrótce.</li>
+      {{end}}
+    </ul>
+    <p class="muted small">
+      Organizuje <strong>WRSS WIET</strong>. Wstęp wolny, bez zapisów i bez listy obecności.
+    </p>
   </div>
 </section>
 
@@ -57,7 +139,10 @@
       <li><a href="/notatki/{{.Slug}}">{{.Title}}</a></li>
       {{end}}
     </ul>
-    <p><a class="btn small" href="/notatki/graf">Zobacz graf notatek</a></p>
+    <p>
+      <a class="btn small" href="/notatki/graf">Zobacz graf notatek</a>
+      <a class="btn small" href="/notatki/vault.zip">Pobierz vault (.zip)</a>
+    </p>
   </div>
 </section>
 {{end}}

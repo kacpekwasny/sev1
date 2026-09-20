@@ -129,11 +129,15 @@ func (s *Server) routes() {
 
 // --- pages ---------------------------------------------------------------
 
+// handleHome is the poster of the series: somebody who scanned the QR code in
+// the corridor should learn in one screen what this is, when it is and that
+// they can just walk in. Everything else on the page is for people who came.
 func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	lib := s.lib()
 	s.render(w, r, "home", map[string]any{
 		"Title":    "Jak rozpętałem drugą Sev1",
 		"Lectures": lib.Lectures,
+		"Upcoming": lib.Upcoming(),
 		"Tasks":    lib.Tasks,
 		"Notes":    lib.Notes,
 	})

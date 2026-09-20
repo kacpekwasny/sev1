@@ -61,6 +61,33 @@ func TestEveryPageRenders(t *testing.T) {
 	}
 }
 
+// Strona główna jest plakatem: kiedy, gdzie i że można wejść z ulicy. Te
+// dane idą z nagłówków wykładów, więc test pilnuje, żeby nie rozjechały się
+// z treścią - zła data na plakacie to jedyny błąd, którego nie da się odkręcić.
+func TestFrontPageAdvertisesTheNextLecture(t *testing.T) {
+	srv := newTestServer(t)
+	next := srv.lib().Upcoming()
+	if next == nil {
+		t.Fatal("żaden wykład nie jest oznaczony jako najbliższy ani planowany")
+	}
+
+	body := get(t, srv, "/").Body.String()
+	for _, want := range []string{next.Title, next.Date, next.Place, "wstęp wolny", "WRSS"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("plakat nie mówi o %q", want)
+		}
+	}
+	// Podgląd linku wklejonego na grupę - bez tego promocja gubi się w szarym
+	// prostokącie bez opisu.
+	if !strings.Contains(body, `property="og:description"`) {
+		t.Error("brak opisu dla podglądu linku")
+	}
+	// Adres obrazka musi być pełny - fejsbuk nie pobierze względnego.
+	if !strings.Contains(body, `property="og:image" content="http://example.com/static/og.png"`) {
+		t.Errorf("og:image nie jest pełnym adresem: %s", body)
+	}
+}
+
 func TestUnknownPageIsNotFound(t *testing.T) {
 	srv := newTestServer(t)
 	if rec := get(t, srv, "/notatki/nie-ma-takiej"); rec.Code != http.StatusNotFound {

@@ -37,8 +37,21 @@ internal/live           stan na żywo: ankiety, pytania z sali, nastrój
 internal/web            trasy HTTP, szablony, SSE
 
 web/templates           base.html + pages/ + partials/ (fragmenty dla htmx i SSE)
-web/static              CSS, graf notatek, htmx (lokalnie, bez CDN)
+web/static              CSS, graf notatek, htmx (lokalnie, bez CDN), og.png
 ```
+
+## Strona główna jako plakat
+
+`/` jest tym, co widzi ktoś, kto zeskanował kod QR na korytarzu, więc pierwszy ekran
+odpowiada na cztery pytania: co to jest, kiedy, gdzie i czy trzeba się zapisywać.
+Datę i salę bierze z nagłówka wykładu oznaczonego `status: najblizszy` — po każdym
+wykładzie przestaw go na `odbyty`, a następnemu wpisz `najblizszy`, i plakat sam się
+zaktualizuje. Test `TestFrontPageAdvertisesTheNextLecture` pilnuje, żeby te dane
+faktycznie były na stronie.
+
+Link wklejony na grupę pokazuje podgląd z `web/static/og.png` (1200×630). Leżący tam
+plik jest tymczasowy, wygenerowany w stylu strony — **podmień go na eksport plakatu
+z Canvy**, nic więcej nie trzeba zmieniać.
 
 ## Część interaktywna
 

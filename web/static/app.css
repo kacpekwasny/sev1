@@ -112,6 +112,29 @@ a.chip:hover { color: var(--text); border-color: var(--accent); text-decoration:
 .status.najblizszy { color: var(--accent-2); }
 .status.odbyty { color: var(--accent); }
 
+/* --- strona główna jako plakat serii -------------------------------------- */
+
+/* Najbliższy termin jest tu najważniejszą informacją, więc dostaje własną
+   ramkę i największy monospace na stronie - ma się rzucać w oczy komuś, kto
+   właśnie zeskanował kod QR i patrzy na to przez pół sekundy. */
+.next-up {
+  max-width: 62ch; margin: 1.6rem 0 1.2rem; padding: 1.1rem 1.3rem;
+  border: 1px solid var(--accent-2); border-radius: 12px; background: var(--panel);
+}
+.next-up .when { font-family: var(--mono); font-weight: 700; font-size: 1.5rem;
+                 color: var(--accent-2); margin: 0.1rem 0; }
+.next-up .where { font-family: var(--mono); font-size: 0.9rem; color: var(--muted);
+                  margin: 0 0 0.7rem; }
+.next-up h2 { font-size: 1.25rem; margin: 0 0 0.4rem; }
+.next-up h2 a { color: var(--text); }
+.next-up h2 a:hover { color: var(--accent); }
+
+.cards.why .card h3 { color: var(--accent); font-size: 1.05rem; }
+
+.terms li { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem;
+            align-items: baseline; margin-bottom: 0.7rem; }
+.terms .meta { grid-column: 2; }
+
 /* --- cards and lists ------------------------------------------------------ */
 
 .cards { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
@@ -119,7 +142,9 @@ a.chip:hover { color: var(--text); border-color: var(--accent); text-decoration:
   display: block; padding: 1.1rem; border: 1px solid var(--line); border-radius: 12px;
   background: var(--panel); color: var(--text);
 }
-.card:hover { border-color: var(--accent); text-decoration: none; transform: translateY(-2px); }
+/* Tylko kafelek, który jest linkiem, reaguje na kursor - inaczej strona
+   obiecuje kliknięcie tam, gdzie nic się nie stanie. */
+a.card:hover { border-color: var(--accent); text-decoration: none; transform: translateY(-2px); }
 .card h3 { margin: 0.3rem 0 0.4rem; }
 .card-head { display: flex; justify-content: space-between; align-items: center; }
 .badge { font-family: var(--mono); color: var(--accent-2); font-weight: 700; }
