@@ -37,8 +37,25 @@ internal/live           stan na żywo: ankiety, pytania z sali, nastrój
 internal/web            trasy HTTP, szablony, SSE
 
 web/templates           base.html + pages/ + partials/ (fragmenty dla htmx i SSE)
-web/static              CSS, graf notatek, htmx (lokalnie, bez CDN), og.png
+web/static              CSS, graf notatek, htmx i Poppins (lokalnie, bez CDN), og.png
+design/                 plakaty z Canvy - źródło stylu strony
 ```
+
+## Skąd się wziął wygląd
+
+Strona jest ubrana w plakaty z `design/`, żeby ktoś, kto widział plakat na korytarzu,
+poznał tę samą serię po wejściu na stronę. Z plakatu wzięte są cztery kolory
+(granat tła `#0c203b`, biel, błękit Akamai `#00a4eb`, jasny szary `#ced2d8` na daty),
+krój **Poppins** i sposób składania nagłówków: wersaliki z szeroką spacją.
+
+Kolory siedzą w `:root` w `web/static/app.css` — zmiana palety to zmiana tych kilku
+linijek. Poppins leży w `web/static/vendor/fonts/` jako trzy pliki `.woff2` po ~9 kB
+(licencja OFL, obok), przycięte do znaków łacińskich z polskimi — żadnego CDN-u,
+bo na sali wifi bywa różnie.
+
+Dwie rzeczy, których strona z plakatu nie bierze: pomarańczowy `--accent-2`, bo
+interfejs musi umieć odróżnić „uwaga, to teraz" od zwykłego linku, a plakat ma tylko
+jeden akcent; i wersaliki w długich tytułach wykładów, bo czyta się je wtedy wolniej.
 
 ## Strona główna jako plakat
 
@@ -50,8 +67,9 @@ zaktualizuje. Test `TestFrontPageAdvertisesTheNextLecture` pilnuje, żeby te dan
 faktycznie były na stronie.
 
 Link wklejony na grupę pokazuje podgląd z `web/static/og.png` (1200×630). Leżący tam
-plik jest tymczasowy, wygenerowany w stylu strony — **podmień go na eksport plakatu
-z Canvy**, nic więcej nie trzeba zmieniać.
+plik jest złożony z elementów plakatu, ale w poziomie, bo plakat jest 4:5 i w podglądzie
+linku zostałby przycięty. Jak zrobisz w Canvie wersję poziomą — podmień plik, nic więcej
+nie trzeba zmieniać.
 
 ## Część interaktywna
 

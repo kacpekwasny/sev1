@@ -4,13 +4,22 @@
      dla tych, którzy już przyszli. */}}
 {{define "content"}}
 <section class="hero promo">
-  <p class="kicker">Otwarte wykłady · WIET AGH · budynek D6 · wstęp wolny, bez zapisów</p>
+  <p class="kicker">Wykład absolwentów WIET</p>
   <h1>Jak rozpętałem drugą Sev1</h1>
   <p class="lead">
-    Trzy wieczory o tym, jak naprawdę wygląda praca w cloud networkingu — opowiedziane
+    Dwa wieczory o tym, jak naprawdę wygląda praca w cloud networkingu — opowiedziane
     przez incydenty, które się wydarzyły. Centra obliczeniowe, BGP, overlay, SRv6
     i klastry GPU, a obok tego codzienność inżyniera: dyżury, planingi i rekrutacja.
   </p>
+
+  {{/* Te same hasła, co na plakacie - kto widział plakat, ma poznać stronę. */}}
+  <ul class="topics">
+    <li>Network SWE w Akamai</li>
+    <li>Od interview do seniora</li>
+    <li>Datacentery GPU</li>
+    <li>Drabinka w Akamai</li>
+    <li>Underlay / overlay network</li>
+  </ul>
 
   {{with .Upcoming}}
   <div class="next-up">
@@ -24,8 +33,9 @@
   {{end}}
 
   <p class="muted small">
-    Nie trzeba nic umieć wcześniej i nie trzeba być na wszystkich trzech —
-    każdy wykład da się zrozumieć osobno. Wpadnij, posłuchaj, wyjdź z notatkami.
+    Otwarte dla wszystkich, wstęp wolny, bez zapisów. Nie trzeba nic umieć wcześniej
+    i nie trzeba być na obu — każdy wykład da się zrozumieć osobno. Wpadnij,
+    posłuchaj, wyjdź z notatkami.
   </p>
 </section>
 
