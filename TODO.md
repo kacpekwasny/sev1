@@ -11,3 +11,6 @@ DONE: landing page on computers should be alligned differentelly title, and akam
 - "unclick" of show me how it is going
 - add a link to source code
 
+
+- todo future, when exact dates will be known: add google calendar link "add to your calendar",
+
