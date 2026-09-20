@@ -9,11 +9,11 @@ markdown, a stan wykładu żyje w pamięci procesu.
 ## Uruchomienie
 
 ```sh
-go run . -dev                 # http://localhost:8080, przeładowuje treść przy F5
+go run . -dev                 # http://localhost:8081, przeładowuje treść przy F5
 PANEL_TOKEN=cośtajnego go run .   # tryb produkcyjny
 ```
 
-Panel prowadzącego: `http://localhost:8080/panel?token=sev1` (domyślny token, gdy nie
+Panel prowadzącego: `http://localhost:8081/panel?token=sev1` (domyślny token, gdy nie
 ustawiono `PANEL_TOKEN`).
 
 ```sh
@@ -21,7 +21,7 @@ go test ./...                 # testy renderują każdą stronę i sprawdzają l
 go build .                    # jeden plik binarny, treść www w środku
 ```
 
-Flagi: `-addr :8080`, `-content content`, `-dev`.
+Flagi: `-addr :8081`, `-content content`, `-dev`.
 
 ## Co gdzie leży
 
