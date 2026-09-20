@@ -20,6 +20,7 @@ agenda:
     title: "Po co te cloudy?"
     desc: "Dlaczego własna serwerownia to nie jest taka prosta sprawa."
     poll: cloud-po-co
+    terms: [cloud, datacenter]
     notes: [po-co-cloud]
   - minutes: 10
     title: "Trzecia tabletka: network SWE w Akamai"
@@ -30,11 +31,13 @@ agenda:
     notes: [centrum-obliczeniowe]
     topologies: [spine-leaf]
     poll: dc-redundancja
+    terms: [datacenter, redundancy, bgp, bonding]
   - minutes: 15
     title: "Datacentery GPU"
     desc: "Sieć, która musi nadążyć za kartami. Adres per interfejs zamiast loopbacka."
     notes: [gpu-clusters]
     poll: gpu-adresacja
+    terms: [gpu, nic, loopback]
   - minutes: 20
     title: "Day in a life of a Network SWE"
     desc: "Miesiąc pracy: nowe priorytety, incydenty, planingi, retro, ile linii kodu."

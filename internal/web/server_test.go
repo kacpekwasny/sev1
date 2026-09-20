@@ -161,6 +161,21 @@ func TestVotingUpdatesTheTally(t *testing.T) {
 	}
 }
 
+func TestLivePageExplainsItsThreeInteractionsAndCurrentTerms(t *testing.T) {
+	srv := newTestServer(t)
+	srv.hub.SetPoll("overlay-jak", true)
+	body := get(t, srv, "/live/").Body.String()
+
+	for _, want := range []string{"Wybierz odpowiedź", "Pokaż, jak ci idzie", "Zapytaj albo pomóż", "underlay", "enkapsulacja", "wcześniej"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("/live nie zawiera %q: %s", want, body)
+		}
+	}
+	if !strings.Contains(body, `class="live-layout"`) || !strings.Contains(body, `class="glossary-box"`) {
+		t.Error("/live nie ma układu interakcji + ściąga")
+	}
+}
+
 // Nastrój to jedyny kawałek stanu osobistego, który wolno trzymać w części
 // odświeżanej strumieniem - hub buduje migawkę osobno dla każdego widoku.
 // Test pilnuje też nazw, którymi przyciski przedstawiają się serwerowi.

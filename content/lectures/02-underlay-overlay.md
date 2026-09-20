@@ -16,16 +16,19 @@ agenda:
     desc: "Whiteboxy, ograniczony FIB, co robimy, gdy tras jest więcej niż miejsca."
     notes: [bgp-podstawy, fib-i-whiteboxy]
     poll: fib-overflow
+    terms: [underlay, fib, whitebox, bgp]
   - minutes: 15
     title: "Routing między VMkami - overlay"
     desc: "Analogia z listonoszem i pocztą: adres na kopercie a adres na paczce w środku."
     notes: [overlay]
     poll: overlay-jak
+    terms: [underlay, overlay, encapsulation]
   - minutes: 10
     title: "BGP route server, czyli plotkara"
     desc: "Dlaczego nie łączymy wszystkich ze wszystkimi."
     notes: [route-server]
     poll: route-server-sesje
+    terms: [bgp, route-server, full-mesh]
     tasks: [route-server-lab]
   - minutes: 10
     title: "IP Sharing od technicznej strony"
@@ -36,6 +39,7 @@ agenda:
     desc: "Routing zapisany w adresie. Co to jest SID i dlaczego to wygodne."
     notes: [ipv6, srv6]
     poll: srv6-sid
+    terms: [ipv6, srv6, sid]
   - minutes: 5
     title: "Gościnnie: QA/SDET"
     desc: "Testowanie, debugowanie, reprodukcje - i to, że tam też programuje się baaardzo dużo."

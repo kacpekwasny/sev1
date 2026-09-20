@@ -223,3 +223,18 @@ func pollView(lib *content.Library, snap live.Snapshot) PollView {
 	}
 	return view
 }
+
+// GlossaryView is the small reminder column beside the live interactions. Its
+// entries come from the agenda block owning the active poll, so the presenter
+// controls which words are useful for the current slide in content files.
+type GlossaryView struct {
+	Terms    []content.AgendaTerm
+	HasSlide bool
+}
+
+func glossaryView(lib *content.Library, snap live.Snapshot) GlossaryView {
+	return GlossaryView{
+		Terms:    lib.TermsForPoll(snap.PollID),
+		HasSlide: snap.PollID != "",
+	}
+}

@@ -316,12 +316,13 @@ func (s *Server) handleLive(w http.ResponseWriter, r *http.Request) {
 	me := s.hub.Join(id, clientIP(r))
 	snap := s.hub.SnapshotFor(live.Viewer{ID: id})
 	s.render(w, r, "live", map[string]any{
-		"Title": "Na żywo",
-		"Poll":  pollView(lib, snap),
-		"Snap":  snap,
-		"Mood":  snap.Mood,
-		"Nick":  NickView{Me: me},
-		"Ask":   AskView{Me: me, Problem: writingProblem(me, snap)},
+		"Title":    "Na żywo",
+		"Poll":     pollView(lib, snap),
+		"Glossary": glossaryView(lib, snap),
+		"Snap":     snap,
+		"Mood":     snap.Mood,
+		"Nick":     NickView{Me: me},
+		"Ask":      AskView{Me: me, Problem: writingProblem(me, snap)},
 	})
 }
 
@@ -450,6 +451,7 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 				// would wipe out "you voted" on other people's screens.
 				lastPollVersion = snap.PollVersion
 				s.sendEvent(w, "vote", "vote-card", view)
+				s.sendEvent(w, "glossary", "glossary", glossaryView(s.lib(), snap))
 			}
 			s.sendEvent(w, "results", "poll-results", view)
 			if panel {

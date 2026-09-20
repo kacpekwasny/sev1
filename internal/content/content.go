@@ -83,10 +83,14 @@ func (l *Lecture) Poster() string {
 // AgendaItem is one block of a lecture. It may point at the interactive poll
 // that gets shown to the audience while this block is on screen.
 type AgendaItem struct {
-	Minutes    int      `yaml:"minutes"`
-	Title      string   `yaml:"title"`
-	Desc       string   `yaml:"desc"`
-	Poll       string   `yaml:"poll"`
+	Minutes int    `yaml:"minutes"`
+	Title   string `yaml:"title"`
+	Desc    string `yaml:"desc"`
+	Poll    string `yaml:"poll"`
+	// Terms are the words somebody has to know to follow this block - both
+	// the ones explained here for the first time and the ones from earlier
+	// that come back. The live page turns them into a sidebar glossary.
+	Terms      []string `yaml:"terms"`
 	Notes      []string `yaml:"notes"`
 	Tasks      []string `yaml:"tasks"`
 	Topologies []string `yaml:"topologies"`
@@ -147,6 +151,33 @@ type Option struct {
 	Text string `yaml:"text"`
 }
 
+// Term is one word from the whiteboard, written down in a single sentence.
+// Agenda blocks point at these by id, and the live page shows them next to
+// the slide - so that somebody who lost the thread two blocks ago can catch
+// up without stopping the lecture to ask.
+type Term struct {
+	ID    string `yaml:"id"`
+	Name  string `yaml:"term"`
+	Short string `yaml:"short"` // one sentence; it has to fit a narrow column
+	Note  string `yaml:"note"`  // note with the long version, optional
+}
+
+// TermOrigin is the agenda block where a term was first put on the board.
+type TermOrigin struct {
+	Lecture *Lecture
+	Index   int // position in the agenda, counted from zero
+	Title   string
+}
+
+// AgendaTerm is a glossary entry attached to the agenda block currently on
+// screen. Earlier tells the live page whether this word was introduced on a
+// preceding block, so a returning term reads like a reminder rather than a
+// new definition.
+type AgendaTerm struct {
+	Term    *Term
+	Earlier bool
+}
+
 // Library is the whole site content, loaded in one go.
 type Library struct {
 	Lectures       []*Lecture
@@ -159,6 +190,11 @@ type Library struct {
 	Polls          []*Poll
 	PollByID       map[string]*Poll
 	LectureBySlug  map[string]*Lecture
+	Terms          []*Term
+	TermByID       map[string]*Term
+	// TermOrigins says where in the series each term showed up for the first
+	// time. See indexTerms.
+	TermOrigins map[string]TermOrigin
 }
 
 var markdown = goldmark.New(
@@ -175,6 +211,7 @@ func Load(dir string) (*Library, error) {
 		TopologyBySlug: map[string]*Topology{},
 		PollByID:       map[string]*Poll{},
 		LectureBySlug:  map[string]*Lecture{},
+		TermByID:       map[string]*Term{},
 	}
 	if err := lib.loadLectures(filepath.Join(dir, "lectures")); err != nil {
 		return nil, err
@@ -191,6 +228,10 @@ func Load(dir string) (*Library, error) {
 	if err := lib.loadPolls(filepath.Join(dir, "polls.yaml")); err != nil {
 		return nil, err
 	}
+	if err := lib.loadGlossary(filepath.Join(dir, "glossary.yaml")); err != nil {
+		return nil, err
+	}
+	lib.indexTerms()
 	return lib, nil
 }
 
@@ -299,6 +340,78 @@ func (l *Library) loadPolls(path string) error {
 	l.Polls = polls
 	for _, p := range polls {
 		l.PollByID[p.ID] = p
+	}
+	return nil
+}
+
+func (l *Library) loadGlossary(path string) error {
+	raw, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var terms []*Term
+	if err := yaml.Unmarshal(raw, &terms); err != nil {
+		return fmt.Errorf("glossary.yaml: %w", err)
+	}
+	l.Terms = terms
+	for _, t := range terms {
+		l.TermByID[t.ID] = t
+	}
+	return nil
+}
+
+// indexTerms walks the series in order and remembers where each word was
+// first used. The series is one story told over several evenings, so a term
+// explained in lecture 1 counts as old news in lecture 2 - that is what lets
+// the live page tell "new here" apart from "you have seen this before".
+func (l *Library) indexTerms() {
+	l.TermOrigins = map[string]TermOrigin{}
+	for _, lec := range l.Lectures {
+		for i, item := range lec.Agenda {
+			for _, id := range item.Terms {
+				if _, seen := l.TermOrigins[id]; seen {
+					continue
+				}
+				l.TermOrigins[id] = TermOrigin{Lecture: lec, Index: i, Title: item.Title}
+			}
+		}
+	}
+}
+
+// TermsForPoll returns the small, curated glossary for the agenda block that
+// owns pollID. A poll is how the presenter identifies the current slide in
+// the live UI, while Terms on that block choose what is worth remembering.
+func (l *Library) TermsForPoll(pollID string) []AgendaTerm {
+	if pollID == "" {
+		return nil
+	}
+	for _, lec := range l.Lectures {
+		for i, item := range lec.Agenda {
+			if item.Poll != pollID {
+				continue
+			}
+			terms := make([]AgendaTerm, 0, len(item.Terms))
+			seen := map[string]bool{}
+			for _, id := range item.Terms {
+				if seen[id] {
+					continue
+				}
+				seen[id] = true
+				term, ok := l.TermByID[id]
+				if !ok {
+					continue
+				}
+				origin, known := l.TermOrigins[id]
+				terms = append(terms, AgendaTerm{
+					Term:    term,
+					Earlier: known && (origin.Lecture != lec || origin.Index < i),
+				})
+			}
+			return terms
+		}
 	}
 	return nil
 }

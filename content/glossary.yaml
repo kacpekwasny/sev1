@@ -1,0 +1,91 @@
+# Short reminders shown beside the active live slide. Keep these to one or two
+# sentences; the linked note is where the longer explanation belongs.
+- id: cloud
+  term: cloud
+  short: "Wynajmowana infrastruktura: płacisz za użycie i możesz ją szybko powiększyć albo zmniejszyć."
+  note: po-co-cloud
+
+- id: datacenter
+  term: centrum obliczeniowe
+  short: "Budynek, zasilanie, chłodzenie, sieć i serwery, które razem zapewniają działanie usług."
+  note: centrum-obliczeniowe
+
+- id: redundancy
+  term: redundancja
+  short: "Zapasowa droga lub element, dzięki któremu pojedyncza awaria nie przerywa działania."
+  note: centrum-obliczeniowe
+
+- id: bgp
+  term: BGP
+  short: "Protokół, którym urządzenia wymieniają się informacją o tym, którędy prowadzą trasy."
+  note: bgp-podstawy
+
+- id: bonding
+  term: bonding
+  short: "Połączenie kilku interfejsów w jeden logiczny link, żeby uzyskać zapas albo większą przepustowość."
+  note: centrum-obliczeniowe
+
+- id: gpu
+  term: GPU
+  short: "Procesor wyspecjalizowany w równoległych obliczeniach; trening modeli potrafi używać ich tysięcy naraz."
+  note: gpu-clusters
+
+- id: nic
+  term: NIC
+  short: "Karta sieciowa lub interfejs, przez który konkretny serwer rozmawia z siecią."
+  note: gpu-clusters
+
+- id: loopback
+  term: loopback
+  short: "Stabilny, logiczny adres urządzenia; nie wskazuje konkretnego fizycznego interfejsu."
+  note: bgp-podstawy
+
+- id: underlay
+  term: underlay
+  short: "Fizyczna lub bazowa sieć, która dostarcza pakiety między urządzeniami infrastruktury."
+  note: fib-i-whiteboxy
+
+- id: fib
+  term: FIB
+  short: "Tablica w urządzeniu, z której sprzęt bierze gotową decyzję o przekazaniu pakietu."
+  note: fib-i-whiteboxy
+
+- id: whitebox
+  term: whitebox
+  short: "Przełącznik z otwartym lub wymiennym oprogramowaniem, zwykle tańszy i bardziej elastyczny od zamkniętego sprzętu."
+  note: fib-i-whiteboxy
+
+- id: overlay
+  term: overlay
+  short: "Logiczna sieć zbudowana nad underlayem; może używać własnych adresów i topologii."
+  note: overlay
+
+- id: encapsulation
+  term: enkapsulacja
+  short: "Włożenie jednego pakietu do drugiego, aby sieć po drodze mogła dostarczyć go przez własne adresy."
+  note: overlay
+
+- id: route-server
+  term: route server
+  short: "Pośrednik wymieniający trasy między uczestnikami, dzięki któremu nie trzeba tworzyć pełnej siatki sesji."
+  note: route-server
+
+- id: full-mesh
+  term: pełna siatka
+  short: "Układ, w którym każdy uczestnik łączy się z każdym; liczba połączeń rośnie jak n(n−1)/2."
+  note: route-server
+
+- id: ipv6
+  term: IPv6
+  short: "Nowsza wersja protokołu IP z bardzo dużą przestrzenią adresową."
+  note: ipv6
+
+- id: srv6
+  term: SRv6
+  short: "Routing, w którym ścieżkę można opisać sekwencją instrukcji zapisanych w adresach IPv6."
+  note: srv6
+
+- id: sid
+  term: SID
+  short: "Segment ID: adres lub instrukcja wskazująca następny krok ścieżki w SRv6."
+  note: srv6

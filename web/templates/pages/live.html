@@ -1,27 +1,45 @@
 {{define "content"}}
 <article class="page live" hx-ext="sse" sse-connect="/live/stream">
   <h1>Na żywo</h1>
-  <p class="lead">Ta strona sama się odświeża. Nie musisz nic robić poza klikaniem.</p>
+  <p class="lead">Wybierz jedną z trzech rzeczy: zagłosuj, pokaż jak ci idzie albo zapytaj salę.</p>
 
-  <section class="pollbox">
-    <div id="vote" sse-swap="vote">{{template "vote-card" .Poll}}</div>
-    <div id="results" sse-swap="results">{{template "poll-results" .Poll}}</div>
-  </section>
+  <div class="live-layout">
+    <div class="live-interactions">
+      <section class="interaction-card pollbox">
+        <div class="interaction-heading">
+          <span class="interaction-number">01</span>
+          <div><p class="kicker">głosowanie</p><h2>Wybierz odpowiedź</h2></div>
+        </div>
+        <p class="interaction-help">Prowadzący wyświetla tu pytanie. Możesz zmienić głos, dopóki głosowanie jest otwarte.</p>
+        <div id="vote" sse-swap="vote">{{template "vote-card" .Poll}}</div>
+        <div id="results" sse-swap="results">{{template "poll-results" .Poll}}</div>
+      </section>
 
-  <section class="moodbox">
-    <div id="mood" sse-swap="mood">{{template "mood" .Mood}}</div>
-  </section>
+      <section class="interaction-card moodbox">
+        <div class="interaction-heading">
+          <span class="interaction-number">02</span>
+          <div><p class="kicker">sygnał dla prowadzącego</p><h2>Pokaż, jak ci idzie</h2></div>
+        </div>
+        <p class="interaction-help">Jedno kliknięcie wystarczy. Reakcja jest anonimowa i znika po 30 sekundach.</p>
+        <div id="mood" sse-swap="mood">{{template "mood" .Mood}}</div>
+      </section>
 
-  <section class="qa">
-    <h2>Pytania do prowadzącego</h2>
-    <p class="muted">
-      Pod ksywką, bez logowania. Najczęściej podbijane idą na górę. Jeśli znasz
-      odpowiedź na czyjeś pytanie — odpowiedz, sala oceni.
-    </p>
-    <div id="whoami">{{template "whoami" .Nick}}</div>
-    <div id="ask">{{template "ask-form" .Ask}}</div>
-    <div id="answer-box"></div>
-    <div id="questions" sse-swap="questions">{{template "questions" .Snap}}</div>
-  </section>
+      <section class="interaction-card qa">
+        <div class="interaction-heading">
+          <span class="interaction-number">03</span>
+          <div><p class="kicker">rozmowa z salą</p><h2>Zapytaj albo pomóż</h2></div>
+        </div>
+        <p class="interaction-help">Napisz pytanie pod ksywką albo odpowiedz na pytanie kogoś obok. Sala podbija najlepsze odpowiedzi.</p>
+        <div id="whoami">{{template "whoami" .Nick}}</div>
+        <div id="ask">{{template "ask-form" .Ask}}</div>
+        <div id="answer-box"></div>
+        <div id="questions" sse-swap="questions">{{template "questions" .Snap}}</div>
+      </section>
+    </div>
+
+    <aside class="live-sidebar">
+      <div id="glossary" sse-swap="glossary">{{template "glossary" .Glossary}}</div>
+    </aside>
+  </div>
 </article>
 {{end}}

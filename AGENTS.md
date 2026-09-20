@@ -36,6 +36,7 @@ Go serves HTML with htmx and SSE; content is Markdown/YAML and live state is in 
 | Topology SVG layout and view modes | `internal/web/topology.go`, topology templates |
 | Notes graph in the browser | `web/static/graph.js` |
 | Lecture descriptions and agendas, notes, exercises, polls | `content/lectures/`, `content/notes/`, `content/tasks/`, `content/polls.yaml` |
+| Live-slide glossary definitions | `content/glossary.yaml`; agenda `terms` fields in `content/lectures/*.md` |
 | Visual references | Posters in `design/`; explanation in README |
 
 Tests live beside implementation in `internal/{content,live,web}/*_test.go`.

@@ -91,6 +91,21 @@ func TestLectureAgendaAndDuration(t *testing.T) {
 	}
 }
 
+func TestGlossaryTermsMarkEarlierDefinitions(t *testing.T) {
+	lib := writeLibrary(t, map[string]string{
+		"glossary.yaml":    "- id: old\n  term: Old\n  short: Wcześniej\n- id: new\n  term: New\n  short: Teraz\n",
+		"lectures/01-x.md": "---\ntitle: Pierwszy\nnumber: 1\nagenda:\n  - minutes: 5\n    title: Start\n    poll: p0\n    terms: [old]\n  - minutes: 5\n    title: Dalej\n    poll: p1\n    terms: [old, new]\n---\n",
+	})
+
+	terms := lib.TermsForPoll("p1")
+	if len(terms) != 2 {
+		t.Fatalf("TermsForPoll = %+v", terms)
+	}
+	if !terms[0].Earlier || terms[1].Earlier {
+		t.Errorf("Earlier flags = %+v, chcę [true false]", terms)
+	}
+}
+
 func TestTaskHintsAreRendered(t *testing.T) {
 	lib := writeLibrary(t, map[string]string{
 		"tasks/z.md": "---\ntitle: Zadanie\nhints:\n  - title: Raz\n    text: \"Zobacz `pprof`.\"\n---\n\nTreść.\n",

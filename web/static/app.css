@@ -273,7 +273,27 @@ a.card:hover { border-color: var(--accent); text-decoration: none; transform: tr
 
 /* --- live ----------------------------------------------------------------- */
 
-.pollbox { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 1.5rem; }
+.live-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem); gap: 1.4rem; align-items: start; }
+.live-interactions { display: grid; gap: 1rem; min-width: 0; }
+.interaction-card { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 1.25rem; }
+.interaction-heading { display: flex; gap: 0.8rem; align-items: flex-start; }
+.interaction-heading h2 { margin: 0; font-size: 1.05rem; letter-spacing: normal; text-transform: none; }
+.interaction-heading .kicker { margin: 0 0 0.15rem; }
+.interaction-number { flex: 0 0 auto; font-family: var(--mono); color: var(--accent-2); font-size: 0.85rem; padding-top: 0.1rem; }
+.interaction-help { margin: 0.7rem 0 1.1rem; color: var(--muted); font-size: 0.88rem; }
+.live-sidebar { position: sticky; top: 5.5rem; min-width: 0; }
+.glossary-box { background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 1.15rem; }
+.glossary-box h2 { margin: 0; font-size: 1.05rem; letter-spacing: normal; text-transform: none; }
+.glossary-box .small { margin: 0.45rem 0 1rem; }
+.glossary-list { margin: 0; }
+.glossary-entry { padding: 0.75rem 0; border-top: 1px solid var(--line); }
+.glossary-entry:first-child { border-top: 0; padding-top: 0; }
+.glossary-entry dt { font-weight: 600; color: var(--text); }
+.glossary-entry dd { margin: 0.2rem 0 0; color: var(--soft); font-size: 0.84rem; line-height: 1.45; }
+.glossary-entry dd + dd { margin-top: 0.35rem; font-size: 0.78rem; }
+.glossary-entry dd a { color: var(--accent); }
+.glossary-badge { color: var(--muted); font: 0.68rem var(--mono); font-weight: 400; text-transform: uppercase; letter-spacing: 0.05em; }
+.pollbox { min-width: 0; }
 .question { font-size: clamp(1.3rem, 3.5vw, 2rem); margin: 0.2rem 0 1.2rem; }
 .options { display: grid; gap: 0.7rem; }
 .option {
@@ -301,6 +321,7 @@ a.card:hover { border-color: var(--accent); text-decoration: none; transform: tr
   background: var(--panel); color: var(--text); border: 1px solid var(--line);
   font: inherit;
 }
+.qa .questions { margin-bottom: 0; }
 .sent { color: var(--accent); }
 .questions { list-style: none; padding: 0; margin-top: 1.2rem; display: grid; gap: 0.5rem; }
 .questions li { display: flex; gap: 0.8rem; align-items: flex-start;
@@ -388,6 +409,11 @@ a.card:hover { border-color: var(--accent); text-decoration: none; transform: tr
 .mood-legend { display: flex; gap: 1rem; font-size: 0.8rem; margin: 0.35rem 0 0; }
 .mood-legend .lost { color: var(--accent-2); }
 .mood-legend .clear { color: var(--accent); }
+
+@media (max-width: 860px) {
+  .live-layout { grid-template-columns: 1fr; }
+  .live-sidebar { position: static; }
+}
 
 /* --- hints and graph -------------------------------------------------------- */
 

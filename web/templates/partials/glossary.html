@@ -1,0 +1,22 @@
+{{define "glossary"}}
+<section class="glossary-box">
+  <p class="kicker">ściąga ze slajdów</p>
+  <h2>Co warto pamiętać</h2>
+  {{if .Terms}}
+    <p class="muted small">Krótko pod ręką, żeby nie zgubić wątku.</p>
+    <dl class="glossary-list">
+      {{range .Terms}}
+      <div class="glossary-entry">
+        <dt>{{.Term.Name}}{{if .Earlier}} <span class="glossary-badge">wcześniej</span>{{end}}</dt>
+        <dd>{{.Term.Short}}</dd>
+        {{if .Term.Note}}<dd><a href="/notatki/{{.Term.Note}}">dłuższe wyjaśnienie →</a></dd>{{end}}
+      </div>
+      {{end}}
+    </dl>
+  {{else if .HasSlide}}
+    <p class="muted">Do tego slajdu nie ma jeszcze krótkiej ściągi.</p>
+  {{else}}
+    <p class="muted">Kiedy prowadzący wybierze slajd, pojawią się tu najważniejsze słowa i definicje.</p>
+  {{end}}
+</section>
+{{end}}
