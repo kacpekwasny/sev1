@@ -12,6 +12,7 @@ DONE: landing page on computers should be alligned differentelly title, and akam
 - add a link to source code
 - remove graf from links, have the link in the notes section,
 - when writing a comment/question/answer, the send/anuluj are touching the text box. Also when answering a comment, the box should appear under the comment you are answering
+- in admin panel add counter how many upvotes did someones comments/answers get
 
 
 - todo future, when exact dates will be known: add google calendar link "add to your calendar",
