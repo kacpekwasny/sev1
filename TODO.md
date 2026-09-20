@@ -6,3 +6,8 @@ DONE: until the lecture is live, the questions should be disabled,
 DONE: a user should have a way to mark his question as answered, or delete it,
 DONE: change the "zmień" chip, it looks very cheap, like a windows XP button, it is also unalligned,
 DONE: landing page on computers should be alligned differentelly title, and akamai logo on left, other stuff on right (or something of such sort), but just so the page would not need scrolling by default on computers,
+
+
+- "unclick" of show me how it is going
+- add a link to source code
+
