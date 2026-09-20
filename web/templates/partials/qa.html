@@ -4,7 +4,7 @@
   <form class="whoami" hx-post="/live/ksywka" hx-target="#whoami" hx-swap="innerHTML">
     <label for="nick">Podpisujesz się jako</label>
     <input id="nick" name="nick" value="{{.Me.Nick}}" maxlength="24" required>
-    <button class="btn tiny" type="submit">zmień</button>
+    <button class="btn nick-edit" type="submit">zmień</button>
     {{if .Error}}<span class="warn">{{.Error}}</span>{{end}}
     {{if .Saved}}<span class="sent">zapisane</span>{{end}}
   </form>
@@ -70,8 +70,21 @@
             {{end}}
           </ul>
           {{end}}
+          {{if $.OnAir}}
           <button class="btn link" hx-get="/live/odpowiedz?pytanie={{.ID}}"
                   hx-target="#answer-box" hx-swap="innerHTML">znam odpowiedź</button>
+          {{end}}
+          {{if eq $.ViewerID .Author}}
+          <span class="owner-actions">
+            <button class="btn link" hx-post="/live/pytanie/{{.ID}}/odpowiedziane"
+                    hx-target="#questions" hx-swap="innerHTML">
+              {{if .Answered}}cofnij oznaczenie{{else}}oznacz jako odpowiedziane{{end}}
+            </button>
+            <button class="btn link danger" hx-post="/live/pytanie/{{.ID}}/usun"
+                    hx-target="#questions" hx-swap="innerHTML"
+                    hx-confirm="Usunąć swoje pytanie?">usuń moje pytanie</button>
+          </span>
+          {{end}}
         </div>
       </li>
       {{end}}

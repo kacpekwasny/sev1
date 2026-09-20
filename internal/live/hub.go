@@ -95,8 +95,8 @@ type Snapshot struct {
 	// OnAir says the lecture is happening right now. The presenter flips it
 	// on in the panel and the whole site starts showing the red dot.
 	OnAir bool
-	// QuestionsLocked and Participants are for the presenter's panel; the
-	// audience never sees a template that reads them.
+	// Participants are for the presenter's panel; QuestionsLocked also lets the
+	// audience status card explain why writing is unavailable.
 	QuestionsLocked bool
 	Participants    []Participant
 }
@@ -437,10 +437,8 @@ func (h *Hub) WatchMoods(ctx context.Context) {
 // SetQuestionsLocked closes the whole Q&A - useful when the room starts
 // writing during someone else's talk, or when the lecture is over. Voting
 // still works, only writing stops.
-// SetOnAir marks the lecture as happening right now. It changes nothing about
-// what the live page can do - questions and votes work whether or not the
-// switch is on - it only lights the red dot in the menu of every page, so
-// somebody reading the notes can see that the room is sitting down.
+// SetOnAir marks the lecture as happening right now. It lights the red dot in
+// the menu and opens the audience's question and answer forms.
 func (h *Hub) SetOnAir(on bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -535,7 +533,7 @@ func (h *Hub) AskQuestion(participant, text string) bool {
 	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.questionsLocked || h.blockedLocked(participant) {
+	if !h.onAir || h.questionsLocked || h.blockedLocked(participant) {
 		return false
 	}
 	h.nextID++
@@ -579,11 +577,40 @@ func (h *Hub) MarkAnswered(id string) {
 	}
 }
 
+// MarkAnsweredBy lets a question's author mark their own question as handled.
+// The presenter uses MarkAnswered, because the panel is allowed to moderate
+// every question.
+func (h *Hub) MarkAnsweredBy(participant, id string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	q, ok := h.questions[id]
+	if !ok || q.Author != participant {
+		return false
+	}
+	q.Answered = !q.Answered
+	h.broadcastLocked()
+	return true
+}
+
 func (h *Hub) DeleteQuestion(id string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	delete(h.questions, id)
 	h.broadcastLocked()
+}
+
+// DeleteQuestionBy lets an author remove only their own question. The
+// presenter uses DeleteQuestion for moderation.
+func (h *Hub) DeleteQuestionBy(participant, id string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	q, ok := h.questions[id]
+	if !ok || q.Author != participant {
+		return false
+	}
+	delete(h.questions, id)
+	h.broadcastLocked()
+	return true
 }
 
 // AddComment records an answer proposed by somebody in the audience. Like a
@@ -596,7 +623,7 @@ func (h *Hub) AddComment(participant, questionID, text string) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	q, ok := h.questions[questionID]
-	if !ok || h.questionsLocked || h.blockedLocked(participant) {
+	if !ok || !h.onAir || h.questionsLocked || h.blockedLocked(participant) {
 		return false
 	}
 	h.nextID++

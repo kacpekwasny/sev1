@@ -83,13 +83,13 @@ nie trzeba zmieniać.
 
 ## Część interaktywna
 
-**Zaczynamy.** Pierwszy przełącznik w panelu ogłasza, że wykład trwa teraz. Nie odblokowuje
-niczego — sala mogła głosować i pisać także wcześniej — zapala tylko pulsującą czerwoną
-kropkę obok „Na żywo" w menu, a menu jest na każdej stronie. Ktoś, kto akurat czyta notatki,
-widzi po niej, że warto przejść na `/live/`; po najechaniu kropka rozwija się w czerwony
-napis *live*. Podstrony bez strumienia SSE (notatki, zadania) dopytują o ten jeden bit co
-20 sekund — przy wykładzie trwającym półtorej godziny to tańsze niż otwieranie strumienia
-wszędzie.
+**Zaczynamy.** Pierwszy przełącznik w panelu ogłasza, że wykład trwa teraz. Otwiera wtedy
+pisanie pytań i odpowiedzi dla sali; głosować można niezależnie. Zapala też pulsującą
+czerwoną kropkę obok „Na żywo" w menu, a menu jest na każdej stronie. Ktoś, kto akurat
+czyta notatki, widzi po niej, że warto przejść na `/live/`; po najechaniu kropka rozwija się
+w czerwony napis *live*. Podstrony bez strumienia SSE (notatki, zadania) dopytują o ten jeden
+bit co 20 sekund — przy wykładzie trwającym półtorej godziny to tańsze niż otwieranie
+strumienia wszędzie.
 
 **Ankiety.** W agendzie wykładu wpisujesz `poll: fib-overflow`. W trakcie wykładu
 wybierasz to pytanie w `/panel`, a sala widzi je natychmiast na `/live/` i głosuje.
@@ -106,8 +106,9 @@ widzi, kto co kliknął. Reakcja liczy się przez 30 sekund i sama gaśnie, wię
 w panelu pokazuje, jak jest przy tym slajdzie, a nie jak było przez cały wykład. Jedna
 reakcja na osobę: drugi przycisk zmienia zdanie, ten sam odnawia pół minuty.
 
-**Pytania z sali.** Pod ksywką, z podbijaniem. Najczęściej podbijane idą na górę, a ty
-w panelu oznaczasz je jako odpowiedziane. Jeden głos na przeglądarkę (ciasteczko).
+**Pytania z sali.** Pod ksywką, z podbijaniem. Najczęściej podbijane idą na górę, a autor
+może swoje pytanie oznaczyć jako odpowiedziane albo usunąć; prowadzący ma te same akcje w
+panelu dla całej sali. Jeden głos na przeglądarkę (ciasteczko).
 
 **Moderacja.** W panelu, w sekcji „Sala", widzisz listę osób: ksywka, adres, ile napisała
 pytań i odpowiedzi. Przy każdej są dwa sposoby uciszenia:

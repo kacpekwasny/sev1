@@ -6,6 +6,12 @@ import (
 	"unicode/utf8"
 )
 
+func liveHub() *Hub {
+	h := NewHub()
+	h.SetOnAir(true)
+	return h
+}
+
 func TestOneVotePerParticipant(t *testing.T) {
 	h := NewHub()
 	h.SetPoll("fib", true)
@@ -70,7 +76,7 @@ func TestResetClearsOnlyCurrentPoll(t *testing.T) {
 }
 
 func TestQuestionUpvotedOncePerParticipant(t *testing.T) {
-	h := NewHub()
+	h := liveHub()
 	h.AskQuestion("ala", "Czy SRv6 zastąpi MPLS?")
 	id := h.SnapshotFor(Presenter).Questions[0].ID
 
@@ -93,8 +99,50 @@ func TestEmptyQuestionRejected(t *testing.T) {
 	}
 }
 
-func TestQuestionsSortedByVotesAnsweredLast(t *testing.T) {
+func TestQuestionsWaitForLectureToStart(t *testing.T) {
 	h := NewHub()
+	h.Join("ala", "10.0.0.1")
+	if h.AskQuestion("ala", "za wcześnie") {
+		t.Fatal("pytanie przeszło przed rozpoczęciem wykładu")
+	}
+
+	h.SetOnAir(true)
+	if !h.AskQuestion("ala", "teraz dobrze") {
+		t.Fatal("pytanie nie przeszło po rozpoczęciu wykładu")
+	}
+	qid := h.SnapshotFor(Presenter).Questions[0].ID
+	h.SetOnAir(false)
+	if h.AskQuestion("ala", "już po wykładzie") {
+		t.Error("pytanie przeszło po zakończeniu wykładu")
+	}
+	if h.AddComment("ala", qid, "odpowiedź po czasie") {
+		t.Error("odpowiedź przeszła po zakończeniu wykładu")
+	}
+}
+
+func TestQuestionAuthorCanMarkAndDeleteOnlyTheirQuestion(t *testing.T) {
+	h := liveHub()
+	h.Join("ala", "10.0.0.1")
+	h.Join("bob", "10.0.0.2")
+	h.AskQuestion("ala", "pytanie ali")
+	qid := h.SnapshotFor(Presenter).Questions[0].ID
+
+	if h.MarkAnsweredBy("bob", qid) {
+		t.Error("cudza osoba oznaczyła pytanie jako odpowiedziane")
+	}
+	if !h.MarkAnsweredBy("ala", qid) || !h.SnapshotFor(Presenter).Questions[0].Answered {
+		t.Error("autor nie mógł oznaczyć swojego pytania")
+	}
+	if h.DeleteQuestionBy("bob", qid) {
+		t.Error("cudza osoba usunęła pytanie")
+	}
+	if !h.DeleteQuestionBy("ala", qid) || len(h.SnapshotFor(Presenter).Questions) != 0 {
+		t.Error("autor nie mógł usunąć swojego pytania")
+	}
+}
+
+func TestQuestionsSortedByVotesAnsweredLast(t *testing.T) {
+	h := liveHub()
 	h.AskQuestion("ala", "pierwsze")
 	h.AskQuestion("bob", "drugie")
 	ids := map[string]string{}
@@ -111,7 +159,7 @@ func TestQuestionsSortedByVotesAnsweredLast(t *testing.T) {
 }
 
 func TestAnswersFromTheAudience(t *testing.T) {
-	h := NewHub()
+	h := liveHub()
 	h.AskQuestion("ala", "Ile sesji w pełnej siatce?")
 	id := h.SnapshotFor(Presenter).Questions[0].ID
 
@@ -130,7 +178,7 @@ func TestAnswersFromTheAudience(t *testing.T) {
 }
 
 func TestAnswersSortedByVotes(t *testing.T) {
-	h := NewHub()
+	h := liveHub()
 	h.AskQuestion("ala", "pytanie")
 	id := h.SnapshotFor(Presenter).Questions[0].ID
 	h.AddComment("bob", id, "słabsza")
@@ -160,7 +208,7 @@ func TestAnswerToUnknownQuestionRejected(t *testing.T) {
 }
 
 func TestDeleteComment(t *testing.T) {
-	h := NewHub()
+	h := liveHub()
 	h.AskQuestion("ala", "pytanie")
 	id := h.SnapshotFor(Presenter).Questions[0].ID
 	h.AddComment("bob", id, "zostaje")
@@ -183,7 +231,7 @@ func TestDeleteComment(t *testing.T) {
 // Snapshot wychodzi poza blokadę, więc nie może dzielić tablicy komentarzy
 // z hubem - inaczej dopisanie odpowiedzi w trakcie renderowania to wyścig.
 func TestSnapshotCommentsAreACopy(t *testing.T) {
-	h := NewHub()
+	h := liveHub()
 	h.AskQuestion("ala", "pytanie")
 	id := h.SnapshotFor(Presenter).Questions[0].ID
 	h.AddComment("bob", id, "pierwsza")
@@ -251,7 +299,7 @@ func TestLongNickCutOnCharacters(t *testing.T) {
 // Pytania są podpisane ksywką z chwili napisania. Późniejsza zmiana ksywki
 // nie przepisuje historii - sala pamięta, kto co powiedział.
 func TestQuestionKeepsTheNickItWasSignedWith(t *testing.T) {
-	h := NewHub()
+	h := liveHub()
 	me := h.Join("ala", "10.0.0.1")
 	h.AskQuestion("ala", "pytanie")
 	if _, err := h.SetNick("ala", "ktos-inny"); err != nil {
@@ -264,7 +312,7 @@ func TestQuestionKeepsTheNickItWasSignedWith(t *testing.T) {
 }
 
 func TestBannedParticipantCannotWriteButCanStillVote(t *testing.T) {
-	h := NewHub()
+	h := liveHub()
 	h.Join("ala", "10.0.0.1")
 	h.Join("troll", "10.0.0.2")
 	h.AskQuestion("ala", "pytanie")
@@ -297,7 +345,7 @@ func TestBannedParticipantCannotWriteButCanStillVote(t *testing.T) {
 // Cień działa odwrotnie niż ban adresu: pisanie przechodzi normalnie, a
 // znika dopiero po drodze do sali. Autor i prowadzący widzą wszystko.
 func TestShadowHidesWritingFromTheRoomButNotFromItsAuthor(t *testing.T) {
-	h := NewHub()
+	h := liveHub()
 	h.Join("ala", "10.0.0.1")
 	h.Join("troll", "10.0.0.2")
 	h.AskQuestion("ala", "pytanie")
@@ -350,7 +398,7 @@ func TestShadowHidesWritingFromTheRoomButNotFromItsAuthor(t *testing.T) {
 // Ban adresu łapie też kolejne przeglądarki z tego samego IP - na tym polega
 // jego przewaga nad banem po ciasteczku, które wystarczy wyczyścić.
 func TestIPBanCoversNewBrowsersFromThatAddress(t *testing.T) {
-	h := NewHub()
+	h := liveHub()
 	h.Join("pierwszy", "10.0.0.7")
 	h.BanIP("pierwszy", true)
 
@@ -370,7 +418,7 @@ func TestIPBanCoversNewBrowsersFromThatAddress(t *testing.T) {
 }
 
 func TestLockingQuestionsStopsWritingForEveryone(t *testing.T) {
-	h := NewHub()
+	h := liveHub()
 	h.Join("ala", "10.0.0.1")
 	h.AskQuestion("ala", "pytanie")
 	id := h.SnapshotFor(Presenter).Questions[0].ID
@@ -399,7 +447,7 @@ func TestLockingQuestionsStopsWritingForEveryone(t *testing.T) {
 // Prowadzący musi widzieć w panelu, kto pisze i skąd - inaczej nie ma na czym
 // oprzeć decyzji o banie. Ukarani idą na górę listy, bo to ich się odkręca.
 func TestPanelSeesWhoWritesWithBannedFirst(t *testing.T) {
-	h := NewHub()
+	h := liveHub()
 	h.Join("ala", "10.0.0.1")
 	h.Join("troll", "10.0.0.2")
 	h.AskQuestion("ala", "pytanie")

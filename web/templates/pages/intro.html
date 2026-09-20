@@ -5,27 +5,31 @@
      zabiera tej stronie to, po co powstała. */}}
 {{define "content"}}
 <section class="intro">
-  <p class="kicker">Wykład absolwentów WIET</p>
-  <h1>Jak rozpętałem drugą Sev1</h1>
+  <div class="intro-visual">
+    <img class="intro-logo" src="/static/akamai.png" alt="Akamai" width="544" height="224">
+    <p class="kicker">Wykład absolwentów WIET</p>
+    <h1>Jak rozpętałem drugą Sev1</h1>
+  </div>
 
-  <img class="intro-logo" src="/static/akamai.png" alt="Akamai" width="544" height="224">
+  <div class="intro-info">
+    <ul class="topics">
+      <li>Network SWE w Akamai</li>
+      <li>Od interview do seniora</li>
+      <li>Datacentery GPU</li>
+      <li>Drabinka w Akamai</li>
+      <li>Underlay / overlay network</li>
+    </ul>
 
-  <ul class="topics">
-    <li>Network SWE w Akamai</li>
-    <li>Od interview do seniora</li>
-    <li>Datacentery GPU</li>
-    <li>Drabinka w Akamai</li>
-    <li>Underlay / overlay network</li>
-  </ul>
+    <ul class="dates">
+      {{range .Lectures}}
+      <li{{if eq .Status "odbyty"}} class="past"{{end}}>{{.Poster}}</li>
+      {{end}}
+    </ul>
 
-  <ul class="dates">
-    {{range .Lectures}}
-    <li{{if eq .Status "odbyty"}} class="past"{{end}}>{{.Poster}}</li>
-    {{end}}
-  </ul>
+    <p class="where">AGH WIET · budynek D6, sala 1.20</p>
+    <p class="where">wstęp wolny, bez zapisów</p>
 
-  <p class="where">AGH WIET · budynek D6, sala 1.20 · wstęp wolny, bez zapisów</p>
-
-  <p class="intro-go"><a class="btn primary" href="/wyklady/">Program, notatki i zadania</a></p>
+    <p class="intro-go"><a class="btn primary" href="/wyklady/">Program, notatki i zadania</a></p>
+  </div>
 </section>
 {{end}}

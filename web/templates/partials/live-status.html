@@ -1,0 +1,20 @@
+{{define "live-status"}}
+  {{if .OnAir}}
+    {{if .QuestionsLocked}}
+      <div class="live-state on locked" role="status">
+        <span class="live-state-dot" aria-hidden="true">●</span>
+        <span><strong>Wykład trwa teraz</strong><small>Pisanie pytań jest chwilowo zamknięte.</small></span>
+      </div>
+    {{else}}
+      <div class="live-state on" role="status">
+        <span class="live-state-dot" aria-hidden="true">●</span>
+        <span><strong>Wykład trwa teraz</strong><small>Możesz zadawać pytania.</small></span>
+      </div>
+    {{end}}
+  {{else}}
+    <div class="live-state off" role="status">
+      <span class="live-state-dot" aria-hidden="true">○</span>
+      <span><strong>Jeszcze nie na żywo</strong><small>Pytania otworzą się po rozpoczęciu wykładu.</small></span>
+    </div>
+  {{end}}
+{{end}}

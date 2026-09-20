@@ -1,7 +1,5 @@
-{{/* Przełącznik "wykład się zaczął". Nie odbiera ani nie daje sali żadnych
-     uprawnień - pytania i głosowanie działają tak samo przed i po. Zapala
-     tylko czerwoną kropkę w menu, żeby ktoś, kto akurat czyta notatki,
-     zobaczył, że sala już siedzi. */}}
+{{/* Przełącznik "wykład się zaczął". Zapala czerwoną kropkę w menu i otwiera
+     sali pisanie pytań; głosowanie może działać niezależnie. */}}
 {{define "panel-onair"}}
 <div class="onair-switch{{if .OnAir}} on{{end}}">
   {{if .OnAir}}

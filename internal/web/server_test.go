@@ -176,6 +176,31 @@ func TestLivePageExplainsItsThreeInteractionsAndCurrentTerms(t *testing.T) {
 	}
 }
 
+func TestQuestionsAreClosedUntilLectureStarts(t *testing.T) {
+	srv := newTestServer(t)
+	widz := &browser{srv: srv}
+	body := widz.get(t, "/live/").Body.String()
+	if !strings.Contains(body, "Jeszcze nie na żywo") || !strings.Contains(body, "Pytania otworzą się") {
+		t.Errorf("/live nie pokazuje stanu przed startem: %s", body)
+	}
+
+	if rec := widz.post(t, "/live/pytanie", "text=za wcześnie"); !strings.Contains(rec.Body.String(), "Pytania otworzą się") {
+		t.Errorf("formularz nie wyjaśnia blokady przed startem: %s", rec.Body.String())
+	}
+	if len(srv.hub.SnapshotFor(live.Presenter).Questions) != 0 {
+		t.Fatal("pytanie przeszło przed rozpoczęciem wykładu")
+	}
+
+	srv.hub.SetOnAir(true)
+	body = widz.get(t, "/live/").Body.String()
+	if !strings.Contains(body, "Wykład trwa teraz") || !strings.Contains(body, "Możesz zadawać pytania") {
+		t.Errorf("/live nie pokazuje rozpoczęcia wykładu: %s", body)
+	}
+	if rec := widz.post(t, "/live/pytanie", "text=teraz można"); !strings.Contains(rec.Body.String(), "Poszło") {
+		t.Errorf("pytanie nie otworzyło się po starcie: %s", rec.Body.String())
+	}
+}
+
 // Nastrój to jedyny kawałek stanu osobistego, który wolno trzymać w części
 // odświeżanej strumieniem - hub buduje migawkę osobno dla każdego widoku.
 // Test pilnuje też nazw, którymi przyciski przedstawiają się serwerowi.
@@ -253,6 +278,7 @@ func post(t *testing.T, srv *Server, path, body string) *httptest.ResponseRecord
 
 func TestAudienceCanAnswerAndVoteOnAnswers(t *testing.T) {
 	srv := newTestServer(t)
+	srv.hub.SetOnAir(true)
 	srv.hub.AskQuestion("ala", "Ile sesji w pełnej siatce?")
 	qid := srv.hub.SnapshotFor(live.Presenter).Questions[0].ID
 
@@ -320,6 +346,7 @@ func TestNicknameCanBeEdited(t *testing.T) {
 // gubić wpisywany tekst. Cień jest osobną historią - patrz niżej.
 func TestBlockedPersonSeesWhy(t *testing.T) {
 	srv := newTestServer(t)
+	srv.hub.SetOnAir(true)
 	widz := &browser{srv: srv}
 	widz.get(t, "/live/") // dołącza uczestnika i losuje ksywkę
 	id := srv.hub.SnapshotFor(live.Presenter).Participants[0].ID
@@ -348,6 +375,7 @@ func TestBlockedPersonSeesWhy(t *testing.T) {
 // swoje pytanie na liście i nie ma po czym poznać, że sala go nie czyta.
 func TestShadowBannedPersonSeesNoDifference(t *testing.T) {
 	srv := newTestServer(t)
+	srv.hub.SetOnAir(true)
 	spamer, widz := &browser{srv: srv}, &browser{srv: srv}
 	spamer.get(t, "/live/")
 	// Ksywka jest jeszcze tylko jedna, więc to na pewno spamer; po wejściu
@@ -384,6 +412,7 @@ func TestShadowBannedPersonSeesNoDifference(t *testing.T) {
 // z cienia, nie może dostać jego treści.
 func TestShadowedQuestionIsNotReachableByID(t *testing.T) {
 	srv := newTestServer(t)
+	srv.hub.SetOnAir(true)
 	spamer := &browser{srv: srv}
 	spamer.get(t, "/live/")
 	id := srv.hub.SnapshotFor(live.Presenter).Participants[0].ID
@@ -394,6 +423,40 @@ func TestShadowedQuestionIsNotReachableByID(t *testing.T) {
 	body := get(t, srv, "/live/odpowiedz?pytanie="+qid).Body.String()
 	if strings.Contains(body, "tajne przez poufne") {
 		t.Errorf("pytanie z cienia wyciekło przez formularz odpowiedzi: %s", body)
+	}
+}
+
+func TestQuestionAuthorCanMarkAndDeleteFromLivePage(t *testing.T) {
+	srv := newTestServer(t)
+	srv.hub.SetOnAir(true)
+	author, other := &browser{srv: srv}, &browser{srv: srv}
+	author.get(t, "/live/")
+	other.get(t, "/live/")
+
+	if rec := author.post(t, "/live/pytanie", "text=moje pytanie"); !strings.Contains(rec.Body.String(), "Poszło") {
+		t.Fatalf("pytanie autora = %s", rec.Body.String())
+	}
+	qid := srv.hub.SnapshotFor(live.Presenter).Questions[0].ID
+	if body := other.get(t, "/live/").Body.String(); strings.Contains(body, "oznacz jako odpowiedziane") {
+		t.Error("cudza osoba dostała kontrolki autora")
+	}
+
+	other.post(t, "/live/pytanie/"+qid+"/odpowiedziane", "")
+	if srv.hub.SnapshotFor(live.Presenter).Questions[0].Answered {
+		t.Error("cudza osoba oznaczyła pytanie")
+	}
+	author.post(t, "/live/pytanie/"+qid+"/odpowiedziane", "")
+	if !srv.hub.SnapshotFor(live.Presenter).Questions[0].Answered {
+		t.Error("autor nie oznaczył swojego pytania")
+	}
+
+	other.post(t, "/live/pytanie/"+qid+"/usun", "")
+	if len(srv.hub.SnapshotFor(live.Presenter).Questions) != 1 {
+		t.Error("cudza osoba usunęła pytanie")
+	}
+	author.post(t, "/live/pytanie/"+qid+"/usun", "")
+	if len(srv.hub.SnapshotFor(live.Presenter).Questions) != 0 {
+		t.Error("autor nie usunął swojego pytania")
 	}
 }
 

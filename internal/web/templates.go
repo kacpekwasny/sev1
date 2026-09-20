@@ -161,8 +161,8 @@ func (s *Server) renderFragment(w http.ResponseWriter, name string, data any) {
 // --- view models ---------------------------------------------------------
 
 // AskView and NickView are per-browser: one person's nickname and whether
-// they in particular may write. That is why neither is ever pushed over SSE -
-// the stream carries one shared copy of the HTML for the whole room.
+// they in particular may write. The ask form is pushed only when its writing
+// gate changes, so a live update cannot erase text someone is composing.
 type AskView struct {
 	Me      live.Participant
 	Problem string // why writing is off; empty means the form is shown
@@ -173,6 +173,19 @@ type NickView struct {
 	Me    live.Participant
 	Error string // shown next to the field, e.g. nickname already taken
 	Saved bool
+}
+
+// QuestionsView wraps the shared snapshot with the audience member's id so
+// the question list can expose controls only for that person's own questions.
+// Keeping this outside live.Snapshot preserves the hub's efficient grouping of
+// ordinary audience snapshots by mood.
+type QuestionsView struct {
+	live.Snapshot
+	ViewerID string
+}
+
+func questionsView(snap live.Snapshot, viewerID string) QuestionsView {
+	return QuestionsView{Snapshot: snap, ViewerID: viewerID}
 }
 
 // PollView is the live poll as the templates want it: the question from the

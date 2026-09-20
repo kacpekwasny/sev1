@@ -1,7 +1,14 @@
 {{define "content"}}
 <article class="page live" hx-ext="sse" sse-connect="/live/stream">
-  <h1>Na żywo</h1>
-  <p class="lead">Wybierz jedną z trzech rzeczy: zagłosuj, pokaż jak ci idzie albo zapytaj salę.</p>
+  <div class="live-header">
+    <div>
+      <h1>Na żywo</h1>
+      <p class="lead">Wybierz jedną z trzech rzeczy: zagłosuj, pokaż jak ci idzie albo zapytaj salę.</p>
+    </div>
+    <div id="live-status" class="live-status" sse-swap="live-status">
+      {{template "live-status" .Snap}}
+    </div>
+  </div>
 
   <div class="live-layout">
     <div class="live-interactions">
@@ -31,9 +38,9 @@
         </div>
         <p class="interaction-help">Napisz pytanie pod ksywką albo odpowiedz na pytanie kogoś obok. Sala podbija najlepsze odpowiedzi.</p>
         <div id="whoami">{{template "whoami" .Nick}}</div>
-        <div id="ask">{{template "ask-form" .Ask}}</div>
+        <div id="ask" sse-swap="ask">{{template "ask-form" .Ask}}</div>
         <div id="answer-box"></div>
-        <div id="questions" sse-swap="questions">{{template "questions" .Snap}}</div>
+        <div id="questions" sse-swap="questions">{{template "questions" .Questions}}</div>
       </section>
     </div>
 

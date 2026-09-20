@@ -117,6 +117,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /live/ksywka", s.handleNick)
 	s.mux.HandleFunc("POST /live/pytanie", s.handleAsk)
 	s.mux.HandleFunc("POST /live/pytanie/{id}/glos", s.handleUpvote)
+	s.mux.HandleFunc("POST /live/pytanie/{id}/odpowiedziane", s.handleOwnQuestionAnswered)
+	s.mux.HandleFunc("POST /live/pytanie/{id}/usun", s.handleOwnQuestionDelete)
 	s.mux.HandleFunc("GET /live/odpowiedz", s.handleAnswerForm)
 	s.mux.HandleFunc("POST /live/pytanie/{id}/odpowiedz", s.handleAnswer)
 	s.mux.HandleFunc("POST /live/pytanie/{id}/odpowiedz/{cid}/glos", s.handleUpvoteAnswer)
@@ -316,13 +318,14 @@ func (s *Server) handleLive(w http.ResponseWriter, r *http.Request) {
 	me := s.hub.Join(id, clientIP(r))
 	snap := s.hub.SnapshotFor(live.Viewer{ID: id})
 	s.render(w, r, "live", map[string]any{
-		"Title":    "Na żywo",
-		"Poll":     pollView(lib, snap),
-		"Glossary": glossaryView(lib, snap),
-		"Snap":     snap,
-		"Mood":     snap.Mood,
-		"Nick":     NickView{Me: me},
-		"Ask":      AskView{Me: me, Problem: writingProblem(me, snap)},
+		"Title":     "Na żywo",
+		"Poll":      pollView(lib, snap),
+		"Glossary":  glossaryView(lib, snap),
+		"Snap":      snap,
+		"Questions": questionsView(snap, id),
+		"Mood":      snap.Mood,
+		"Nick":      NickView{Me: me},
+		"Ask":       AskView{Me: me, Problem: writingProblem(me, snap)},
 	})
 }
 
@@ -371,10 +374,25 @@ func (s *Server) handleAsk(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) handleOwnQuestionAnswered(w http.ResponseWriter, r *http.Request) {
+	id := s.participant(w, r)
+	s.hub.MarkAnsweredBy(id, r.PathValue("id"))
+	snap := s.hub.SnapshotFor(live.Viewer{ID: id})
+	s.renderFragment(w, "questions", questionsView(snap, id))
+}
+
+func (s *Server) handleOwnQuestionDelete(w http.ResponseWriter, r *http.Request) {
+	id := s.participant(w, r)
+	s.hub.DeleteQuestionBy(id, r.PathValue("id"))
+	snap := s.hub.SnapshotFor(live.Viewer{ID: id})
+	s.renderFragment(w, "questions", questionsView(snap, id))
+}
+
 func (s *Server) handleUpvote(w http.ResponseWriter, r *http.Request) {
 	id := s.participant(w, r)
 	s.hub.UpvoteQuestion(id, r.PathValue("id"))
-	s.renderFragment(w, "questions", s.hub.SnapshotFor(live.Viewer{ID: id}))
+	snap := s.hub.SnapshotFor(live.Viewer{ID: id})
+	s.renderFragment(w, "questions", questionsView(snap, id))
 }
 
 // handleAnswerForm opens the box for answering one question, or closes it
@@ -383,7 +401,14 @@ func (s *Server) handleUpvote(w http.ResponseWriter, r *http.Request) {
 // The box sits outside the part of the page that the live stream replaces,
 // so an incoming vote cannot wipe out what somebody is typing.
 func (s *Server) handleAnswerForm(w http.ResponseWriter, r *http.Request) {
-	me := live.Viewer{ID: s.participant(w, r)}
+	id := s.participant(w, r)
+	meParticipant, _ := s.hub.Who(id)
+	snap := s.hub.SnapshotFor(live.Viewer{ID: id})
+	if problem := writingProblem(meParticipant, snap); problem != "" {
+		s.renderFragment(w, "answer-box", map[string]any{"Problem": problem})
+		return
+	}
+	me := live.Viewer{ID: id}
 	question, ok := s.hub.Question(me, r.URL.Query().Get("pytanie"))
 	if !ok {
 		s.renderFragment(w, "answer-box", map[string]any{})
@@ -405,7 +430,8 @@ func (s *Server) handleAnswer(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleUpvoteAnswer(w http.ResponseWriter, r *http.Request) {
 	id := s.participant(w, r)
 	s.hub.UpvoteComment(id, r.PathValue("id"), r.PathValue("cid"))
-	s.renderFragment(w, "questions", s.hub.SnapshotFor(live.Viewer{ID: id}))
+	snap := s.hub.SnapshotFor(live.Viewer{ID: id})
+	s.renderFragment(w, "questions", questionsView(snap, id))
 }
 
 // handleLiveNav answers the menu's own poll: one link, telling the page
@@ -439,6 +465,14 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 	defer unsubscribe()
 
 	lastPollVersion := -1
+	initial := s.hub.SnapshotFor(me)
+	lastOnAir := initial.OnAir
+	lastQuestionsLocked := initial.QuestionsLocked
+	lastAskProblem := ""
+	if !panel {
+		meParticipant, _ := s.hub.Who(me.ID)
+		lastAskProblem = writingProblem(meParticipant, initial)
+	}
 	for {
 		select {
 		case <-r.Context().Done():
@@ -460,7 +494,18 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 				s.sendEvent(w, "moderation", "panel-moderation", snap)
 			} else {
 				s.sendEvent(w, "mood", "mood", snap.Mood)
-				s.sendEvent(w, "questions", "questions", snap)
+				s.sendEvent(w, "questions", "questions", questionsView(snap, me.ID))
+				if snap.OnAir != lastOnAir || snap.QuestionsLocked != lastQuestionsLocked {
+					s.sendEvent(w, "live-status", "live-status", snap)
+					lastOnAir = snap.OnAir
+					lastQuestionsLocked = snap.QuestionsLocked
+				}
+				meParticipant, _ := s.hub.Who(me.ID)
+				problem := writingProblem(meParticipant, snap)
+				if problem != lastAskProblem {
+					s.sendEvent(w, "ask", "ask-form", AskView{Me: meParticipant, Problem: problem})
+					lastAskProblem = problem
+				}
 			}
 			flusher.Flush()
 		}
@@ -558,8 +603,8 @@ func (s *Server) handlePanelLock(w http.ResponseWriter, r *http.Request) {
 	s.renderFragment(w, "panel-moderation", s.hub.SnapshotFor(live.Presenter))
 }
 
-// handlePanelOnAir is the "we are starting" switch. It gives the room no new
-// rights and takes none away; it only lights the red dot in the menu.
+// handlePanelOnAir is the "we are starting" switch. It lights the red dot in
+// the menu and opens or closes audience question writing.
 func (s *Server) handlePanelOnAir(w http.ResponseWriter, r *http.Request) {
 	s.hub.SetOnAir(r.FormValue("onair") == "tak")
 	s.renderFragment(w, "panel-onair", s.hub.SnapshotFor(live.Presenter))
@@ -624,6 +669,8 @@ func writingProblem(me live.Participant, snap live.Snapshot) string {
 	switch {
 	case me.Blocked():
 		return "Prowadzący wyłączył ci pisanie. Głosować i podbijać dalej możesz."
+	case !snap.OnAir:
+		return "Pytania otworzą się, gdy wykład będzie na żywo. Głosować możesz już teraz."
 	case snap.QuestionsLocked:
 		return "Pytania są chwilowo zamknięte. Głosować i podbijać dalej możesz."
 	}
