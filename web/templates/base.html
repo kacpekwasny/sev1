@@ -18,11 +18,13 @@
   <script src="/static/vendor/htmx.min.js" defer></script>
   <script src="/static/vendor/htmx-ext-sse.js" defer></script>
 </head>
-<body>
-<header class="topbar">
+<body{{if .Bare}} class="bare"{{end}}>
+{{/* Wejściówka dostaje ten sam pasek, tylko bez tła i bez kreski - ma leżeć
+     na plakacie, a nie dzielić go na dwie części. */}}
+<header class="topbar{{if .Bare}} clean{{end}}">
   <a class="brand" href="/"><span class="sev">SEV1</span> <span class="brand-sub">wykłady @ WIET AGH</span></a>
   <nav>
-    <a href="/" {{if eq .Path "/"}}class="on"{{end}}>Wykłady</a>
+    <a href="/wyklady/" {{if eq .Path "/wyklady/"}}class="on"{{end}}>Wykłady</a>
     <a href="/notatki/" {{if eq .Path "/notatki/"}}class="on"{{end}}>Notatki</a>
     <a href="/notatki/graf" {{if eq .Path "/notatki/graf"}}class="on"{{end}}>Graf</a>
     <a href="/topologie/" {{if eq .Path "/topologie/"}}class="on"{{end}}>Topologie</a>
@@ -35,9 +37,11 @@
   {{template "content" .}}
 </main>
 
+{{if not .Bare}}
 <footer>
   <span>Routing Services · Akamai</span>
   <span>Materiały: <a href="/notatki/vault.zip">vault .zip</a> dla Obsidiana</span>
 </footer>
+{{end}}
 </body>
 </html>

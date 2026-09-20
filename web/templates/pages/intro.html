@@ -1,0 +1,31 @@
+{{/* Wejściówka. Ma robić jedną rzecz: wyglądać jak plakat i powiedzieć, co,
+     kiedy i gdzie - żeby ktoś, kto zeskanował kod QR, zobaczył to samo, co
+     przed chwilą na ścianie. Wszystko inne jest o jedno kliknięcie dalej,
+     pod przyciskiem. Nic tu nie może przyrosnąć: każda dołożona sekcja
+     zabiera tej stronie to, po co powstała. */}}
+{{define "content"}}
+<section class="intro">
+  <p class="kicker">Wykład absolwentów WIET</p>
+  <h1>Jak rozpętałem drugą Sev1</h1>
+
+  <img class="intro-logo" src="/static/akamai.png" alt="Akamai" width="544" height="224">
+
+  <ul class="topics">
+    <li>Network SWE w Akamai</li>
+    <li>Od interview do seniora</li>
+    <li>Datacentery GPU</li>
+    <li>Drabinka w Akamai</li>
+    <li>Underlay / overlay network</li>
+  </ul>
+
+  <ul class="dates">
+    {{range .Lectures}}
+    <li{{if eq .Status "odbyty"}} class="past"{{end}}>{{.Poster}}</li>
+    {{end}}
+  </ul>
+
+  <p class="where">AGH WIET · budynek D6, sala 1.20 · wstęp wolny, bez zapisów</p>
+
+  <p class="intro-go"><a class="btn primary" href="/wyklady/">Program, notatki i zadania</a></p>
+</section>
+{{end}}

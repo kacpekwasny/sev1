@@ -1,25 +1,16 @@
-{{/* Strona główna jest plakatem serii. Pierwszy ekran ma odpowiedzieć na
-     cztery pytania osoby, która właśnie zeskanowała kod QR na korytarzu:
-     co to jest, kiedy, gdzie i czy trzeba się zapisywać. Reszta strony jest
-     dla tych, którzy już przyszli. */}}
+{{/* Strona, na którą prowadzi przycisk z wejściówki: wszystko, czego ktoś może
+     szukać po wykładzie albo przed nim. Plakatem jest intro.html - tutaj
+     zostaje tylko tyle promocji, żeby wchodzący z linku wiedział, kiedy
+     i gdzie, a reszta miejsca należy do materiałów. */}}
 {{define "content"}}
 <section class="hero promo">
-  <p class="kicker">Wykład absolwentów WIET</p>
+  <p class="kicker">Otwarte wykłady · WIET AGH · budynek D6 · wstęp wolny, bez zapisów</p>
   <h1>Jak rozpętałem drugą Sev1</h1>
   <p class="lead">
     Dwa wieczory o tym, jak naprawdę wygląda praca w cloud networkingu — opowiedziane
     przez incydenty, które się wydarzyły. Centra obliczeniowe, BGP, overlay, SRv6
     i klastry GPU, a obok tego codzienność inżyniera: dyżury, planingi i rekrutacja.
   </p>
-
-  {{/* Te same hasła, co na plakacie - kto widział plakat, ma poznać stronę. */}}
-  <ul class="topics">
-    <li>Network SWE w Akamai</li>
-    <li>Od interview do seniora</li>
-    <li>Datacentery GPU</li>
-    <li>Drabinka w Akamai</li>
-    <li>Underlay / overlay network</li>
-  </ul>
 
   {{with .Upcoming}}
   <div class="next-up">

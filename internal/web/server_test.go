@@ -36,7 +36,7 @@ func TestEveryPageRenders(t *testing.T) {
 	srv := newTestServer(t)
 	lib := srv.lib()
 
-	paths := []string{"/", "/notatki/", "/notatki/graf", "/notatki/vault.zip",
+	paths := []string{"/", "/wyklady/", "/notatki/", "/notatki/graf", "/notatki/vault.zip",
 		"/zadania/", "/topologie/", "/live/", "/api/graf.json"}
 	for _, lec := range lib.Lectures {
 		paths = append(paths, "/wyklady/"+lec.Slug)
@@ -61,21 +61,30 @@ func TestEveryPageRenders(t *testing.T) {
 	}
 }
 
-// Strona główna jest plakatem: kiedy, gdzie i że można wejść z ulicy. Te
-// dane idą z nagłówków wykładów, więc test pilnuje, żeby nie rozjechały się
+// Wejściówka jest plakatem: kiedy, gdzie i że można wejść z ulicy. Terminy
+// idą z nagłówków wykładów, więc test pilnuje, żeby nie rozjechały się
 // z treścią - zła data na plakacie to jedyny błąd, którego nie da się odkręcić.
-func TestFrontPageAdvertisesTheNextLecture(t *testing.T) {
+func TestEntryPageIsThePoster(t *testing.T) {
 	srv := newTestServer(t)
-	next := srv.lib().Upcoming()
-	if next == nil {
-		t.Fatal("żaden wykład nie jest oznaczony jako najbliższy ani planowany")
+	lectures := srv.lib().Lectures
+	if len(lectures) == 0 {
+		t.Fatal("nie ma żadnego wykładu")
 	}
 
 	body := get(t, srv, "/").Body.String()
-	for _, want := range []string{next.Title, next.Date, next.Place, "wstęp wolny", "WRSS"} {
+	for _, lec := range lectures {
+		if !strings.Contains(body, lec.Poster()) {
+			t.Errorf("plakat nie podaje terminu %q", lec.Poster())
+		}
+	}
+	for _, want := range []string{"D6", "wstęp wolny", `href="/wyklady/"`, "akamai.png"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("plakat nie mówi o %q", want)
 		}
+	}
+	// Wejściówka ma zostać chuda. Materiały są pod przyciskiem, nie tutaj.
+	if strings.Contains(body, "Pobierz vault") {
+		t.Error("na wejściówkę wróciła treść, która należy do /wyklady/")
 	}
 	// Podgląd linku wklejonego na grupę - bez tego promocja gubi się w szarym
 	// prostokącie bez opisu.
@@ -85,6 +94,23 @@ func TestFrontPageAdvertisesTheNextLecture(t *testing.T) {
 	// Adres obrazka musi być pełny - fejsbuk nie pobierze względnego.
 	if !strings.Contains(body, `property="og:image" content="http://example.com/static/og.png"`) {
 		t.Errorf("og:image nie jest pełnym adresem: %s", body)
+	}
+}
+
+// Przycisk z wejściówki prowadzi na stronę, na której jest cała reszta -
+// najbliższy termin, program, zadania i notatki.
+func TestHubHasTheMaterials(t *testing.T) {
+	srv := newTestServer(t)
+	next := srv.lib().Upcoming()
+	if next == nil {
+		t.Fatal("żaden wykład nie jest oznaczony jako najbliższy ani planowany")
+	}
+
+	body := get(t, srv, "/wyklady/").Body.String()
+	for _, want := range []string{next.Title, next.Date, next.Place, "WRSS", "Pobierz vault"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("na /wyklady/ brakuje %q", want)
+		}
 	}
 }
 

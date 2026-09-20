@@ -90,7 +90,8 @@ func (s *Server) routes() {
 	}
 	s.mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(static))))
 
-	s.mux.HandleFunc("GET /{$}", s.handleHome)
+	s.mux.HandleFunc("GET /{$}", s.handleIntro)
+	s.mux.HandleFunc("GET /wyklady/{$}", s.handleHub)
 	s.mux.HandleFunc("GET /wyklady/{slug}", s.handleLecture)
 
 	s.mux.HandleFunc("GET /notatki/{$}", s.handleNotes)
@@ -129,13 +130,25 @@ func (s *Server) routes() {
 
 // --- pages ---------------------------------------------------------------
 
-// handleHome is the poster of the series: somebody who scanned the QR code in
-// the corridor should learn in one screen what this is, when it is and that
-// they can just walk in. Everything else on the page is for people who came.
-func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
-	lib := s.lib()
-	s.render(w, r, "home", map[string]any{
+// handleIntro is the poster, on screen: one slim page with the title, the
+// logo, the dates and a button. Somebody who scanned the QR code in the
+// corridor should recognise what they just looked at and learn nothing new
+// that they did not ask for. Everything the site actually holds is behind
+// the button, on the hub.
+func (s *Server) handleIntro(w http.ResponseWriter, r *http.Request) {
+	s.render(w, r, "intro", map[string]any{
 		"Title":    "Jak rozpętałem drugą Sev1",
+		"Bare":     true, // pasek bez tła, bez stopki - strona ma być plakatem
+		"Lectures": s.lib().Lectures,
+	})
+}
+
+// handleHub is the page the button leads to: the programme, the notes and
+// the tasks, for people who came or are about to.
+func (s *Server) handleHub(w http.ResponseWriter, r *http.Request) {
+	lib := s.lib()
+	s.render(w, r, "hub", map[string]any{
+		"Title":    "Wykłady",
 		"Lectures": lib.Lectures,
 		"Upcoming": lib.Upcoming(),
 		"Tasks":    lib.Tasks,

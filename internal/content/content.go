@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
@@ -61,6 +62,22 @@ func (l *Library) Upcoming() *Lecture {
 		}
 	}
 	return nil
+}
+
+// Poster is the date written the way the printed poster writes it:
+// 2026-11-01, 18:00 becomes 01.11.2026 — 18:00. In the file the date stays
+// sortable, on the entry page it has to look like the thing on the wall.
+// A date in any other shape is passed through untouched.
+func (l *Lecture) Poster() string {
+	day, hour, ok := strings.Cut(l.Date, ", ")
+	if !ok {
+		return l.Date
+	}
+	when, err := time.Parse("2006-01-02", day)
+	if err != nil {
+		return l.Date
+	}
+	return when.Format("02.01.2006") + " — " + hour
 }
 
 // AgendaItem is one block of a lecture. It may point at the interactive poll

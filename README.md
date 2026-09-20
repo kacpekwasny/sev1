@@ -57,14 +57,24 @@ Dwie rzeczy, których strona z plakatu nie bierze: pomarańczowy `--accent-2`, b
 interfejs musi umieć odróżnić „uwaga, to teraz" od zwykłego linku, a plakat ma tylko
 jeden akcent; i wersaliki w długich tytułach wykładów, bo czyta się je wtedy wolniej.
 
-## Strona główna jako plakat
+## Dwie strony na wejściu
 
-`/` jest tym, co widzi ktoś, kto zeskanował kod QR na korytarzu, więc pierwszy ekran
-odpowiada na cztery pytania: co to jest, kiedy, gdzie i czy trzeba się zapisywać.
-Datę i salę bierze z nagłówka wykładu oznaczonego `status: najblizszy` — po każdym
-wykładzie przestaw go na `odbyty`, a następnemu wpisz `najblizszy`, i plakat sam się
-zaktualizuje. Test `TestFrontPageAdvertisesTheNextLecture` pilnuje, żeby te dane
-faktycznie były na stronie.
+`/` to **wejściówka**: plakat przeniesiony na ekran. Tytuł, logo, hasła, terminy,
+jedno zdanie o sali i przycisk. Nic więcej — kto zeskanował kod QR na korytarzu, ma
+zobaczyć to samo, na co przed chwilą patrzył, a nie spis treści. Ta strona jedyna
+chodzi w granacie z plakatu i bez stopki (`Bare` w danych szablonu).
+
+`/wyklady/` to **strona z materiałami**, czyli to, co było wcześniej stroną główną:
+najbliższy termin, program, zadania i notatki.
+
+Terminy na wejściówce biorą się z nagłówków wykładów (`date:`), a najbliższy termin
+na `/wyklady/` — z tego oznaczonego `status: najblizszy`. Po każdym wykładzie przestaw
+go na `odbyty`, a następnemu wpisz `najblizszy`. Testy `TestEntryPageIsThePoster`
+i `TestHubHasTheMaterials` pilnują, żeby te dane faktycznie były na stronach; ten
+pierwszy sprawdza też, że wejściówce nie przyrosła treść z `/wyklady/`.
+
+Logo w `web/static/akamai.png` jest wycięte z plakatu i odtłoczone od granatu, więc
+leży poprawnie na każdym ciemnym tle.
 
 Link wklejony na grupę pokazuje podgląd z `web/static/og.png` (1200×630). Leżący tam
 plik jest złożony z elementów plakatu, ale w poziomie, bo plakat jest 4:5 i w podglądzie
