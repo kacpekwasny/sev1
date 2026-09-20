@@ -14,22 +14,24 @@
   src: url("/static/vendor/fonts/poppins-700.woff2") format("woff2");
 }
 
-/* Kolory wzięte wprost z plakatu (design/): granat tła, biel napisów, błękit
-   Akamai jako jedyny akcent i jasny szary na daty. --accent-2 jest dodatkiem,
-   którego plakat nie potrzebuje, a strona tak: interfejs musi umieć odróżnić
-   "uwaga, to teraz" od zwykłego linku. */
+/* Strona zostaje przy swoich kolorach - ciemny grafit i zieleń terminala.
+   Z plakatu bierze krój, sposób składania nagłówków i dwa kolory trzymane
+   osobno: granat i błękit Akamai. Używa ich wejściówka (patrz .intro), która
+   ma wyglądać jak plakat; reszta serwisu nie. */
 :root {
-  --bg: #0c203b;
-  --panel: #102847;
-  --panel-2: #163257;
-  --line: #24406b;
-  --text: #ffffff;
-  --soft: #ced2d8;
-  --muted: #93a6bd;
-  --accent: #00a4eb;
-  --accent-2: #ffb454;
-  --danger: #ff6b5e;
-  --shadow: #c58fd8; /* cień - ciche uciszenie, nie to samo co ban */
+  --bg: #0e1116;
+  --panel: #161b22;
+  --panel-2: #1c232d;
+  --line: #2a3340;
+  --text: #e6edf3;
+  --soft: #c7d3df;
+  --muted: #92a0b0;
+  --accent: #35d0a5;
+  --accent-2: #ff7a45;
+  --danger: #ff5f56;
+  --shadow: #b48ead; /* cień - ciche uciszenie, nie to samo co ban */
+  --navy: #0a1a2f;   /* granat plakatu, przyciemniony - tło wejściówki */
+  --akamai: #00a4eb;
   --sans: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
 }
@@ -39,7 +41,7 @@
 body {
   margin: 0;
   background: var(--bg);
-  color: var(--soft);
+  color: var(--text);
   font: 16px/1.65 var(--sans);
 }
 
@@ -65,7 +67,7 @@ h2.question, .next-up h2 { letter-spacing: normal; text-transform: none; }
   display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;
   padding: 0.9rem 1.5rem;
   border-bottom: 1px solid var(--line);
-  background: linear-gradient(180deg, #102a4d, var(--bg));
+  background: linear-gradient(180deg, #131923, var(--bg));
   position: sticky; top: 0; z-index: 10;
 }
 .brand { color: var(--text); font-family: var(--mono); font-weight: 700; letter-spacing: 0.04em; }
@@ -117,7 +119,7 @@ section { margin-bottom: 3rem; }
   background: var(--panel); color: var(--text); font-size: 0.95rem; cursor: pointer;
 }
 .btn:hover { border-color: var(--accent); text-decoration: none; }
-.btn.primary { background: var(--accent); color: #04203b; border-color: var(--accent); font-weight: 600; }
+.btn.primary { background: var(--accent); color: #06231b; border-color: var(--accent); font-weight: 600; }
 .btn.danger:hover { border-color: var(--danger); color: var(--danger); }
 .btn.small { padding: 0.35rem 0.7rem; font-size: 0.85rem; }
 .btn.tiny { padding: 0.2rem 0.5rem; font-size: 0.75rem; }
@@ -153,10 +155,10 @@ a.chip:hover { color: var(--text); border-color: var(--accent); text-decoration:
    złożona tak jak na plakacie: rozstrzelone cyfry Poppinsa. */
 .next-up {
   max-width: 62ch; margin: 1.6rem 0 1.2rem; padding: 1.1rem 1.3rem;
-  border: 1px solid var(--accent); border-radius: 12px; background: var(--panel);
+  border: 1px solid var(--accent-2); border-radius: 12px; background: var(--panel);
 }
 .next-up .when { font-weight: 600; font-size: 1.6rem; letter-spacing: 0.1em;
-                 color: var(--text); margin: 0.1rem 0; }
+                 color: var(--accent-2); margin: 0.1rem 0; }
 .next-up .where { font-size: 0.9rem; letter-spacing: 0.06em; color: var(--muted);
                   margin: 0 0 0.7rem; }
 .next-up h2 { font-size: 1.25rem; margin: 0 0 0.4rem; }
@@ -167,7 +169,7 @@ a.chip:hover { color: var(--text); border-color: var(--accent); text-decoration:
    niosą całą treść, tutaj tylko przypominają, że to ta sama seria. */
 .topics { list-style: none; padding: 0; margin: 1.4rem 0 0; }
 .topics li { font-size: 0.82rem; font-weight: 600; letter-spacing: 0.18em;
-             text-transform: uppercase; color: var(--text); margin-bottom: 0.35rem; }
+             text-transform: uppercase; color: var(--muted); margin-bottom: 0.35rem; }
 
 .cards.why .card h3 { color: var(--accent); font-size: 1.05rem; }
 
@@ -330,7 +332,7 @@ a.card:hover { border-color: var(--accent); text-decoration: none; transform: tr
 
 /* --- topologie -------------------------------------------------------------- */
 
-.chip.topo { border-color: #7cd4ff; color: #7cd4ff; }
+.chip.topo { border-color: #7aa2f7; color: #7aa2f7; }
 
 .topo { margin: 1.5rem 0 0; }
 .topo-views { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.8rem; }
@@ -352,9 +354,9 @@ a.card:hover { border-color: var(--accent); text-decoration: none; transform: tr
 .node .badge { font-size: 11px; fill: var(--accent-2); letter-spacing: 0.08em; }
 .node.start rect, .node.cel rect { stroke: var(--accent-2); stroke-width: 2.5; }
 
-.cable line { stroke: #3f5d87; fill: none; }
-.cable.bundle line { stroke: #5a80b3; stroke-linecap: round; }
-.cable.dim line { stroke: #22395c; }
+.cable line { stroke: #46566b; fill: none; }
+.cable.bundle line { stroke: #55708f; stroke-linecap: round; }
+.cable.dim line { stroke: #2c3745; }
 .cable.hot line { stroke: var(--accent-2); }
 /* Etykieta /31 leży na kablu - obwódka w kolorze tła wycina pod nią miejsce. */
 .cable-label { font-family: var(--mono); font-size: 10px; fill: var(--muted);
