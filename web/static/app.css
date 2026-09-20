@@ -77,7 +77,33 @@ h2.question, .next-up h2 { letter-spacing: normal; text-transform: none; }
 .topbar nav { display: flex; gap: 1.1rem; flex-wrap: wrap; }
 .topbar nav a { color: var(--muted); font-size: 0.95rem; }
 .topbar nav a:hover, .topbar nav a.on { color: var(--text); }
-.topbar nav a.livelink { color: var(--accent-2); }
+
+/* Poza wykładem to zwykła pozycja menu. Kiedy wykład trwa, zostaje z niej
+   sama pulsująca kropka - czerwone słowo "live" na każdej podstronie
+   krzyczałoby przez półtorej godziny - a pełna plakietka pokazuje się
+   dopiero pod kursorem. */
+.topbar nav a.livelink { display: inline-flex; align-items: center; color: var(--accent-2); }
+.livelink .dot { display: none; }
+/* Czerwień wygrywa też z wyblakłym paskiem wejściówki - trzy klasy w selektorze
+   biją dwie, więc kropka pali się jednakowo na każdej stronie. */
+.topbar nav a.livelink.onair { color: var(--danger); padding: 0.1rem 0.4rem; border-radius: 999px; }
+.topbar nav a.livelink.onair:hover { background: var(--danger); color: #1d0b09; text-decoration: none; }
+.livelink.onair .dot {
+  display: block; width: 0.6rem; height: 0.6rem; border-radius: 50%;
+  background: currentColor; animation: blink 1.4s ease-in-out infinite;
+}
+.livelink.onair:hover .dot { animation: none; }
+.livelink.onair .label {
+  max-width: 0; margin-left: 0; opacity: 0; overflow: hidden; white-space: nowrap;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+  transition: max-width 0.2s ease, margin-left 0.2s ease, opacity 0.2s ease;
+}
+.livelink.onair:hover .label, .livelink.onair:focus-visible .label {
+  max-width: 4rem; margin-left: 0.4rem; opacity: 1;
+}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+/* Mruganie w rogu ekranu potrafi męczyć; kto to wyłączył, dostaje kropkę stałą. */
+@media (prefers-reduced-motion: reduce) { .livelink.onair .dot { animation: none; } }
 
 main { max-width: 1040px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
 
@@ -327,6 +353,12 @@ a.card:hover { border-color: var(--accent); text-decoration: none; transform: tr
                padding: 0.5rem 0.7rem; border: 1px solid var(--line); border-radius: 8px; }
 .polllist li.on { border-color: var(--accent); }
 .polllist-q { font-size: 0.9rem; }
+
+.onair-switch { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;
+                margin-bottom: 1.5rem; padding: 0.7rem 0.9rem;
+                border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.onair-switch.on { border-color: var(--danger); }
+.chip.live { border-color: var(--danger); color: var(--danger); animation: blink 1.4s ease-in-out infinite; }
 
 .lockswitch { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
               margin-bottom: 0.8rem; font-size: 0.85rem; }

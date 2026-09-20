@@ -83,6 +83,14 @@ nie trzeba zmieniać.
 
 ## Część interaktywna
 
+**Zaczynamy.** Pierwszy przełącznik w panelu ogłasza, że wykład trwa teraz. Nie odblokowuje
+niczego — sala mogła głosować i pisać także wcześniej — zapala tylko pulsującą czerwoną
+kropkę obok „Na żywo" w menu, a menu jest na każdej stronie. Ktoś, kto akurat czyta notatki,
+widzi po niej, że warto przejść na `/live/`; po najechaniu kropka rozwija się w czerwony
+napis *live*. Podstrony bez strumienia SSE (notatki, zadania) dopytują o ten jeden bit co
+20 sekund — przy wykładzie trwającym półtorej godziny to tańsze niż otwieranie strumienia
+wszędzie.
+
 **Ankiety.** W agendzie wykładu wpisujesz `poll: fib-overflow`. W trakcie wykładu
 wybierasz to pytanie w `/panel`, a sala widzi je natychmiast na `/live/` i głosuje.
 Wyniki lecą do wszystkich przez SSE, bez odświeżania.

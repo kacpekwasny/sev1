@@ -110,6 +110,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /zadania/{slug}/podpowiedz/{n}", s.handleHint)
 
 	s.mux.HandleFunc("GET /live/{$}", s.handleLive)
+	s.mux.HandleFunc("GET /live/stan", s.handleLiveNav)
 	s.mux.HandleFunc("GET /live/stream", s.handleStream)
 	s.mux.HandleFunc("POST /live/glos", s.handleVote)
 	s.mux.HandleFunc("POST /live/nastroj", s.handleMood)
@@ -125,6 +126,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /panel/pytanie/{id}/{action}", s.requirePanel(s.handlePanelQuestion))
 	s.mux.HandleFunc("POST /panel/pytanie/{id}/odpowiedz/{cid}/usun", s.requirePanel(s.handlePanelDeleteAnswer))
 	s.mux.HandleFunc("POST /panel/pytania", s.requirePanel(s.handlePanelLock))
+	s.mux.HandleFunc("POST /panel/nazywo", s.requirePanel(s.handlePanelOnAir))
 	s.mux.HandleFunc("POST /panel/uczestnik/{id}/{action}", s.requirePanel(s.handlePanelParticipant))
 }
 
@@ -405,6 +407,12 @@ func (s *Server) handleUpvoteAnswer(w http.ResponseWriter, r *http.Request) {
 	s.renderFragment(w, "questions", s.hub.SnapshotFor(live.Viewer{ID: id}))
 }
 
+// handleLiveNav answers the menu's own poll: one link, telling the page
+// whether the lecture has started since it was loaded.
+func (s *Server) handleLiveNav(w http.ResponseWriter, r *http.Request) {
+	s.renderFragment(w, "live-nav", s.hub.OnAir())
+}
+
 // handleStream pushes rendered HTML fragments over SSE. htmx swaps them in,
 // so there is no hand-written JavaScript for the live parts.
 func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
@@ -546,6 +554,13 @@ func (s *Server) handlePanelDeleteAnswer(w http.ResponseWriter, r *http.Request)
 func (s *Server) handlePanelLock(w http.ResponseWriter, r *http.Request) {
 	s.hub.SetQuestionsLocked(r.FormValue("locked") == "tak")
 	s.renderFragment(w, "panel-moderation", s.hub.SnapshotFor(live.Presenter))
+}
+
+// handlePanelOnAir is the "we are starting" switch. It gives the room no new
+// rights and takes none away; it only lights the red dot in the menu.
+func (s *Server) handlePanelOnAir(w http.ResponseWriter, r *http.Request) {
+	s.hub.SetOnAir(r.FormValue("onair") == "tak")
+	s.renderFragment(w, "panel-onair", s.hub.SnapshotFor(live.Presenter))
 }
 
 // handlePanelParticipant applies and lifts the two kinds of ban. Neither one

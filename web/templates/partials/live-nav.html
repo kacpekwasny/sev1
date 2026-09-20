@@ -1,0 +1,15 @@
+{{/* Pozycja "na żywo" w menu. Poza wykładem jest zwykłym linkiem; kiedy
+     prowadzący włączy wykład, zostaje z niej pulsująca czerwona kropka, która
+     pod kursorem rozwija się w pełną plakietkę.
+
+     Sama się odpytuje co 20 sekund, bo wisi na każdej podstronie - notatki
+     i zadania nie mają strumienia SSE i nie warto im go zakładać tylko po to,
+     żeby wiedziały o jednym bicie. Dwadzieścia sekund opóźnienia przy czymś,
+     co trwa półtorej godziny, nikomu nie robi różnicy. */}}
+{{define "live-nav"}}
+<a class="livelink{{if .}} onair{{end}}" href="/live/"
+   hx-get="/live/stan" hx-trigger="every 20s" hx-swap="outerHTML"
+   title="{{if .}}Wykład trwa teraz{{else}}Część na żywo dla sali{{end}}">
+  <span class="dot" aria-hidden="true"></span><span class="label">{{if .}}live{{else}}Na żywo{{end}}</span>
+</a>
+{{end}}

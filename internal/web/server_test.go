@@ -197,6 +197,36 @@ func TestMoodMeterShowsTheRoomAndYourOwnClick(t *testing.T) {
 	}
 }
 
+// Przełącznik "zaczynamy" ma zapalić kropkę wszędzie, także na stronach, które
+// o wykładzie na żywo nic nie wiedzą - i zgasnąć po jego wyłączeniu.
+func TestOnAirSwitchLightsTheDotEverywhere(t *testing.T) {
+	srv := newTestServer(t)
+	dark := get(t, srv, "/notatki/").Body.String()
+	if strings.Contains(dark, "livelink onair") {
+		t.Error("kropka świeci się, zanim wykład się zaczął")
+	}
+
+	if rec := panelPost(t, srv, "/panel/nazywo", "onair=tak"); rec.Code != http.StatusOK {
+		t.Fatalf("włączenie wykładu = %d", rec.Code)
+	}
+	for _, path := range []string{"/", "/notatki/", "/zadania/"} {
+		if !strings.Contains(get(t, srv, path).Body.String(), "livelink onair") {
+			t.Errorf("%s nie pokazuje, że wykład trwa", path)
+		}
+	}
+	// Strona wczytana przed startem sama się dopyta - bez tego musiałaby
+	// czekać na odświeżenie przez czytającego.
+	nav := get(t, srv, "/live/stan").Body.String()
+	if !strings.Contains(nav, "livelink onair") || !strings.Contains(nav, "hx-trigger") {
+		t.Errorf("menu nie umie się doczytać stanu: %s", nav)
+	}
+
+	panelPost(t, srv, "/panel/nazywo", "onair=nie")
+	if strings.Contains(get(t, srv, "/notatki/").Body.String(), "livelink onair") {
+		t.Error("po zakończeniu wykładu kropka dalej się świeci")
+	}
+}
+
 func post(t *testing.T, srv *Server, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))

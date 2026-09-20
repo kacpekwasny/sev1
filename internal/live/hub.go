@@ -92,6 +92,9 @@ type Snapshot struct {
 	// Mood is the last half minute of "zgubiłem się" / "fajnie wytłumaczone",
 	// including which of the two this particular viewer clicked.
 	Mood MoodTally
+	// OnAir says the lecture is happening right now. The presenter flips it
+	// on in the panel and the whole site starts showing the red dot.
+	OnAir bool
 	// QuestionsLocked and Participants are for the presenter's panel; the
 	// audience never sees a template that reads them.
 	QuestionsLocked bool
@@ -120,6 +123,7 @@ type Hub struct {
 	participants    map[string]*Participant
 	moods           moodBoard // patrz mood.go
 	bannedIPs       map[string]bool
+	onAir           bool
 	questionsLocked bool
 	nextID          int
 	subscribers     map[chan Snapshot]Viewer
@@ -223,6 +227,7 @@ func (h *Hub) snapshotLocked(v Viewer) Snapshot {
 		Total:           total,
 		Questions:       questions,
 		Mood:            h.moods.tally(v.ID),
+		OnAir:           h.onAir,
 		QuestionsLocked: h.questionsLocked,
 		Participants:    participants,
 	}
@@ -432,6 +437,25 @@ func (h *Hub) WatchMoods(ctx context.Context) {
 // SetQuestionsLocked closes the whole Q&A - useful when the room starts
 // writing during someone else's talk, or when the lecture is over. Voting
 // still works, only writing stops.
+// SetOnAir marks the lecture as happening right now. It changes nothing about
+// what the live page can do - questions and votes work whether or not the
+// switch is on - it only lights the red dot in the menu of every page, so
+// somebody reading the notes can see that the room is sitting down.
+func (h *Hub) SetOnAir(on bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.onAir = on
+	h.broadcastLocked()
+}
+
+// OnAir is read while rendering the menu, which happens on every page, so it
+// takes the lock and nothing else.
+func (h *Hub) OnAir() bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.onAir
+}
+
 func (h *Hub) SetQuestionsLocked(locked bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()

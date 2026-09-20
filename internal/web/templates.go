@@ -129,6 +129,9 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, page string, dat
 	}
 	data["Path"] = r.URL.Path
 	data["BaseURL"] = baseURL(r)
+	// Kropka "na żywo" wisi w menu, a menu jest na każdej stronie - więc stan
+	// wykładu dokłada się tutaj, raz, zamiast w każdym handlerze osobno.
+	data["OnAir"] = s.hub.OnAir()
 	if _, ok := data["Description"]; !ok {
 		data["Description"] = defaultDescription
 	}

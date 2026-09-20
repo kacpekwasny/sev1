@@ -29,7 +29,7 @@
     <a href="/notatki/graf" {{if eq .Path "/notatki/graf"}}class="on"{{end}}>Graf</a>
     <a href="/topologie/" {{if eq .Path "/topologie/"}}class="on"{{end}}>Topologie</a>
     <a href="/zadania/" {{if eq .Path "/zadania/"}}class="on"{{end}}>Zadania</a>
-    <a class="livelink" href="/live/" {{if eq .Path "/live/"}}class="on"{{end}}>● Na żywo</a>
+    {{template "live-nav" .OnAir}}
   </nav>
 </header>
 
