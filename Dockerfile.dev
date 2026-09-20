@@ -7,6 +7,10 @@ RUN go mod download
 
 COPY . .
 
+# Warm the compiler cache so the first `go run` starts quickly after the
+# container is registered with the reverse proxy.
+RUN go build -trimpath -o /tmp/sev1-dev .
+
 EXPOSE 8081
 
 CMD ["go", "run", ".", "-dev", "-addr", ":8081", "-content", "/src/content"]
