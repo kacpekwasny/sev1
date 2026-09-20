@@ -1,0 +1,42 @@
+{{/* Nastrój sali. Dwa przyciski i pasek, oba odświeżane przez SSE - przycisk,
+     który kliknąłeś, sam się odznaczy, kiedy po pół minuty reakcja wygaśnie.
+     Wolno to trzymać w części odświeżanej strumieniem, bo hub buduje migawkę
+     osobno dla każdego widoku: nikomu nie podmieni tu cudzego stanu. */}}
+{{define "mood"}}
+  <div class="mood">
+    <p class="kicker">jak ci idzie?</p>
+    <div class="mood-buttons">
+      <button class="btn {{if .MineLost}}on lost{{end}}"
+              hx-post="/live/nastroj" hx-vals='{"mood": "zgubilem-sie"}'
+              hx-target="#mood" hx-swap="innerHTML">🫠 zgubiłem się</button>
+      <button class="btn {{if .MineClear}}on clear{{end}}"
+              hx-post="/live/nastroj" hx-vals='{"mood": "fajnie-wytlumaczone"}'
+              hx-target="#mood" hx-swap="innerHTML">💡 fajnie wytłumaczone</button>
+    </div>
+    {{template "mood-bar" .}}
+    <p class="muted small">
+      Liczy się przez pół minuty i samo gaśnie — klikaj śmiało, ile razy chcesz.
+      Nikt nie widzi, kto co kliknął.
+    </p>
+  </div>
+{{end}}
+
+{{/* Panel: te same liczby, bez przycisków. Prowadzący nie jest salą. */}}
+{{define "panel-mood"}}
+  {{template "mood-bar" .}}
+{{end}}
+
+{{define "mood-bar"}}
+  {{if .Total}}
+    <div class="mood-bar">
+      <span class="lost" style="width: {{.LostPercent}}%"></span>
+      <span class="clear" style="width: {{.ClearPercent}}%"></span>
+    </div>
+    <p class="mood-legend">
+      <span class="lost">🫠 zgubionych: {{.Lost}}</span>
+      <span class="clear">💡 z tym ok: {{.Clear}}</span>
+    </p>
+  {{else}}
+    <p class="muted">Cisza — przez ostatnie pół minuty nikt nic nie kliknął.</p>
+  {{end}}
+{{end}}

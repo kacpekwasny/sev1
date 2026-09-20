@@ -237,6 +237,23 @@ a.chip:hover { color: var(--text); border-color: var(--accent); text-decoration:
 .people .ip { font-family: var(--mono); color: var(--muted); }
 .small { font-size: 0.8rem; }
 
+/* --- nastrój sali ----------------------------------------------------------- */
+
+/* Zgubienie się nie jest błędem, więc nie świeci na czerwono - to po prostu
+   drugi kolor niż "rozumiem". */
+.mood { margin: 1.4rem 0; }
+.mood-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.7rem; }
+.mood-buttons .btn.on.lost { border-color: var(--accent-2); color: var(--accent-2); }
+.mood-buttons .btn.on.clear { border-color: var(--accent); color: var(--accent); }
+
+.mood-bar { display: flex; height: 10px; border-radius: 999px; overflow: hidden;
+            background: var(--panel-2); border: 1px solid var(--line); }
+.mood-bar .lost { background: var(--accent-2); }
+.mood-bar .clear { background: var(--accent); }
+.mood-legend { display: flex; gap: 1rem; font-size: 0.8rem; margin: 0.35rem 0 0; }
+.mood-legend .lost { color: var(--accent-2); }
+.mood-legend .clear { color: var(--accent); }
+
 /* --- hints and graph -------------------------------------------------------- */
 
 .hint { border-left: 3px solid var(--accent-2); background: var(--panel);

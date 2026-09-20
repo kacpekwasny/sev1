@@ -108,6 +108,42 @@ func TestVotingUpdatesTheTally(t *testing.T) {
 	}
 }
 
+// Nastrój to jedyny kawałek stanu osobistego, który wolno trzymać w części
+// odświeżanej strumieniem - hub buduje migawkę osobno dla każdego widoku.
+// Test pilnuje też nazw, którymi przyciski przedstawiają się serwerowi.
+func TestMoodMeterShowsTheRoomAndYourOwnClick(t *testing.T) {
+	srv := newTestServer(t)
+	ja, ktosInny := &browser{srv: srv}, &browser{srv: srv}
+	ja.get(t, "/live/")
+	ktosInny.get(t, "/live/")
+
+	rec := ja.post(t, "/live/nastroj", "mood=zgubilem-sie")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("kod = %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), `class="btn on lost"`) {
+		t.Errorf("kliknięty przycisk nie został podświetlony: %s", rec.Body.String())
+	}
+	ktosInny.post(t, "/live/nastroj", "mood=fajnie-wytlumaczone")
+
+	mine := ja.get(t, "/live/").Body.String()
+	if !strings.Contains(mine, `class="btn on lost"`) || strings.Contains(mine, `class="btn on clear"`) {
+		t.Error("po odświeżeniu strony podświetlony jest nie ten przycisk")
+	}
+	if !strings.Contains(mine, "zgubionych: 1") || !strings.Contains(mine, "z tym ok: 1") {
+		t.Errorf("miernik nie liczy całej sali: %s", mine)
+	}
+
+	// Prowadzący widzi te same liczby, ale nie ma czego klikać.
+	panel := panelGet(t, srv, "/panel").Body.String()
+	if !strings.Contains(panel, "zgubionych: 1") {
+		t.Error("panel nie widzi nastroju sali")
+	}
+	if strings.Contains(panel, `hx-post="/live/nastroj"`) {
+		t.Error("panel dostał przyciski nastroju - prowadzący nie jest salą")
+	}
+}
+
 func post(t *testing.T, srv *Server, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))

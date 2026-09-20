@@ -33,7 +33,7 @@ content/topologies/*.yaml  sieci rysowane na stronie: urządzenia + reguły kabl
 content/polls.yaml      pytania rzucane sali w trakcie wykładu
 
 internal/content        wczytywanie markdownu, wikilinki, graf, pakowanie vaulta
-internal/live           stan na żywo: ankiety i pytania z sali
+internal/live           stan na żywo: ankiety, pytania z sali, nastrój
 internal/web            trasy HTTP, szablony, SSE
 
 web/templates           base.html + pages/ + partials/ (fragmenty dla htmx i SSE)
@@ -50,6 +50,12 @@ Wyniki lecą do wszystkich przez SSE, bez odświeżania.
 `leniwy-węzeł`) i może ją zmienić na własną. Nikt się nie loguje — tożsamość to
 ciasteczko. Pytanie zostaje podpisane ksywką z chwili napisania: późniejsza zmiana nie
 przepisuje historii, bo sala pamięta, kto co powiedział.
+
+**Nastrój sali.** Dwa przyciski na `/live/`: **zgubiłem się** i **fajnie wytłumaczone**.
+To nie jest ankieta — nikt o nic nie pyta, sala mówi to sama, kiedy chce, i nikt nie
+widzi, kto co kliknął. Reakcja liczy się przez 30 sekund i sama gaśnie, więc pasek
+w panelu pokazuje, jak jest przy tym slajdzie, a nie jak było przez cały wykład. Jedna
+reakcja na osobę: drugi przycisk zmienia zdanie, ten sam odnawia pół minuty.
 
 **Pytania z sali.** Pod ksywką, z podbijaniem. Najczęściej podbijane idą na górę, a ty
 w panelu oznaczasz je jako odpowiedziane. Jeden głos na przeglądarkę (ciasteczko).

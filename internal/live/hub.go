@@ -5,6 +5,7 @@
 package live
 
 import (
+	"context"
 	"errors"
 	"sort"
 	"strconv"
@@ -88,6 +89,9 @@ type Snapshot struct {
 	Tally       map[string]int
 	Total       int
 	Questions   []Question
+	// Mood is the last half minute of "zgubiłem się" / "fajnie wytłumaczone",
+	// including which of the two this particular viewer clicked.
+	Mood MoodTally
 	// QuestionsLocked and Participants are for the presenter's panel; the
 	// audience never sees a template that reads them.
 	QuestionsLocked bool
@@ -114,6 +118,7 @@ type Hub struct {
 	votes           map[string]map[string]string // poll -> participant -> option
 	questions       map[string]*Question
 	participants    map[string]*Participant
+	moods           moodBoard // patrz mood.go
 	bannedIPs       map[string]bool
 	questionsLocked bool
 	nextID          int
@@ -125,6 +130,7 @@ func NewHub() *Hub {
 		votes:        map[string]map[string]string{},
 		questions:    map[string]*Question{},
 		participants: map[string]*Participant{},
+		moods:        newMoodBoard(),
 		bannedIPs:    map[string]bool{},
 		subscribers:  map[chan Snapshot]Viewer{},
 	}
@@ -216,6 +222,7 @@ func (h *Hub) snapshotLocked(v Viewer) Snapshot {
 		Tally:           tally,
 		Total:           total,
 		Questions:       questions,
+		Mood:            h.moods.tally(v.ID),
 		QuestionsLocked: h.questionsLocked,
 		Participants:    participants,
 	}
@@ -240,6 +247,9 @@ func (h *Hub) broadcastLocked() {
 
 // viewKeyLocked groups together the subscribers who see exactly the same
 // thing. Participant ids are hex, so neither marker can collide with one.
+//
+// Sala różni się tylko tym, który przycisk nastroju sama kliknęła, więc
+// rozpada się najwyżej na trzy grupy - a nie na tyle kopii, ile przeglądarek.
 func (h *Hub) viewKeyLocked(v Viewer) string {
 	switch {
 	case v.Presenter:
@@ -247,7 +257,7 @@ func (h *Hub) viewKeyLocked(v Viewer) string {
 	case h.shadowedLocked(v.ID):
 		return v.ID
 	default:
-		return "!sala"
+		return "!sala " + h.moods.clicks[v.ID].mood
 	}
 }
 
@@ -379,6 +389,44 @@ func (h *Hub) BanIP(participant string, banned bool) {
 		delete(h.bannedIPs, p.IP)
 	}
 	h.broadcastLocked()
+}
+
+// React records how one person feels right now. It is not writing, so - like
+// voting in a poll - even a banned person gets to do it: one reaction per
+// person means there is nothing here to spam with.
+func (h *Hub) React(participant, mood string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.moods.set(participant, mood, time.Now()) {
+		h.broadcastLocked()
+	}
+}
+
+// SweepMoods lets reactions fade. The hub has no clock of its own, so somebody
+// has to call this; WatchMoods is that somebody. Nothing else would ever
+// trigger the update, and the whole point of the meter is that it drops back
+// to silence when the room stops clicking.
+func (h *Hub) SweepMoods(now time.Time) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.moods.expire(now) {
+		h.broadcastLocked()
+	}
+}
+
+// WatchMoods expires reactions once a second until ctx is done. A second is
+// finer than anybody can read off a bar, and coarse enough to be free.
+func (h *Hub) WatchMoods(ctx context.Context) {
+	tick := time.NewTicker(time.Second)
+	defer tick.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case now := <-tick.C:
+			h.SweepMoods(now)
+		}
+	}
 }
 
 // SetQuestionsLocked closes the whole Q&A - useful when the room starts

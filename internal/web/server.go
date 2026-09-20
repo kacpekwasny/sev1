@@ -2,6 +2,7 @@
 package web
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -54,6 +55,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mux.ServeHTTP(w, r)
 }
 
+// Start runs the background work the live page needs, until ctx is done.
+// For now that is one thing: letting mood reactions fade on their own. Tests
+// that never look at the clock can skip it.
+func (s *Server) Start(ctx context.Context) {
+	go s.hub.WatchMoods(ctx)
+}
+
 // lib returns the content, reloaded from disk when running with -dev so that
 // editing a note is visible on refresh.
 func (s *Server) lib() *content.Library {
@@ -103,6 +111,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /live/{$}", s.handleLive)
 	s.mux.HandleFunc("GET /live/stream", s.handleStream)
 	s.mux.HandleFunc("POST /live/glos", s.handleVote)
+	s.mux.HandleFunc("POST /live/nastroj", s.handleMood)
 	s.mux.HandleFunc("POST /live/ksywka", s.handleNick)
 	s.mux.HandleFunc("POST /live/pytanie", s.handleAsk)
 	s.mux.HandleFunc("POST /live/pytanie/{id}/glos", s.handleUpvote)
@@ -291,6 +300,7 @@ func (s *Server) handleLive(w http.ResponseWriter, r *http.Request) {
 		"Title": "Na żywo",
 		"Poll":  pollView(lib, snap),
 		"Snap":  snap,
+		"Mood":  snap.Mood,
 		"Nick":  NickView{Me: me},
 		"Ask":   AskView{Me: me, Problem: writingProblem(me, snap)},
 	})
@@ -319,6 +329,15 @@ func (s *Server) handleVote(w http.ResponseWriter, r *http.Request) {
 	view := pollView(s.lib(), s.hub.SnapshotFor(live.Viewer{ID: id}))
 	view.Chosen = option
 	s.renderFragment(w, "vote-card", view)
+}
+
+// handleMood is the "zgubiłem się" / "fajnie wytłumaczone" button. The reply
+// is the same fragment the stream pushes to everybody, so the person who
+// clicked sees their own click land at once instead of waiting for the sweep.
+func (s *Server) handleMood(w http.ResponseWriter, r *http.Request) {
+	id := s.participant(w, r)
+	s.hub.React(id, r.FormValue("mood"))
+	s.renderFragment(w, "mood", s.hub.SnapshotFor(live.Viewer{ID: id}).Mood)
 }
 
 func (s *Server) handleAsk(w http.ResponseWriter, r *http.Request) {
@@ -409,9 +428,11 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 			}
 			s.sendEvent(w, "results", "poll-results", view)
 			if panel {
+				s.sendEvent(w, "mood", "panel-mood", snap.Mood)
 				s.sendEvent(w, "questions", "panel-questions", snap)
 				s.sendEvent(w, "moderation", "panel-moderation", snap)
 			} else {
+				s.sendEvent(w, "mood", "mood", snap.Mood)
 				s.sendEvent(w, "questions", "questions", snap)
 			}
 			flusher.Flush()
@@ -466,6 +487,7 @@ func (s *Server) handlePanel(w http.ResponseWriter, r *http.Request) {
 		"Lib":   lib,
 		"Poll":  pollView(lib, snap),
 		"Snap":  snap,
+		"Mood":  snap.Mood,
 	})
 }
 

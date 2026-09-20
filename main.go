@@ -48,6 +48,10 @@ func main() {
 		log.Fatalf("start: %v", err)
 	}
 
+	background, stopBackground := context.WithCancel(context.Background())
+	defer stopBackground()
+	srv.Start(background)
+
 	httpSrv := &http.Server{
 		Addr:        *addr,
 		Handler:     logRequests(srv),

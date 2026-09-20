@@ -11,6 +11,9 @@
       <h3>Wyniki na żywo</h3>
       <div id="results" sse-swap="results">{{template "poll-results" .Poll}}</div>
 
+      <h3 title="ostatnie 30 sekund - reakcje same gasną">Nastrój sali</h3>
+      <div id="panel-mood" sse-swap="mood">{{template "panel-mood" .Mood}}</div>
+
       <h3>Pytania z sali</h3>
       <div id="panel-questions" sse-swap="questions">{{template "panel-questions" .Snap}}</div>
 
