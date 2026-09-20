@@ -86,17 +86,19 @@
     <ul class="questions panel">
       {{range .Questions}}
       {{$q := .}}
-      <li class="{{if .Answered}}answered{{end}}">
+      <li class="{{if .Answered}}answered{{end}} {{if .Shadow}}shadow{{end}}">
         <span class="upvote static">▲ {{.Votes}}</span>
         <div class="qbody">
           <span class="qtext">{{.Text}}</span>
           <span class="nick">— {{.Nick}}</span>
+          {{if .Shadow}}<span class="chip shadow" title="w cieniu: widzi to tylko autor">cień</span>{{end}}
           {{if .Comments}}
           <ul class="answers">
             {{range .Comments}}
-            <li>
+            <li class="{{if .Shadow}}shadow{{end}}">
               <span class="upvote static tiny">▲ {{.Votes}}</span>
-              <span>{{.Text}} <span class="nick">— {{.Nick}}</span></span>
+              <span>{{.Text}} <span class="nick">— {{.Nick}}</span>
+                {{if .Shadow}}<span class="chip shadow" title="w cieniu: widzi to tylko autor">cień</span>{{end}}</span>
               <button class="btn tiny danger" hx-post="/panel/pytanie/{{$q.ID}}/odpowiedz/{{.ID}}/usun"
                       hx-target="#panel-questions" hx-swap="innerHTML">usuń</button>
             </li>

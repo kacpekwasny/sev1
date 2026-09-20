@@ -17,18 +17,31 @@ import (
 // a cookie and the nickname is drawn at random, so that questions from the
 // same person can be recognised without asking anyone for a name.
 type Participant struct {
-	ID        string
-	Nick      string
-	IP        string
-	Banned    bool // banned by id (a cookie - easy to dodge, enough for a lecture)
-	IPBanned  bool // their address is on the ban list
+	ID   string
+	Nick string
+	IP   string
+	// Shadow is the quiet ban, keyed on a cookie: this person keeps writing
+	// and keeps seeing their own questions, but nobody else ever does. An
+	// argument with somebody who knows they were silenced costs more lecture
+	// time than the spam did.
+	Shadow bool
+	// IPBanned is the loud one, keyed on the address: writing is refused and
+	// the person is told so. It also catches the next browser from that
+	// address, which a cookie ban cannot.
+	IPBanned  bool
 	Questions int
 	Answers   int
 	LastSeen  time.Time
 }
 
-// Blocked says whether this person may still write anything.
-func (p Participant) Blocked() bool { return p.Banned || p.IPBanned }
+// Blocked says whether this person is turned away when they try to write.
+// A shadow-banned person is not blocked: their questions are accepted, they
+// simply do not reach the room.
+func (p Participant) Blocked() bool { return p.IPBanned }
+
+// Restricted is "the presenter has done something about this person" - it
+// sorts them to the top of the panel list, where they can be undone.
+func (p Participant) Restricted() bool { return p.Shadow || p.IPBanned }
 
 // Question is a question from the audience, signed with a nickname.
 type Question struct {
@@ -39,6 +52,10 @@ type Question struct {
 	Votes    int
 	Answered bool
 	Created  time.Time
+	// Shadow marks a question only the author can see. It is filled in for
+	// the presenter's panel and nowhere else - a template that leaked it to
+	// the audience would tell a shadow-banned person they were banned.
+	Shadow bool
 	// Comments are answers proposed by other people on the room, best voted
 	// first. In a snapshot this is always a private copy.
 	Comments []Comment
@@ -55,6 +72,7 @@ type Comment struct {
 	Nick    string
 	Votes   int
 	Created time.Time
+	Shadow  bool // jak w Question: tylko dla panelu
 
 	voters map[string]bool
 }
@@ -76,6 +94,18 @@ type Snapshot struct {
 	Participants    []Participant
 }
 
+// Viewer says whose eyes a snapshot is built for. Almost everybody sees the
+// same lecture; the two exceptions are the presenter, who sees everything,
+// and a shadow-banned person, who sees their own questions as if the room
+// could read them.
+type Viewer struct {
+	ID        string // uczestnik (ciasteczko)
+	Presenter bool   // panel prowadzącego
+}
+
+// Presenter is the view with nothing filtered out.
+var Presenter = Viewer{Presenter: true}
+
 type Hub struct {
 	mu              sync.Mutex
 	pollVersion     int
@@ -87,7 +117,7 @@ type Hub struct {
 	bannedIPs       map[string]bool
 	questionsLocked bool
 	nextID          int
-	subscribers     map[chan Snapshot]struct{}
+	subscribers     map[chan Snapshot]Viewer
 }
 
 func NewHub() *Hub {
@@ -96,20 +126,20 @@ func NewHub() *Hub {
 		questions:    map[string]*Question{},
 		participants: map[string]*Participant{},
 		bannedIPs:    map[string]bool{},
-		subscribers:  map[chan Snapshot]struct{}{},
+		subscribers:  map[chan Snapshot]Viewer{},
 	}
 }
 
-// Subscribe returns a channel carrying the latest snapshot. The channel holds
-// at most one pending snapshot: a slow reader gets the newest state, not a
-// backlog of stale ones.
-func (h *Hub) Subscribe() (<-chan Snapshot, func()) {
+// Subscribe returns a channel carrying the latest snapshot, as seen by v. The
+// channel holds at most one pending snapshot: a slow reader gets the newest
+// state, not a backlog of stale ones.
+func (h *Hub) Subscribe(v Viewer) (<-chan Snapshot, func()) {
 	ch := make(chan Snapshot, 1)
 	h.mu.Lock()
-	h.subscribers[ch] = struct{}{}
+	h.subscribers[ch] = v
 	h.mu.Unlock()
 
-	ch <- h.Snapshot()
+	ch <- h.SnapshotFor(v)
 
 	return ch, func() {
 		h.mu.Lock()
@@ -118,13 +148,14 @@ func (h *Hub) Subscribe() (<-chan Snapshot, func()) {
 	}
 }
 
-func (h *Hub) Snapshot() Snapshot {
+// SnapshotFor is the state of the lecture as v is allowed to see it.
+func (h *Hub) SnapshotFor(v Viewer) Snapshot {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	return h.snapshotLocked()
+	return h.snapshotLocked(v)
 }
 
-func (h *Hub) snapshotLocked() Snapshot {
+func (h *Hub) snapshotLocked(v Viewer) Snapshot {
 	tally := map[string]int{}
 	total := 0
 	for _, option := range h.votes[h.pollID] {
@@ -133,10 +164,21 @@ func (h *Hub) snapshotLocked() Snapshot {
 	}
 	questions := make([]Question, 0, len(h.questions))
 	for _, q := range h.questions {
+		if !h.visibleTo(v, q.Author) {
+			continue
+		}
 		// Copy the comments: the snapshot travels outside the lock and must
 		// not alias a slice we are still appending to.
 		copied := *q
-		copied.Comments = append([]Comment(nil), q.Comments...)
+		copied.Shadow = v.Presenter && h.shadowedLocked(q.Author)
+		copied.Comments = nil
+		for _, c := range q.Comments {
+			if !h.visibleTo(v, c.Author) {
+				continue
+			}
+			c.Shadow = v.Presenter && h.shadowedLocked(c.Author)
+			copied.Comments = append(copied.Comments, c)
+		}
 		sort.Slice(copied.Comments, func(i, j int) bool {
 			if copied.Comments[i].Votes != copied.Comments[j].Votes {
 				return copied.Comments[i].Votes > copied.Comments[j].Votes
@@ -161,8 +203,8 @@ func (h *Hub) snapshotLocked() Snapshot {
 		participants = append(participants, copied)
 	}
 	sort.Slice(participants, func(i, j int) bool {
-		if participants[i].Blocked() != participants[j].Blocked() {
-			return participants[i].Blocked() // zbanowani na górze, do odbanowania
+		if participants[i].Restricted() != participants[j].Restricted() {
+			return participants[i].Restricted() // ukarani na górze, do odkręcenia
 		}
 		return participants[i].LastSeen.After(participants[j].LastSeen)
 	})
@@ -179,22 +221,61 @@ func (h *Hub) snapshotLocked() Snapshot {
 	}
 }
 
+// broadcastLocked sends every open stream its own view of the state. The room
+// nearly always sees one and the same thing, so the snapshot is built once per
+// distinct view - once for the room, plus one for the panel and one for each
+// shadow-banned person who happens to be watching.
 func (h *Hub) broadcastLocked() {
-	snap := h.snapshotLocked()
-	for ch := range h.subscribers {
+	built := map[string]Snapshot{}
+	for ch, v := range h.subscribers {
+		key := h.viewKeyLocked(v)
+		snap, ok := built[key]
+		if !ok {
+			snap = h.snapshotLocked(v)
+			built[key] = snap
+		}
+		push(ch, snap)
+	}
+}
+
+// viewKeyLocked groups together the subscribers who see exactly the same
+// thing. Participant ids are hex, so neither marker can collide with one.
+func (h *Hub) viewKeyLocked(v Viewer) string {
+	switch {
+	case v.Presenter:
+		return "!panel"
+	case h.shadowedLocked(v.ID):
+		return v.ID
+	default:
+		return "!sala"
+	}
+}
+
+func push(ch chan Snapshot, snap Snapshot) {
+	select {
+	case ch <- snap:
+	default: // drop the stale one, push the fresh one
+		select {
+		case <-ch:
+		default:
+		}
 		select {
 		case ch <- snap:
-		default: // drop the stale one, push the fresh one
-			select {
-			case <-ch:
-			default:
-			}
-			select {
-			case ch <- snap:
-			default:
-			}
+		default:
 		}
 	}
+}
+
+// visibleTo answers the one question a shadow ban asks: may this viewer see
+// what author wrote? Everybody sees ordinary people, the presenter sees
+// everybody, and a shadow-banned person sees themselves.
+func (h *Hub) visibleTo(v Viewer, author string) bool {
+	return v.Presenter || author == v.ID || !h.shadowedLocked(author)
+}
+
+func (h *Hub) shadowedLocked(id string) bool {
+	p, ok := h.participants[id]
+	return ok && p.Shadow
 }
 
 // Join registers a browser (or refreshes what we know about it) and returns
@@ -265,21 +346,26 @@ func (h *Hub) Who(id string) (Participant, bool) {
 	return copied, true
 }
 
-// BanParticipant silences one browser. The ban follows a cookie, so it is easy
-// to dodge by clearing it - for a lecture hall that is enough, and BanIP is
-// there when it is not.
-func (h *Hub) BanParticipant(id string, banned bool) {
+// SetShadow hides one browser from the room without telling it. Everything
+// this person writes is still accepted, still signed, still counted on the
+// panel - it just stops at the server. Undoing it brings back everything they
+// wrote in the meantime, because nothing was thrown away.
+//
+// The ban follows a cookie, so clearing it dodges the ban; that is fine,
+// because the point is not to build a wall, it is to stop a conversation
+// nobody in the room needs to watch. BanIP is there for the determined.
+func (h *Hub) SetShadow(id string, shadow bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if p, ok := h.participants[id]; ok {
-		p.Banned = banned
+		p.Shadow = shadow
 		h.broadcastLocked()
 	}
 }
 
 // BanIP silences the address a participant is on, including any browser that
 // shows up on it later. The panel deals in people, not in addresses, so it
-// takes a participant id like BanParticipant does.
+// takes a participant id, just like SetShadow.
 func (h *Hub) BanIP(participant string, banned bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -314,13 +400,14 @@ func (h *Hub) nickLocked(id string) string {
 	return "ktoś-z-sali"
 }
 
-// blockedLocked says whether this participant is banned, by id or by address.
+// blockedLocked says whether writing should be refused outright. Note what is
+// missing here: a shadow ban. A shadow-banned person writes exactly as before
+// and their upvotes still count - if the numbers they see stopped moving,
+// they would work out what happened, which is the one thing a shadow ban is
+// supposed to avoid.
 func (h *Hub) blockedLocked(id string) bool {
 	p, ok := h.participants[id]
-	if !ok {
-		return false
-	}
-	return p.Banned || h.bannedIPs[p.IP]
+	return ok && h.bannedIPs[p.IP]
 }
 
 // SetPoll puts a question on screen (empty id = nothing on screen).
@@ -496,11 +583,13 @@ func (h *Hub) DeleteComment(questionID, commentID string) {
 }
 
 // Question returns a copy of one question, for rendering the answer form.
-func (h *Hub) Question(id string) (Question, bool) {
+// It takes a viewer for the same reason the snapshot does: a shadowed
+// question must not come back to somebody who guessed its id.
+func (h *Hub) Question(v Viewer, id string) (Question, bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	q, ok := h.questions[id]
-	if !ok {
+	if !ok || !h.visibleTo(v, q.Author) {
 		return Question{}, false
 	}
 	copied := *q

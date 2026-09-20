@@ -284,8 +284,9 @@ func (s *Server) handleLive(w http.ResponseWriter, r *http.Request) {
 	lib := s.lib()
 	// Opening the page is also how somebody gets a nickname and how they show
 	// up on the presenter's list of people.
-	me := s.hub.Join(s.participant(w, r), clientIP(r))
-	snap := s.hub.Snapshot()
+	id := s.participant(w, r)
+	me := s.hub.Join(id, clientIP(r))
+	snap := s.hub.SnapshotFor(live.Viewer{ID: id})
 	s.render(w, r, "live", map[string]any{
 		"Title": "Na żywo",
 		"Poll":  pollView(lib, snap),
@@ -310,11 +311,12 @@ func (s *Server) handleNick(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleVote(w http.ResponseWriter, r *http.Request) {
+	id := s.participant(w, r)
 	option := r.FormValue("option")
-	if _, ok := s.hub.Vote(s.participant(w, r), option); !ok {
+	if _, ok := s.hub.Vote(id, option); !ok {
 		option = "" // poll was closed in the meantime
 	}
-	view := pollView(s.lib(), s.hub.Snapshot())
+	view := pollView(s.lib(), s.hub.SnapshotFor(live.Viewer{ID: id}))
 	view.Chosen = option
 	s.renderFragment(w, "vote-card", view)
 }
@@ -326,13 +328,14 @@ func (s *Server) handleAsk(w http.ResponseWriter, r *http.Request) {
 	s.renderFragment(w, "ask-form", AskView{
 		Me:      me,
 		Sent:    sent,
-		Problem: writingProblem(me, s.hub.Snapshot()),
+		Problem: writingProblem(me, s.hub.SnapshotFor(live.Viewer{ID: id})),
 	})
 }
 
 func (s *Server) handleUpvote(w http.ResponseWriter, r *http.Request) {
-	s.hub.UpvoteQuestion(s.participant(w, r), r.PathValue("id"))
-	s.renderFragment(w, "questions", s.hub.Snapshot())
+	id := s.participant(w, r)
+	s.hub.UpvoteQuestion(id, r.PathValue("id"))
+	s.renderFragment(w, "questions", s.hub.SnapshotFor(live.Viewer{ID: id}))
 }
 
 // handleAnswerForm opens the box for answering one question, or closes it
@@ -341,7 +344,8 @@ func (s *Server) handleUpvote(w http.ResponseWriter, r *http.Request) {
 // The box sits outside the part of the page that the live stream replaces,
 // so an incoming vote cannot wipe out what somebody is typing.
 func (s *Server) handleAnswerForm(w http.ResponseWriter, r *http.Request) {
-	question, ok := s.hub.Question(r.URL.Query().Get("pytanie"))
+	me := live.Viewer{ID: s.participant(w, r)}
+	question, ok := s.hub.Question(me, r.URL.Query().Get("pytanie"))
 	if !ok {
 		s.renderFragment(w, "answer-box", map[string]any{})
 		return
@@ -355,13 +359,14 @@ func (s *Server) handleAnswer(w http.ResponseWriter, r *http.Request) {
 	me, _ := s.hub.Who(id)
 	s.renderFragment(w, "answer-box", map[string]any{
 		"Sent":    added,
-		"Problem": writingProblem(me, s.hub.Snapshot()),
+		"Problem": writingProblem(me, s.hub.SnapshotFor(live.Viewer{ID: id})),
 	})
 }
 
 func (s *Server) handleUpvoteAnswer(w http.ResponseWriter, r *http.Request) {
-	s.hub.UpvoteComment(s.participant(w, r), r.PathValue("id"), r.PathValue("cid"))
-	s.renderFragment(w, "questions", s.hub.Snapshot())
+	id := s.participant(w, r)
+	s.hub.UpvoteComment(id, r.PathValue("id"), r.PathValue("cid"))
+	s.renderFragment(w, "questions", s.hub.SnapshotFor(live.Viewer{ID: id}))
 }
 
 // handleStream pushes rendered HTML fragments over SSE. htmx swaps them in,
@@ -377,8 +382,15 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Accel-Buffering", "no")
 
-	panel := r.URL.Query().Get("widok") == "panel"
-	updates, unsubscribe := s.hub.Subscribe()
+	// Every stream carries the lecture as this one browser may see it, so a
+	// shadow-banned person keeps getting their own questions back and the
+	// panel gets everything.
+	me := live.Viewer{
+		ID:        s.participant(w, r),
+		Presenter: r.URL.Query().Get("widok") == "panel",
+	}
+	panel := me.Presenter
+	updates, unsubscribe := s.hub.Subscribe(me)
 	defer unsubscribe()
 
 	lastPollVersion := -1
@@ -448,7 +460,7 @@ func (s *Server) requirePanel(next http.HandlerFunc) http.HandlerFunc {
 
 func (s *Server) handlePanel(w http.ResponseWriter, r *http.Request) {
 	lib := s.lib()
-	snap := s.hub.Snapshot()
+	snap := s.hub.SnapshotFor(live.Presenter)
 	s.render(w, r, "panel", map[string]any{
 		"Title": "Panel prowadzącego",
 		"Lib":   lib,
@@ -470,7 +482,7 @@ func (s *Server) handlePanelPoll(w http.ResponseWriter, r *http.Request) {
 	}
 	s.renderFragment(w, "panel-controls", map[string]any{
 		"Lib":  s.lib(),
-		"Poll": pollView(s.lib(), s.hub.Snapshot()),
+		"Poll": pollView(s.lib(), s.hub.SnapshotFor(live.Presenter)),
 	})
 }
 
@@ -482,36 +494,37 @@ func (s *Server) handlePanelQuestion(w http.ResponseWriter, r *http.Request) {
 	case "usun":
 		s.hub.DeleteQuestion(id)
 	}
-	s.renderFragment(w, "panel-questions", s.hub.Snapshot())
+	s.renderFragment(w, "panel-questions", s.hub.SnapshotFor(live.Presenter))
 }
 
 func (s *Server) handlePanelDeleteAnswer(w http.ResponseWriter, r *http.Request) {
 	s.hub.DeleteComment(r.PathValue("id"), r.PathValue("cid"))
-	s.renderFragment(w, "panel-questions", s.hub.Snapshot())
+	s.renderFragment(w, "panel-questions", s.hub.SnapshotFor(live.Presenter))
 }
 
 // handlePanelLock closes or opens writing for the whole room at once. Voting
 // and upvoting keep working - the switch is for "stop typing, listen".
 func (s *Server) handlePanelLock(w http.ResponseWriter, r *http.Request) {
 	s.hub.SetQuestionsLocked(r.FormValue("locked") == "tak")
-	s.renderFragment(w, "panel-moderation", s.hub.Snapshot())
+	s.renderFragment(w, "panel-moderation", s.hub.SnapshotFor(live.Presenter))
 }
 
-// handlePanelParticipant bans and unbans one person. A ban never deletes what
-// they already wrote - the question list has its own "usuń" for that.
+// handlePanelParticipant applies and lifts the two kinds of ban. Neither one
+// deletes what somebody already wrote - the question list has its own "usuń"
+// for that, and lifting a shadow ban brings their questions back to the room.
 func (s *Server) handlePanelParticipant(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	switch r.PathValue("action") {
-	case "ban":
-		s.hub.BanParticipant(id, true)
-	case "odbanuj":
-		s.hub.BanParticipant(id, false)
+	case "cien":
+		s.hub.SetShadow(id, true)
+	case "pokaz":
+		s.hub.SetShadow(id, false)
 	case "ban-ip":
 		s.hub.BanIP(id, true)
 	case "odbanuj-ip":
 		s.hub.BanIP(id, false)
 	}
-	s.renderFragment(w, "panel-moderation", s.hub.Snapshot())
+	s.renderFragment(w, "panel-moderation", s.hub.SnapshotFor(live.Presenter))
 }
 
 // --- helpers -------------------------------------------------------------
@@ -549,7 +562,8 @@ func clientIP(r *http.Request) string {
 }
 
 // writingProblem says, in one sentence meant for the audience, why the boxes
-// for writing are closed right now. Empty means: write away.
+// for writing are closed right now. Empty means: write away - which is also
+// what a shadow-banned person gets, on purpose.
 func writingProblem(me live.Participant, snap live.Snapshot) string {
 	switch {
 	case me.Blocked():

@@ -55,16 +55,25 @@ przepisuje historii, bo sala pamięta, kto co powiedział.
 w panelu oznaczasz je jako odpowiedziane. Jeden głos na przeglądarkę (ciasteczko).
 
 **Moderacja.** W panelu, w sekcji „Sala", widzisz listę osób: ksywka, adres, ile napisała
-pytań i odpowiedzi. Przy każdej są dwa bany:
+pytań i odpowiedzi. Przy każdej są dwa sposoby uciszenia:
 
-- **ban** — po ciasteczku. Wystarczy je wyczyścić, żeby go ominąć; na wykładzie to zwykle
-  wystarcza.
-- **ban adresu** — po IP, łapie też kolejne przeglądarki z tego samego adresu.
+- **cień** — po ciasteczku, cichy. Ta osoba pisze dalej i widzi swoje pytania tak, jakby
+  nic się nie stało; do sali po prostu nie docierają. Nie ma się z kim kłócić, a przy
+  okazji widać w panelu, czy dalej spamuje. Ciasteczko da się wyczyścić i tym samym
+  ominąć cień — na wykładzie to zwykle wystarcza.
+- **ban adresu** — po IP, głośny. Pisanie jest odmawiane wprost, z wyjaśnieniem, i łapie
+  też kolejne przeglądarki z tego samego adresu.
+
+Cień jest filtrem na wyjściu, nie na wejściu: nic nie ląduje w koszu, więc „zdejmij cień"
+oddaje sali wszystko, co ta osoba w międzyczasie napisała. Panel widzi jedno i drugie,
+oznaczone plakietką „cień" — ale sala nie dostaje żadnego szablonu, który by to pole
+wypisywał, bo to by zdradziło całą sztuczkę.
 
 Nad listą jest przełącznik **zamknij pytania**, który wyłącza pisanie całej sali naraz
-(np. „teraz słuchamy"). Ani ban, ani blokada nie zabierają prawa głosu — ankiety i
-podbijanie działają dalej. Żadne z nich nie kasuje też tego, co ktoś już napisał; od tego
-jest „usuń" przy pytaniu i przy odpowiedzi.
+(np. „teraz słuchamy"). Ani cień, ani ban, ani blokada nie zabierają prawa głosu — ankiety
+i podbijanie działają dalej (osobie w cieniu tym bardziej: zamrożone liczniki byłyby
+najprostszą podpowiedzią, że coś jest nie tak). Żadne z nich nie kasuje też tego, co ktoś
+już napisał; od tego jest „usuń" przy pytaniu i przy odpowiedzi.
 
 Bany żyją w pamięci procesu, więc znikają z restartem — tak jak reszta stanu wykładu.
 Za reverse proxy adres bierze się z `X-Forwarded-For`, więc proxy musi ten nagłówek

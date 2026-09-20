@@ -1,6 +1,6 @@
 {{/* Widok prowadzącego na salę: kto pisze, z jakiego adresu i jak go uciszyć.
-     Ban nie kasuje tego, co ktoś już napisał - od tego jest "usuń" przy
-     pytaniu. */}}
+     Żaden ban nie kasuje tego, co ktoś już napisał - od tego jest "usuń"
+     przy pytaniu - a zdjęcie cienia przywraca to sali. */}}
 {{define "panel-moderation"}}
   <form class="lockswitch" hx-post="/panel/pytania"
         hx-target="#panel-moderation" hx-swap="innerHTML">
@@ -20,17 +20,20 @@
       </thead>
       <tbody>
         {{range .Participants}}
-        <tr class="{{if .Blocked}}banned{{end}}">
+        {{/* Kolor wiersza mówi, którym banem objęta jest ta osoba. */}}
+        <tr class="{{if .IPBanned}}banned{{else if .Shadow}}shadowed{{end}}">
           <td>{{.Nick}}</td>
           <td class="ip">{{.IP}}</td>
           <td>{{.Questions}} / {{.Answers}}</td>
           <td class="qactions">
-            {{if .Banned}}
-              <button class="btn tiny" hx-post="/panel/uczestnik/{{.ID}}/odbanuj"
-                      hx-target="#panel-moderation" hx-swap="innerHTML">odbanuj</button>
+            {{if .Shadow}}
+              <button class="btn tiny" title="niech sala znowu go widzi"
+                      hx-post="/panel/uczestnik/{{.ID}}/pokaz"
+                      hx-target="#panel-moderation" hx-swap="innerHTML">zdejmij cień</button>
             {{else}}
-              <button class="btn tiny danger" hx-post="/panel/uczestnik/{{.ID}}/ban"
-                      hx-target="#panel-moderation" hx-swap="innerHTML">ban</button>
+              <button class="btn tiny danger" title="pisze dalej i widzi swoje pytania, ale nikt inny ich nie widzi"
+                      hx-post="/panel/uczestnik/{{.ID}}/cien"
+                      hx-target="#panel-moderation" hx-swap="innerHTML">cień</button>
             {{end}}
             {{if .IPBanned}}
               <button class="btn tiny" hx-post="/panel/uczestnik/{{.ID}}/odbanuj-ip"
@@ -45,7 +48,10 @@
       </tbody>
     </table>
     <p class="muted small">
-      Ban po ciasteczku znika, gdy ktoś je wyczyści — wtedy zostaje ban adresu.
+      <strong>Cień</strong> jest cichy: ta osoba pisze dalej i widzi swoje pytania tak,
+      jakby nic się nie stało — tylko sala ich nie dostaje. Nie ma się z kim kłócić,
+      a przy okazji widać, czy dalej spamuje. Idzie po ciasteczku, więc wyczyszczenie go
+      omija cień; wtedy zostaje <strong>ban adresu</strong>, który odmawia pisania wprost.
     </p>
   {{else}}
     <p class="muted">Nikt jeszcze nie otworzył strony na żywo.</p>

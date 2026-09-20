@@ -8,6 +8,7 @@
   --accent: #35d0a5;
   --accent-2: #ff7a45;
   --danger: #ff5f56;
+  --shadow: #b48ead; /* cień - ciche uciszenie, nie to samo co ban */
   --mono: ui-monospace, "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
 }
 
@@ -98,6 +99,8 @@ a.chip:hover { color: var(--text); border-color: var(--accent); text-decoration:
 .chip.poll { border-color: var(--accent-2); color: var(--accent-2); }
 .chip.task { border-color: var(--accent); color: var(--accent); }
 .chip.done { border-color: var(--accent); color: var(--accent); }
+/* Tylko w panelu: sala nigdy nie dostaje szablonu, który by to wypisał. */
+.chip.shadow { border-color: var(--shadow); color: var(--shadow); }
 
 .tag { font-family: var(--mono); font-size: 0.72rem; padding: 0.15rem 0.5rem;
        border-radius: 4px; background: var(--panel-2); color: var(--muted); }
@@ -175,6 +178,10 @@ a.chip:hover { color: var(--text); border-color: var(--accent); text-decoration:
                 padding: 0.7rem 0.9rem; background: var(--panel); border: 1px solid var(--line);
                 border-radius: 10px; }
 .questions li.answered { opacity: 0.55; }
+/* Wpisy z cienia - w panelu trzeba je odróżnić jednym spojrzeniem. Odpowiedzi
+   nie mają własnej ramki, więc dostają kreskę wzdłuż lewej krawędzi listy. */
+.questions li.shadow { border-color: var(--shadow); }
+.answers li.shadow { box-shadow: inset 2px 0 var(--shadow); }
 .upvote { font-family: var(--mono); background: var(--panel-2); color: var(--accent);
           border: 1px solid var(--line); border-radius: 8px; padding: 0.2rem 0.5rem; cursor: pointer; }
 .upvote.static { cursor: default; }
@@ -226,6 +233,7 @@ a.chip:hover { color: var(--text); border-color: var(--accent); text-decoration:
 .people td { padding: 0.35rem 0.5rem 0.35rem 0; border-bottom: 1px solid var(--line);
              vertical-align: middle; }
 .people tr.banned { color: var(--danger); }
+.people tr.shadowed { color: var(--shadow); }
 .people .ip { font-family: var(--mono); color: var(--muted); }
 .small { font-size: 0.8rem; }
 

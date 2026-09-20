@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"wykladywiet/internal/live"
 )
 
 // newTestServer serves the real content and templates from the repo, so a
@@ -101,8 +103,8 @@ func TestVotingUpdatesTheTally(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), "chosen") {
 		t.Error("oddany głos nie został zaznaczony w odpowiedzi")
 	}
-	if srv.hub.Snapshot().Tally["b"] != 1 {
-		t.Errorf("Tally = %v", srv.hub.Snapshot().Tally)
+	if srv.hub.SnapshotFor(live.Presenter).Tally["b"] != 1 {
+		t.Errorf("Tally = %v", srv.hub.SnapshotFor(live.Presenter).Tally)
 	}
 }
 
@@ -118,7 +120,7 @@ func post(t *testing.T, srv *Server, path, body string) *httptest.ResponseRecord
 func TestAudienceCanAnswerAndVoteOnAnswers(t *testing.T) {
 	srv := newTestServer(t)
 	srv.hub.AskQuestion("ala", "Ile sesji w pełnej siatce?")
-	qid := srv.hub.Snapshot().Questions[0].ID
+	qid := srv.hub.SnapshotFor(live.Presenter).Questions[0].ID
 
 	if rec := get(t, srv, "/live/odpowiedz?pytanie="+qid); !strings.Contains(rec.Body.String(), "Ile sesji") {
 		t.Errorf("formularz odpowiedzi nie cytuje pytania: %s", rec.Body.String())
@@ -130,7 +132,7 @@ func TestAudienceCanAnswerAndVoteOnAnswers(t *testing.T) {
 	if rec := post(t, srv, "/live/pytanie/"+qid+"/odpowiedz", "text=n(n-1)/2"); rec.Code != http.StatusOK {
 		t.Fatalf("kod = %d", rec.Code)
 	}
-	comments := srv.hub.Snapshot().Questions[0].Comments
+	comments := srv.hub.SnapshotFor(live.Presenter).Questions[0].Comments
 	if len(comments) != 1 {
 		t.Fatalf("Comments = %+v", comments)
 	}
@@ -139,7 +141,7 @@ func TestAudienceCanAnswerAndVoteOnAnswers(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("głos na odpowiedź = %d", rec.Code)
 	}
-	if got := srv.hub.Snapshot().Questions[0].Comments[0].Votes; got != 2 {
+	if got := srv.hub.SnapshotFor(live.Presenter).Questions[0].Comments[0].Votes; got != 2 {
 		t.Errorf("Votes = %d, chcę 2", got)
 	}
 	if !strings.Contains(rec.Body.String(), "n(n-1)/2") {
@@ -153,7 +155,7 @@ func TestLivePageGivesANickname(t *testing.T) {
 	srv := newTestServer(t)
 	rec := get(t, srv, "/live/")
 
-	people := srv.hub.Snapshot().Participants
+	people := srv.hub.SnapshotFor(live.Presenter).Participants
 	if len(people) != 1 {
 		t.Fatalf("Participants = %+v", people)
 	}
@@ -174,37 +176,90 @@ func TestNicknameCanBeEdited(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), "kacper-z-akamai") {
 		t.Errorf("nowa ksywka nie wróciła w formularzu: %s", rec.Body.String())
 	}
-	people := srv.hub.Snapshot().Participants
+	people := srv.hub.SnapshotFor(live.Presenter).Participants
 	if len(people) != 1 || people[0].Nick != "kacper-z-akamai" {
 		t.Errorf("Participants = %+v", people)
 	}
 }
 
-// Ban i globalna blokada mają dawać sali wyjaśnienie zamiast cicho gubić
-// wpisywany tekst.
+// Ban adresu i globalna blokada mają dawać sali wyjaśnienie zamiast cicho
+// gubić wpisywany tekst. Cień jest osobną historią - patrz niżej.
 func TestBlockedPersonSeesWhy(t *testing.T) {
 	srv := newTestServer(t)
 	widz := &browser{srv: srv}
 	widz.get(t, "/live/") // dołącza uczestnika i losuje ksywkę
-	id := srv.hub.Snapshot().Participants[0].ID
+	id := srv.hub.SnapshotFor(live.Presenter).Participants[0].ID
 
-	srv.hub.BanParticipant(id, true)
+	srv.hub.BanIP(id, true)
 	rec := widz.post(t, "/live/pytanie", "text=spam")
 	if !strings.Contains(rec.Body.String(), "wyłączył ci pisanie") {
 		t.Errorf("zbanowany nie dostał wyjaśnienia: %s", rec.Body.String())
 	}
-	if len(srv.hub.Snapshot().Questions) != 0 {
+	if len(srv.hub.SnapshotFor(live.Presenter).Questions) != 0 {
 		t.Error("pytanie zbanowanego trafiło na listę")
 	}
 
-	srv.hub.BanParticipant(id, false)
+	srv.hub.BanIP(id, false)
 	srv.hub.SetQuestionsLocked(true)
 	rec = widz.post(t, "/live/pytanie", "text=a teraz?")
 	if !strings.Contains(rec.Body.String(), "chwilowo zamknięte") {
 		t.Errorf("brak informacji o zamkniętych pytaniach: %s", rec.Body.String())
 	}
-	if len(srv.hub.Snapshot().Questions) != 0 {
+	if len(srv.hub.SnapshotFor(live.Presenter).Questions) != 0 {
 		t.Error("pytanie przy zamkniętym pisaniu trafiło na listę")
+	}
+}
+
+// Cały sens cienia: dla autora nic się nie zmienia. Dostaje „Poszło", widzi
+// swoje pytanie na liście i nie ma po czym poznać, że sala go nie czyta.
+func TestShadowBannedPersonSeesNoDifference(t *testing.T) {
+	srv := newTestServer(t)
+	spamer, widz := &browser{srv: srv}, &browser{srv: srv}
+	spamer.get(t, "/live/")
+	// Ksywka jest jeszcze tylko jedna, więc to na pewno spamer; po wejściu
+	// widza kolejność listy zależy już od tego, kto był ostatnio widziany.
+	id := srv.hub.SnapshotFor(live.Presenter).Participants[0].ID
+	widz.get(t, "/live/")
+
+	srv.hub.SetShadow(id, true)
+
+	rec := spamer.post(t, "/live/pytanie", "text=kup pan cegłę")
+	if !strings.Contains(rec.Body.String(), "Poszło") {
+		t.Errorf("autor w cieniu nie dostał potwierdzenia: %s", rec.Body.String())
+	}
+	if !strings.Contains(spamer.get(t, "/live/").Body.String(), "kup pan cegłę") {
+		t.Error("autor nie widzi własnego pytania")
+	}
+	if strings.Contains(widz.get(t, "/live/").Body.String(), "kup pan cegłę") {
+		t.Error("sala widzi pytanie z cienia")
+	}
+	if !strings.Contains(panelGet(t, srv, "/panel").Body.String(), "kup pan cegłę") {
+		// Panel widzi wszystko - inaczej nie dałoby się sprawdzić, czy ktoś
+		// dalej spamuje, ani cofnąć pomyłki.
+		t.Error("panel nie widzi pytania z cienia")
+	}
+
+	// Zdjęcie cienia nic nie odzyskuje z kosza, bo nic nie wylądowało w koszu.
+	srv.hub.SetShadow(id, false)
+	if !strings.Contains(widz.get(t, "/live/").Body.String(), "kup pan cegłę") {
+		t.Error("po zdjęciu cienia pytanie nie wróciło do sali")
+	}
+}
+
+// Podpowiedzią byłoby też pudełko odpowiedzi: gdyby ktoś zgadł id pytania
+// z cienia, nie może dostać jego treści.
+func TestShadowedQuestionIsNotReachableByID(t *testing.T) {
+	srv := newTestServer(t)
+	spamer := &browser{srv: srv}
+	spamer.get(t, "/live/")
+	id := srv.hub.SnapshotFor(live.Presenter).Participants[0].ID
+	spamer.post(t, "/live/pytanie", "text=tajne przez poufne")
+	srv.hub.SetShadow(id, true)
+
+	qid := srv.hub.SnapshotFor(live.Presenter).Questions[0].ID
+	body := get(t, srv, "/live/odpowiedz?pytanie="+qid).Body.String()
+	if strings.Contains(body, "tajne przez poufne") {
+		t.Errorf("pytanie z cienia wyciekło przez formularz odpowiedzi: %s", body)
 	}
 }
 
@@ -241,37 +296,58 @@ func (b *browser) do(t *testing.T, req *http.Request) *httptest.ResponseRecorder
 func TestPanelBansAndLocks(t *testing.T) {
 	srv := newTestServer(t)
 	get(t, srv, "/live/")
-	id := srv.hub.Snapshot().Participants[0].ID
+	id := srv.hub.SnapshotFor(live.Presenter).Participants[0].ID
+	me := func() live.Participant { return srv.hub.SnapshotFor(live.Presenter).Participants[0] }
 
-	if rec := panelPost(t, srv, "/panel/uczestnik/"+id+"/ban", ""); rec.Code != http.StatusOK {
-		t.Fatalf("ban = %d", rec.Code)
+	if rec := panelPost(t, srv, "/panel/uczestnik/"+id+"/cien", ""); rec.Code != http.StatusOK {
+		t.Fatalf("cień = %d", rec.Code)
 	}
-	if !srv.hub.Snapshot().Participants[0].Banned {
-		t.Error("ban nie zadziałał")
+	if !me().Shadow {
+		t.Error("cień nie zadziałał")
 	}
+	panelPost(t, srv, "/panel/uczestnik/"+id+"/pokaz", "")
+	if me().Shadow {
+		t.Error("zdjęcie cienia nie zadziałało")
+	}
+
 	panelPost(t, srv, "/panel/uczestnik/"+id+"/ban-ip", "")
-	if !srv.hub.Snapshot().Participants[0].IPBanned {
+	if !me().IPBanned {
 		t.Error("ban adresu nie zadziałał")
+	}
+	panelPost(t, srv, "/panel/uczestnik/"+id+"/odbanuj-ip", "")
+	if me().IPBanned {
+		t.Error("odbanowanie adresu nie zadziałało")
 	}
 
 	rec := panelPost(t, srv, "/panel/pytania", "locked=tak")
-	if !srv.hub.Snapshot().QuestionsLocked {
+	if !srv.hub.SnapshotFor(live.Presenter).QuestionsLocked {
 		t.Error("blokada pytań nie zadziałała")
 	}
 	if !strings.Contains(rec.Body.String(), "otwórz pytania") {
 		t.Errorf("panel nie oferuje odblokowania: %s", rec.Body.String())
 	}
 	panelPost(t, srv, "/panel/pytania", "locked=nie")
-	if srv.hub.Snapshot().QuestionsLocked {
+	if srv.hub.SnapshotFor(live.Presenter).QuestionsLocked {
 		t.Error("odblokowanie pytań nie zadziałało")
 	}
 }
 
-// panelPost wysyła żądanie z ciasteczkiem prowadzącego.
+// panelPost i panelGet wysyłają żądanie z ciasteczkiem prowadzącego; wejście
+// przez ?token= tylko to ciasteczko ustawia i przekierowuje.
 func panelPost(t *testing.T, srv *Server, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	return panelDo(t, srv, req)
+}
+
+func panelGet(t *testing.T, srv *Server, path string) *httptest.ResponseRecorder {
+	t.Helper()
+	return panelDo(t, srv, httptest.NewRequest(http.MethodGet, path, nil))
+}
+
+func panelDo(t *testing.T, srv *Server, req *http.Request) *httptest.ResponseRecorder {
+	t.Helper()
 	req.AddCookie(&http.Cookie{Name: "panel", Value: "test"})
 	rec := httptest.NewRecorder()
 	srv.ServeHTTP(rec, req)

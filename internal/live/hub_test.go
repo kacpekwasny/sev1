@@ -14,7 +14,7 @@ func TestOneVotePerParticipant(t *testing.T) {
 	h.Vote("bob", "a")
 	h.Vote("ala", "b") // zmiana zdania, nie drugi głos
 
-	snap := h.Snapshot()
+	snap := h.SnapshotFor(Presenter)
 	if snap.Total != 2 {
 		t.Errorf("Total = %d, chcę 2", snap.Total)
 	}
@@ -29,7 +29,7 @@ func TestVoteIgnoredWhenPollClosed(t *testing.T) {
 	if _, ok := h.Vote("ala", "a"); ok {
 		t.Error("głos przyjęty mimo zamkniętego głosowania")
 	}
-	if h.Snapshot().Total != 0 {
+	if h.SnapshotFor(Presenter).Total != 0 {
 		t.Error("policzono głos w zamkniętym głosowaniu")
 	}
 }
@@ -39,15 +39,15 @@ func TestVoteIgnoredWhenPollClosed(t *testing.T) {
 func TestPollVersionChangesOnlyWithThePoll(t *testing.T) {
 	h := NewHub()
 	h.SetPoll("fib", true)
-	before := h.Snapshot().PollVersion
+	before := h.SnapshotFor(Presenter).PollVersion
 
 	h.Vote("ala", "a")
-	if got := h.Snapshot().PollVersion; got != before {
+	if got := h.SnapshotFor(Presenter).PollVersion; got != before {
 		t.Errorf("wersja zmieniła się po głosie: %d -> %d", before, got)
 	}
 
 	h.SetPoll("fib", false)
-	if got := h.Snapshot().PollVersion; got == before {
+	if got := h.SnapshotFor(Presenter).PollVersion; got == before {
 		t.Error("wersja nie zmieniła się po zamknięciu głosowania")
 	}
 }
@@ -60,11 +60,11 @@ func TestResetClearsOnlyCurrentPoll(t *testing.T) {
 	h.Vote("bob", "a")
 
 	h.ResetPoll() // czyści p2
-	if h.Snapshot().Total != 0 {
+	if h.SnapshotFor(Presenter).Total != 0 {
 		t.Error("p2 nie zostało wyzerowane")
 	}
 	h.SetPoll("p1", true)
-	if h.Snapshot().Total != 1 {
+	if h.SnapshotFor(Presenter).Total != 1 {
 		t.Error("reset skasował głosy innego pytania")
 	}
 }
@@ -72,13 +72,13 @@ func TestResetClearsOnlyCurrentPoll(t *testing.T) {
 func TestQuestionUpvotedOncePerParticipant(t *testing.T) {
 	h := NewHub()
 	h.AskQuestion("ala", "Czy SRv6 zastąpi MPLS?")
-	id := h.Snapshot().Questions[0].ID
+	id := h.SnapshotFor(Presenter).Questions[0].ID
 
 	h.UpvoteQuestion("ala", id) // autor już głosował
 	h.UpvoteQuestion("bob", id)
 	h.UpvoteQuestion("bob", id)
 
-	if got := h.Snapshot().Questions[0].Votes; got != 2 {
+	if got := h.SnapshotFor(Presenter).Questions[0].Votes; got != 2 {
 		t.Errorf("Votes = %d, chcę 2", got)
 	}
 }
@@ -88,7 +88,7 @@ func TestEmptyQuestionRejected(t *testing.T) {
 	if h.AskQuestion("ala", "   ") {
 		t.Error("puste pytanie zostało przyjęte")
 	}
-	if len(h.Snapshot().Questions) != 0 {
+	if len(h.SnapshotFor(Presenter).Questions) != 0 {
 		t.Error("puste pytanie trafiło na listę")
 	}
 }
@@ -98,13 +98,13 @@ func TestQuestionsSortedByVotesAnsweredLast(t *testing.T) {
 	h.AskQuestion("ala", "pierwsze")
 	h.AskQuestion("bob", "drugie")
 	ids := map[string]string{}
-	for _, q := range h.Snapshot().Questions {
+	for _, q := range h.SnapshotFor(Presenter).Questions {
 		ids[q.Text] = q.ID
 	}
 	h.UpvoteQuestion("cyryl", ids["drugie"])
 	h.MarkAnswered(ids["drugie"])
 
-	questions := h.Snapshot().Questions
+	questions := h.SnapshotFor(Presenter).Questions
 	if questions[0].Text != "pierwsze" {
 		t.Errorf("odpowiedziane pytanie powinno spaść na dół: %v", questions)
 	}
@@ -113,14 +113,14 @@ func TestQuestionsSortedByVotesAnsweredLast(t *testing.T) {
 func TestAnswersFromTheAudience(t *testing.T) {
 	h := NewHub()
 	h.AskQuestion("ala", "Ile sesji w pełnej siatce?")
-	id := h.Snapshot().Questions[0].ID
+	id := h.SnapshotFor(Presenter).Questions[0].ID
 
 	if !h.AddComment("bob", id, "n(n-1)/2") {
 		t.Fatal("odpowiedź nie została przyjęta")
 	}
 	h.AddComment("cyryl", id, "dużo")
 
-	comments := h.Snapshot().Questions[0].Comments
+	comments := h.SnapshotFor(Presenter).Questions[0].Comments
 	if len(comments) != 2 {
 		t.Fatalf("Comments = %v", comments)
 	}
@@ -132,12 +132,12 @@ func TestAnswersFromTheAudience(t *testing.T) {
 func TestAnswersSortedByVotes(t *testing.T) {
 	h := NewHub()
 	h.AskQuestion("ala", "pytanie")
-	id := h.Snapshot().Questions[0].ID
+	id := h.SnapshotFor(Presenter).Questions[0].ID
 	h.AddComment("bob", id, "słabsza")
 	h.AddComment("cyryl", id, "lepsza")
 
 	var better string
-	for _, c := range h.Snapshot().Questions[0].Comments {
+	for _, c := range h.SnapshotFor(Presenter).Questions[0].Comments {
 		if c.Text == "lepsza" {
 			better = c.ID
 		}
@@ -146,7 +146,7 @@ func TestAnswersSortedByVotes(t *testing.T) {
 	h.UpvoteComment("dawid", id, better) // drugi raz się nie liczy
 	h.UpvoteComment("ala", id, better)
 
-	comments := h.Snapshot().Questions[0].Comments
+	comments := h.SnapshotFor(Presenter).Questions[0].Comments
 	if comments[0].Text != "lepsza" || comments[0].Votes != 3 {
 		t.Errorf("kolejność lub liczba głosów zła: %+v", comments)
 	}
@@ -162,19 +162,19 @@ func TestAnswerToUnknownQuestionRejected(t *testing.T) {
 func TestDeleteComment(t *testing.T) {
 	h := NewHub()
 	h.AskQuestion("ala", "pytanie")
-	id := h.Snapshot().Questions[0].ID
+	id := h.SnapshotFor(Presenter).Questions[0].ID
 	h.AddComment("bob", id, "zostaje")
 	h.AddComment("cyryl", id, "do usunięcia")
 
 	var doomed string
-	for _, c := range h.Snapshot().Questions[0].Comments {
+	for _, c := range h.SnapshotFor(Presenter).Questions[0].Comments {
 		if c.Text == "do usunięcia" {
 			doomed = c.ID
 		}
 	}
 	h.DeleteComment(id, doomed)
 
-	comments := h.Snapshot().Questions[0].Comments
+	comments := h.SnapshotFor(Presenter).Questions[0].Comments
 	if len(comments) != 1 || comments[0].Text != "zostaje" {
 		t.Errorf("Comments = %+v", comments)
 	}
@@ -185,13 +185,13 @@ func TestDeleteComment(t *testing.T) {
 func TestSnapshotCommentsAreACopy(t *testing.T) {
 	h := NewHub()
 	h.AskQuestion("ala", "pytanie")
-	id := h.Snapshot().Questions[0].ID
+	id := h.SnapshotFor(Presenter).Questions[0].ID
 	h.AddComment("bob", id, "pierwsza")
 
-	snap := h.Snapshot()
+	snap := h.SnapshotFor(Presenter)
 	snap.Questions[0].Comments[0].Text = "podmienione"
 
-	if got := h.Snapshot().Questions[0].Comments[0].Text; got != "pierwsza" {
+	if got := h.SnapshotFor(Presenter).Questions[0].Comments[0].Text; got != "pierwsza" {
 		t.Errorf("snapshot dzieli pamięć z hubem: %q", got)
 	}
 }
@@ -258,7 +258,7 @@ func TestQuestionKeepsTheNickItWasSignedWith(t *testing.T) {
 		t.Fatalf("SetNick: %v", err)
 	}
 
-	if got := h.Snapshot().Questions[0].Nick; got != me.Nick {
+	if got := h.SnapshotFor(Presenter).Questions[0].Nick; got != me.Nick {
 		t.Errorf("Nick = %q, chcę %q", got, me.Nick)
 	}
 }
@@ -268,9 +268,9 @@ func TestBannedParticipantCannotWriteButCanStillVote(t *testing.T) {
 	h.Join("ala", "10.0.0.1")
 	h.Join("troll", "10.0.0.2")
 	h.AskQuestion("ala", "pytanie")
-	id := h.Snapshot().Questions[0].ID
+	id := h.SnapshotFor(Presenter).Questions[0].ID
 
-	h.BanParticipant("troll", true)
+	h.BanIP("troll", true)
 
 	if h.AskQuestion("troll", "spam") {
 		t.Error("zbanowany napisał pytanie")
@@ -279,7 +279,7 @@ func TestBannedParticipantCannotWriteButCanStillVote(t *testing.T) {
 		t.Error("zbanowany napisał odpowiedź")
 	}
 	h.UpvoteQuestion("troll", id)
-	if got := h.Snapshot().Questions[0].Votes; got != 1 {
+	if got := h.SnapshotFor(Presenter).Questions[0].Votes; got != 1 {
 		t.Errorf("zbanowany podbił pytanie, Votes = %d", got)
 	}
 
@@ -288,9 +288,62 @@ func TestBannedParticipantCannotWriteButCanStillVote(t *testing.T) {
 		t.Error("ban powinien zamykać pisanie, nie głosowanie w ankiecie")
 	}
 
-	h.BanParticipant("troll", false)
+	h.BanIP("troll", false)
 	if !h.AskQuestion("troll", "już się poprawiłem") {
 		t.Error("odbanowany nadal nie może pisać")
+	}
+}
+
+// Cień działa odwrotnie niż ban adresu: pisanie przechodzi normalnie, a
+// znika dopiero po drodze do sali. Autor i prowadzący widzą wszystko.
+func TestShadowHidesWritingFromTheRoomButNotFromItsAuthor(t *testing.T) {
+	h := NewHub()
+	h.Join("ala", "10.0.0.1")
+	h.Join("troll", "10.0.0.2")
+	h.AskQuestion("ala", "pytanie")
+	id := h.SnapshotFor(Presenter).Questions[0].ID
+
+	h.SetShadow("troll", true)
+	if !h.AskQuestion("troll", "kup pan cegłę") {
+		t.Fatal("cień nie powinien odrzucać pisania - to go zdradza")
+	}
+	if !h.AddComment("troll", id, "ja wiem!") {
+		t.Fatal("cień nie powinien odrzucać odpowiedzi")
+	}
+
+	if got := len(h.SnapshotFor(Viewer{ID: "ala"}).Questions); got != 1 {
+		t.Errorf("sala widzi %d pytań, chcę tylko pytanie ali", got)
+	}
+	if got := len(h.SnapshotFor(Viewer{ID: "ala"}).Questions[0].Comments); got != 0 {
+		t.Errorf("sala widzi %d odpowiedzi z cienia", got)
+	}
+	if got := len(h.SnapshotFor(Viewer{ID: "troll"}).Questions); got != 2 {
+		t.Errorf("autor widzi %d pytań, chcę oba - swoje i ali", got)
+	}
+	panel := h.SnapshotFor(Presenter).Questions
+	if len(panel) != 2 {
+		t.Fatalf("panel widzi %d pytań, chcę oba", len(panel))
+	}
+
+	// Formularz odpowiedzi nie może wydać treści komuś spoza cienia, nawet
+	// jeśli zgadnie id pytania.
+	shadowed := ""
+	for _, q := range panel {
+		if q.Author == "troll" {
+			shadowed = q.ID
+		}
+	}
+	if _, ok := h.Question(Viewer{ID: "ala"}, shadowed); ok {
+		t.Error("pytanie z cienia wyciekło przez Question()")
+	}
+	if _, ok := h.Question(Viewer{ID: "troll"}, shadowed); !ok {
+		t.Error("autor nie dostał własnego pytania")
+	}
+
+	// Zdjęcie cienia niczego nie odzyskuje, bo nic nie zostało skasowane.
+	h.SetShadow("troll", false)
+	if got := len(h.SnapshotFor(Viewer{ID: "ala"}).Questions); got != 2 {
+		t.Errorf("po zdjęciu cienia sala widzi %d pytań, chcę 2", got)
 	}
 }
 
@@ -320,10 +373,10 @@ func TestLockingQuestionsStopsWritingForEveryone(t *testing.T) {
 	h := NewHub()
 	h.Join("ala", "10.0.0.1")
 	h.AskQuestion("ala", "pytanie")
-	id := h.Snapshot().Questions[0].ID
+	id := h.SnapshotFor(Presenter).Questions[0].ID
 
 	h.SetQuestionsLocked(true)
-	if !h.Snapshot().QuestionsLocked {
+	if !h.SnapshotFor(Presenter).QuestionsLocked {
 		t.Error("panel nie widzi, że pytania są zamknięte")
 	}
 	if h.AskQuestion("ala", "drugie") {
@@ -333,7 +386,7 @@ func TestLockingQuestionsStopsWritingForEveryone(t *testing.T) {
 		t.Error("przyjęto odpowiedź przy zamkniętym pisaniu")
 	}
 	h.UpvoteQuestion("bob", id)
-	if got := h.Snapshot().Questions[0].Votes; got != 2 {
+	if got := h.SnapshotFor(Presenter).Questions[0].Votes; got != 2 {
 		t.Errorf("podbijanie ma działać dalej, Votes = %d", got)
 	}
 
@@ -344,22 +397,22 @@ func TestLockingQuestionsStopsWritingForEveryone(t *testing.T) {
 }
 
 // Prowadzący musi widzieć w panelu, kto pisze i skąd - inaczej nie ma na czym
-// oprzeć decyzji o banie.
+// oprzeć decyzji o banie. Ukarani idą na górę listy, bo to ich się odkręca.
 func TestPanelSeesWhoWritesWithBannedFirst(t *testing.T) {
 	h := NewHub()
 	h.Join("ala", "10.0.0.1")
 	h.Join("troll", "10.0.0.2")
 	h.AskQuestion("ala", "pytanie")
-	id := h.Snapshot().Questions[0].ID
+	id := h.SnapshotFor(Presenter).Questions[0].ID
 	h.AddComment("ala", id, "sam sobie odpowiem")
-	h.BanParticipant("troll", true)
+	h.SetShadow("troll", true)
 
-	people := h.Snapshot().Participants
+	people := h.SnapshotFor(Presenter).Participants
 	if len(people) != 2 {
 		t.Fatalf("Participants = %+v", people)
 	}
-	if !people[0].Blocked() || people[0].ID != "troll" {
-		t.Errorf("zbanowany powinien być na górze listy: %+v", people)
+	if !people[0].Restricted() || people[0].ID != "troll" {
+		t.Errorf("ukarany powinien być na górze listy: %+v", people)
 	}
 	var ala Participant
 	for _, p := range people {
@@ -374,7 +427,7 @@ func TestPanelSeesWhoWritesWithBannedFirst(t *testing.T) {
 
 func TestSubscriberGetsCurrentStateAndUpdates(t *testing.T) {
 	h := NewHub()
-	updates, unsubscribe := h.Subscribe()
+	updates, unsubscribe := h.Subscribe(Presenter)
 	defer unsubscribe()
 
 	if snap := <-updates; snap.PollID != "" {
