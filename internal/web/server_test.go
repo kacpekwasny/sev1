@@ -245,6 +245,9 @@ func TestOnAirSwitchLightsTheDotEverywhere(t *testing.T) {
 	if strings.Contains(dark, "livelink onair") {
 		t.Error("kropka świeci się, zanim wykład się zaczął")
 	}
+	if strings.Contains(get(t, srv, "/").Body.String(), `class="intro-live"`) {
+		t.Error("wskaźnik na plakacie świeci się, zanim wykład się zaczął")
+	}
 
 	if rec := panelPost(t, srv, "/panel/nazywo", "onair=tak"); rec.Code != http.StatusOK {
 		t.Fatalf("włączenie wykładu = %d", rec.Code)
@@ -253,6 +256,12 @@ func TestOnAirSwitchLightsTheDotEverywhere(t *testing.T) {
 		if !strings.Contains(get(t, srv, path).Body.String(), "livelink onair") {
 			t.Errorf("%s nie pokazuje, że wykład trwa", path)
 		}
+	}
+	if !strings.Contains(get(t, srv, "/").Body.String(), `class="intro-live"`) {
+		t.Error("plakat nie pokazuje, że wykład trwa")
+	}
+	if !strings.Contains(get(t, srv, "/live/intro-status").Body.String(), `class="intro-live"`) {
+		t.Error("plakatowy wskaźnik nie umie dopytać o stan wykładu")
 	}
 	// Strona wczytana przed startem sama się dopyta - bez tego musiałaby
 	// czekać na odświeżenie przez czytającego.

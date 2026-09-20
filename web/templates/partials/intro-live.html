@@ -1,0 +1,13 @@
+{{/* Plakat pyta o stan tak samo jak menu, żeby pojawienie się wykładu nie
+     wymagało odświeżenia strony. Pusty slot zostaje na miejscu, gdy wykład
+     się jeszcze nie zaczął. */}}
+{{define "intro-live"}}
+<div id="intro-live-status" class="intro-live-slot"
+     hx-get="/live/intro-status" hx-trigger="every 20s" hx-swap="outerHTML">
+  {{if .}}
+  <a class="intro-live" href="/live/" title="Wykład trwa teraz" role="status">
+    <span>live</span><span class="intro-live-dot" aria-hidden="true"></span>
+  </a>
+  {{end}}
+</div>
+{{end}}

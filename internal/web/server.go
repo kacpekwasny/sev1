@@ -111,6 +111,7 @@ func (s *Server) routes() {
 
 	s.mux.HandleFunc("GET /live/{$}", s.handleLive)
 	s.mux.HandleFunc("GET /live/stan", s.handleLiveNav)
+	s.mux.HandleFunc("GET /live/intro-status", s.handleIntroLive)
 	s.mux.HandleFunc("GET /live/stream", s.handleStream)
 	s.mux.HandleFunc("POST /live/glos", s.handleVote)
 	s.mux.HandleFunc("POST /live/nastroj", s.handleMood)
@@ -438,6 +439,12 @@ func (s *Server) handleUpvoteAnswer(w http.ResponseWriter, r *http.Request) {
 // whether the lecture has started since it was loaded.
 func (s *Server) handleLiveNav(w http.ResponseWriter, r *http.Request) {
 	s.renderFragment(w, "live-nav", s.hub.OnAir())
+}
+
+// handleIntroLive answers the poster's own poll, so its live link appears
+// without a full-page refresh, just like the link in the top navigation.
+func (s *Server) handleIntroLive(w http.ResponseWriter, r *http.Request) {
+	s.renderFragment(w, "intro-live", s.hub.OnAir())
 }
 
 // handleStream pushes rendered HTML fragments over SSE. htmx swaps them in,
