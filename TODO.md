@@ -17,6 +17,8 @@ DONE: landing page on computers should be alligned differentelly title, and akam
 - in admin panel, for answers to questions, when marking a question as answered, make it such so it doesn't shift all the divs on the entire page 
 - save questions and answers to an external file
 - make betters logs so that we can log out all actions of all users with their nicks, posted questions, answers, etc
+- zamknij glosowanie -> +and show answers
+- unclick a vote 
 
 
 - todo future, when exact dates will be known: add google calendar link "add to your calendar",
