@@ -4,93 +4,15 @@
      i gdzie, a reszta miejsca należy do materiałów. */}}
 {{define "content"}}
 <section class="hero promo">
-  <p class="kicker">Otwarte wykłady · WIET AGH · budynek D6 · wstęp wolny, bez zapisów</p>
+  <p class="kicker">Otwarte wykłady · WIET AGH · budynek D6 (chyba) · wstęp wolny, bez zapisów</p>
   <h1>Jak rozpętałem drugą Sev1</h1>
   <p class="lead">
-    Dwa wieczory o tym, jak naprawdę wygląda praca w cloud networkingu — opowiedziane
-    przez incydenty, które się wydarzyły. Centra obliczeniowe, BGP, overlay, SRv6
-    i klastry GPU, a obok tego codzienność inżyniera: dyżury, planingi i rekrutacja.
+    Dwa wieczory o tym, jak naprawdę wygląda praca w Cloud Networkingu — opowiedziane
+    przez incydenty, przykłady i historyjki. Centra obliczeniowe, BGP, overlay, SRv6
+    i klastry GPU, a obok tego codzienność inżyniera: menadżer, projekty i rekrutacja.
   </p>
 
-  {{with .Upcoming}}
-  <div class="next-up">
-    <p class="kicker">najbliższy wykład</p>
-    <p class="when">{{.Date}}</p>
-    <p class="where">{{.Place}} · {{.Duration}} min</p>
-    <h2><a href="/wyklady/{{.Slug}}">#{{.Number}} {{.Title}}</a></h2>
-    <p class="muted">{{.Summary}}</p>
-    <p><a class="btn primary" href="/wyklady/{{.Slug}}">Zobacz program</a></p>
-  </div>
-  {{end}}
-
-  <p class="muted small">
-    Otwarte dla wszystkich, wstęp wolny, bez zapisów. Nie trzeba nic umieć wcześniej
-    i nie trzeba być na obu — każdy wykład da się zrozumieć osobno. Wpadnij,
-    posłuchaj, wyjdź z notatkami.
-  </p>
-</section>
-
-<section>
-  <h2>Po co przychodzić</h2>
-  <div class="cards why">
-    <div class="card">
-      <h3>Prawdziwe incydenty</h3>
-      <p class="muted">
-        Nie slajdy z podręcznika, tylko awarie, które widziałem z bliska: co się zepsuło,
-        co pokazywały wykresy i dlaczego oczywista przyczyna była nie ta.
-      </p>
-    </div>
-    <div class="card">
-      <h3>Trzecia tabletka</h3>
-      <p class="muted">
-        Frontend, backend… i network software engineer. Ścieżka, o której na studiach
-        raczej nie usłyszysz, a na której pisze się C i Go i debuguje się cudzy internet.
-      </p>
-    </div>
-    <div class="card">
-      <h3>Wychodzisz z materiałami</h3>
-      <p class="muted">
-        Notatki jako zwykłe pliki <code>.md</code> — vault do Obsidiana z linkami
-        i grafem — plus zadania domowe wyjęte z prawdziwych problemów z pracy.
-      </p>
-    </div>
-    <div class="card">
-      <h3>Wykład jest interaktywny</h3>
-      <p class="muted">
-        Z telefonu głosujesz w ankietach, zadajesz pytania anonimowo i odpowiadasz na
-        cudze. Możesz też jednym kliknięciem powiedzieć „zgubiłem się”.
-      </p>
-    </div>
-  </div>
-</section>
-
-<section class="two-col">
-  <div>
-    <h2>Kto to opowiada</h2>
-    <p>
-      <strong>Piotr Suchy</strong> - absolwent WEAIB, <strong>Mateusz Warzecha</strong> - Absolwent Teleinformatyki i Cyberbezpieczeństwa, <strong>Kacper Kwaśny</strong> — absolwent Teleinformatyki. Wszyscy dziś są Network Software
-      Engineer w <strong>Akamai</strong>, w dziale Cloud Networking.</p>
-  </div>
-  <div>
-    <h2>Gdzie i kiedy</h2>
-    <ul class="list compact terms">
-      {{range .Lectures}}
-      <li>
-        <span class="status {{.Status}}">{{.Status}}</span>
-        <a href="/wyklady/{{.Slug}}">#{{.Number}} {{.Title}}</a>
-        <p class="meta">{{.Date}} · {{.Place}}</p>
-      </li>
-      {{else}}
-      <li class="muted">Terminy wkrótce.</li>
-      {{end}}
-    </ul>
-    <p class="muted small">
-      Organizuje <strong>WRSS WIET</strong>. Wstęp wolny, bez zapisów i bez listy obecności.
-    </p>
-  </div>
-</section>
-
-<section>
+  {{if .Visibility.Lectures}}
   <h2>Wykłady</h2>
   <div class="cards">
     {{range .Lectures}}
@@ -107,9 +29,44 @@
     <p class="muted">Jeszcze nic tu nie ma.</p>
     {{end}}
   </div>
+
+  <p class="muted small">
+    Otwarte dla wszystkich, wstęp wolny, bez zapisów. Nie trzeba nic umieć wcześniej.
+	Możesz sobie przejrzeć plany wykładów, żeby zobaczyć, czy Cię to intersuje.
+  </p>
+  {{end}}
 </section>
 
+{{if .Visibility.Lectures}}
 <section class="two-col">
+  <div>
+    <h2>Kto to opowiada</h2>
+    <p>
+	  <strong>Mateusz Warzecha</strong> - absolwent Teleinformatyki i Cyberbezpieczeństwa, <br>
+	  <strong>Piotr Suchy</strong> - absolwent WEAIB, <br>
+	<strong>Kacper Kwaśny</strong> — absolwent Teleinformatyki. <br>
+	  Wszyscy dziś są Network Software Engineer w <strong>Akamai</strong>, w dziale Cloud Networking.</p>
+  </div>
+  <div>
+    <h2>Gdzie i kiedy</h2>
+    <ul class="list compact terms">
+      {{range .Lectures}}
+      <li>
+        <span class="status {{.Status}}">{{.Status}}</span>
+        <a href="/wyklady/{{.Slug}}">#{{.Number}} {{.Title}}</a>
+        <p class="meta">{{.Date}} · {{.Place}}</p>
+      </li>
+      {{else}}
+      <li class="muted">Terminy wkrótce.</li>
+      {{end}}
+    </ul>
+  </div>
+</section>
+{{end}}
+
+{{if or .Visibility.Tasks .Visibility.Notes}}
+<section class="two-col{{if not (and .Visibility.Tasks .Visibility.Notes)}} single-col{{end}}">
+  {{if .Visibility.Tasks}}
   <div>
     <h2>Zadania z prawdziwej pracy</h2>
     <ul class="list">
@@ -122,6 +79,8 @@
       {{end}}
     </ul>
   </div>
+  {{end}}
+  {{if .Visibility.Notes}}
   <div>
     <h2>Notatki</h2>
     <p class="muted">
@@ -138,5 +97,7 @@
       <a class="btn small" href="/notatki/vault.zip">Pobierz vault (.zip)</a>
     </p>
   </div>
+  {{end}}
 </section>
+{{end}}
 {{end}}

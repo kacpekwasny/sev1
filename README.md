@@ -67,6 +67,15 @@ chodzi w granacie z plakatu i bez stopki (`Bare` w danych szablonu).
 `/wyklady/` to **strona z materiałami**, czyli to, co było wcześniej stroną główną:
 najbliższy termin, program, zadania i notatki.
 
+Widoczność tych działów ustawiasz w `content/visibility.yaml` albo w panelu
+prowadzącego (`/panel`). W pliku ustaw `false` albo odznacz odpowiedni dział w
+panelu, żeby ukryć go w menu, na stronach i w odnośnikach; podstrony działu też
+zwracają 404. Wspólny hub `/wyklady/`
+zostaje dostępny dla pozostałych włączonych materiałów. Graf, eksport ZIP i pliki
+Markdown należą do działu notatek. Zmiana w panelu zapisuje plik i od razu działa;
+serwer potrzebuje prawa zapisu do `content/`. Zmiany pliku ładują się przy każdym
+żądaniu w `-dev`, a poza tym trybem po restarcie.
+
 Terminy na wejściówce biorą się z nagłówków wykładów (`date:`), a najbliższy termin
 na `/wyklady/` — z tego oznaczonego `status: najblizszy`. Po każdym wykładzie przestaw
 go na `odbyty`, a następnemu wpisz `najblizszy`. Testy `TestEntryPageIsThePoster`

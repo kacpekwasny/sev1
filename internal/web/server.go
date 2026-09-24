@@ -10,10 +10,13 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 
+	"gopkg.in/yaml.v3"
 	"wykladywiet/internal/content"
 	"wykladywiet/internal/live"
 )
@@ -35,6 +38,15 @@ type Server struct {
 	cache *content.Library
 	tpl   *templates
 }
+
+type section uint8
+
+const (
+	sectionLectures section = iota
+	sectionNotes
+	sectionTopologies
+	sectionTasks
+)
 
 func New(opts Options) (*Server, error) {
 	s := &Server{opts: opts, hub: live.NewHub(), mux: http.NewServeMux()}
@@ -92,22 +104,22 @@ func (s *Server) routes() {
 
 	s.mux.HandleFunc("GET /{$}", s.handleIntro)
 	s.mux.HandleFunc("GET /wyklady/{$}", s.handleHub)
-	s.mux.HandleFunc("GET /wyklady/{slug}", s.handleLecture)
+	s.mux.HandleFunc("GET /wyklady/{slug}", s.onlySection(sectionLectures, s.handleLecture))
 
-	s.mux.HandleFunc("GET /notatki/{$}", s.handleNotes)
-	s.mux.HandleFunc("GET /notatki/graf", s.handleGraphPage)
-	s.mux.HandleFunc("GET /notatki/vault.zip", s.handleVault)
-	s.mux.HandleFunc("GET /notatki/{slug}", s.handleNote)
-	s.mux.HandleFunc("GET /notatki/{slug}/md", s.handleNoteRaw)
-	s.mux.HandleFunc("GET /api/graf.json", s.handleGraphJSON)
+	s.mux.HandleFunc("GET /notatki/{$}", s.onlySection(sectionNotes, s.handleNotes))
+	s.mux.HandleFunc("GET /notatki/graf", s.onlySection(sectionNotes, s.handleGraphPage))
+	s.mux.HandleFunc("GET /notatki/vault.zip", s.onlySection(sectionNotes, s.handleVault))
+	s.mux.HandleFunc("GET /notatki/{slug}", s.onlySection(sectionNotes, s.handleNote))
+	s.mux.HandleFunc("GET /notatki/{slug}/md", s.onlySection(sectionNotes, s.handleNoteRaw))
+	s.mux.HandleFunc("GET /api/graf.json", s.onlySection(sectionNotes, s.handleGraphJSON))
 
-	s.mux.HandleFunc("GET /topologie/{$}", s.handleTopologies)
-	s.mux.HandleFunc("GET /topologie/{slug}", s.handleTopology)
-	s.mux.HandleFunc("GET /topologie/{slug}/widok/{view}", s.handleTopologyView)
+	s.mux.HandleFunc("GET /topologie/{$}", s.onlySection(sectionTopologies, s.handleTopologies))
+	s.mux.HandleFunc("GET /topologie/{slug}", s.onlySection(sectionTopologies, s.handleTopology))
+	s.mux.HandleFunc("GET /topologie/{slug}/widok/{view}", s.onlySection(sectionTopologies, s.handleTopologyView))
 
-	s.mux.HandleFunc("GET /zadania/{$}", s.handleTasks)
-	s.mux.HandleFunc("GET /zadania/{slug}", s.handleTask)
-	s.mux.HandleFunc("POST /zadania/{slug}/podpowiedz/{n}", s.handleHint)
+	s.mux.HandleFunc("GET /zadania/{$}", s.onlySection(sectionTasks, s.handleTasks))
+	s.mux.HandleFunc("GET /zadania/{slug}", s.onlySection(sectionTasks, s.handleTask))
+	s.mux.HandleFunc("POST /zadania/{slug}/podpowiedz/{n}", s.onlySection(sectionTasks, s.handleHint))
 
 	s.mux.HandleFunc("GET /live/{$}", s.handleLive)
 	s.mux.HandleFunc("GET /live/stan", s.handleLiveNav)
@@ -130,7 +142,30 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /panel/pytanie/{id}/odpowiedz/{cid}/usun", s.requirePanel(s.handlePanelDeleteAnswer))
 	s.mux.HandleFunc("POST /panel/pytania", s.requirePanel(s.handlePanelLock))
 	s.mux.HandleFunc("POST /panel/nazywo", s.requirePanel(s.handlePanelOnAir))
+	s.mux.HandleFunc("POST /panel/widocznosc", s.requirePanel(s.handlePanelVisibility))
 	s.mux.HandleFunc("POST /panel/uczestnik/{id}/{action}", s.requirePanel(s.handlePanelParticipant))
+}
+
+func (s *Server) onlySection(which section, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		visibility := s.lib().Visibility
+		enabled := false
+		switch which {
+		case sectionLectures:
+			enabled = visibility.Lectures
+		case sectionNotes:
+			enabled = visibility.Notes
+		case sectionTopologies:
+			enabled = visibility.Topologies
+		case sectionTasks:
+			enabled = visibility.Tasks
+		}
+		if !enabled {
+			s.notFound(w, r)
+			return
+		}
+		next(w, r)
+	}
 }
 
 // --- pages ---------------------------------------------------------------
@@ -141,10 +176,11 @@ func (s *Server) routes() {
 // that they did not ask for. Everything the site actually holds is behind
 // the button, on the hub.
 func (s *Server) handleIntro(w http.ResponseWriter, r *http.Request) {
+	lib := s.lib()
 	s.render(w, r, "intro", map[string]any{
 		"Title":    "Jak rozpętałem drugą Sev1",
 		"Bare":     true, // pasek bez tła, bez stopki - strona ma być plakatem
-		"Lectures": s.lib().Lectures,
+		"Lectures": lib.Lectures,
 	})
 }
 
@@ -562,12 +598,85 @@ func (s *Server) handlePanel(w http.ResponseWriter, r *http.Request) {
 	lib := s.lib()
 	snap := s.hub.SnapshotFor(live.Presenter)
 	s.render(w, r, "panel", map[string]any{
-		"Title": "Panel prowadzącego",
-		"Lib":   lib,
-		"Poll":  pollView(lib, snap),
-		"Snap":  snap,
-		"Mood":  snap.Mood,
+		"Title":           "Panel prowadzącego",
+		"Lib":             lib,
+		"Poll":            pollView(lib, snap),
+		"Snap":            snap,
+		"Mood":            snap.Mood,
+		"VisibilityPanel": VisibilityPanelView{Visibility: lib.Visibility},
 	})
+}
+
+func (s *Server) handlePanelVisibility(w http.ResponseWriter, r *http.Request) {
+	visibility := content.Visibility{
+		Lectures:   r.FormValue("lectures") == "on",
+		Notes:      r.FormValue("notes") == "on",
+		Topologies: r.FormValue("topologies") == "on",
+		Tasks:      r.FormValue("tasks") == "on",
+	}
+	if err := s.saveVisibility(visibility); err != nil {
+		log.Printf("save visibility: %v", err)
+		s.renderFragment(w, "panel-visibility", VisibilityPanelView{
+			Visibility: s.lib().Visibility,
+			Error:      "Nie udało się zapisać ustawień. Sprawdź uprawnienia do katalogu content/.",
+		})
+		return
+	}
+	s.renderFragment(w, "panel-visibility", VisibilityPanelView{
+		Visibility: visibility,
+		Saved:      true,
+	})
+}
+
+func (s *Server) saveVisibility(visibility content.Visibility) error {
+	path := filepath.Join(s.opts.ContentDir, "visibility.yaml")
+	data, err := yaml.Marshal(struct {
+		Sections content.Visibility `yaml:"sections"`
+	}{Sections: visibility})
+	if err != nil {
+		return err
+	}
+
+	temp, err := os.CreateTemp(filepath.Dir(path), ".visibility-*.yaml")
+	if err != nil {
+		return err
+	}
+	tempPath := temp.Name()
+	defer func() {
+		_ = temp.Close()
+		_ = os.Remove(tempPath)
+	}()
+
+	mode := os.FileMode(0644)
+	if info, statErr := os.Stat(path); statErr == nil {
+		mode = info.Mode().Perm()
+	}
+	if err := temp.Chmod(mode); err != nil {
+		return err
+	}
+	if _, err := temp.Write(data); err != nil {
+		return err
+	}
+	if err := temp.Sync(); err != nil {
+		return err
+	}
+	if err := temp.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tempPath, path); err != nil {
+		return err
+	}
+
+	// Replace the cached library instead of mutating its visibility in place:
+	// requests already rendering may still hold a pointer to the old one.
+	s.mu.Lock()
+	if s.cache != nil {
+		updated := *s.cache
+		updated.Visibility = visibility
+		s.cache = &updated
+	}
+	s.mu.Unlock()
+	return nil
 }
 
 func (s *Server) handlePanelPoll(w http.ResponseWriter, r *http.Request) {

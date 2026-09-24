@@ -8,9 +8,8 @@ DONE: change the "zmień" chip, it looks very cheap, like a windows XP button, i
 DONE: landing page on computers should be alligned differentelly title, and akamai logo on left, other stuff on right (or something of such sort), but just so the page would not need scrolling by default on computers,
 
 
-- "unclick" of show me how it is going
-- add a link to source code
-- remove graf from links, have the link in the notes section,
+- "unclick" of show me how it is going - after clicking good/bad you cant undo your choice it has to timeout
+- add a link to source code - create a page with contact, source code, etc (make it eneblable)
 - when writing a comment/question/answer, the send/anuluj are touching the text box. Also when answering a comment, the box should appear under the comment you are answering
 - in admin panel add counter how many upvotes did someones comments/answers get
 - in admin panel, for answers to questions, add a button for an answer "admin approved"
