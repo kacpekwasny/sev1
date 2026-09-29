@@ -26,9 +26,17 @@ Fidelity answer, 2026-09-29: **“evpn 5; model vxlan; model vpcs; no withdrawls
 
 Confirmed v1 scope: EVPN Type 5, VXLAN encapsulation, VPCs with distinct routing contexts, and underlay ECMP. Route withdrawals are deferred. Do not add EVPN Types 2/3 or withdrawal-driven failure/reconvergence behavior to the current increment. A scenario reset or topology rebuild is not a simulated BGP withdrawal.
 
-Still to answer: which best-path and import/export policies should be modeled, including VPC membership, RD/RT/VNI assignment and any permitted route leaking? Confirm the Type 5 next-hop resolution model without introducing another EVPN route type. Should the scenario begin with declared working RS transport reachability or simulate a cold start? The vault documents a bootstrap dependency when RSs themselves are VMs; do not invent a bootstrapping path. The UI must identify the displayed behavior as simulated.
+**Proposal, 2026-09-29 — pending approval; these are defaults to review, not confirmed requirements:**
 
-Status: **data mode and feature scope answered; specific routing/initialization rules pending**. These remaining details block their corresponding behavior, not the agreed deterministic engine boundary.
+- Start from a deterministic, preconverged underlay snapshot. Compute physical-link BGP reachability first; only establish RS/customer sessions after their IPv6 transport endpoints resolve through that underlay. Give each RS VM a synthetic service address reachable through its hosting host, without requiring EVPN/VXLAN to bootstrap the session. Do not animate a cold-start or withdrawal sequence in v1.
+- Treat each host as an NVE for the VMs placed on it. Originate Type-5 routes only for configured VM prefixes in their attached VPC; require explicit YAML route origins for other prefixes. Use the interface-less IP-VRF-to-IP-VRF model: no overlay index and no dependency on Type 2/3. The route's BGP next hop is the source host's synthetic VTEP address, resolved by IPv6 underlay reachability; the VPC VNI supplies the VXLAN context. RFC 9136 describes this no-overlay-index case for IP NVO tunnels and uses the Type-5 BGP next hop as the forwarding endpoint.
+- Give every VPC a positive 16-bit `vpc_id`. Use RT `target:64512:<vpc_id>`, VNI `10000 + vpc_id`, and an RD unique per `(vpc_id, NVE)`: `64512:(65536 * vpc_id + nve_id)`, where `nve_id` is a stable, globally unique 16-bit host/NVE ID. Validate the packed value and reject duplicate IDs, RDs, RTs, or VNIs. Import only routes whose RT matches the receiving VPC; export only within that VPC. No route leaking or default/shared VPC is enabled by default. Separate VPCs retain separate route keys even when their IP prefixes overlap. The proposed RT encoding uses the two-octet-AS-specific Route Target format; the RD distinguishes origins as well as VPCs.
+- Apply family and VPC import checks before selection. Discard routes with an unresolved next hop or an AS-path loop. For eligible alternatives, use a small deterministic profile: local preference 100 by default (internal policy metadata, not sent over eBGP), shorter AS_PATH, lower ORIGIN code, lower MED when neighboring ASNs match (missing MED treated as zero), lower underlay cost to the resolved next hop, then stable route-origin ID. Keep one BGP best path per destination; underlay ECMP remains a separate next-hop-resolution result and retains all equal-cost physical paths. Do not enable BGP multipath or ADD-PATH.
+- Treat the RS tiers as control-plane brokers only. A route server preserves the learned NEXT_HOP and AS_PATH, does not prepend its ASN, and never becomes a data-packet hop. Filter routes by recipient policy before selecting one best advertisement per recipient, so a route filtered for one client does not hide an eligible alternative from it. Suppress reflection to the ingress peer and reject detected loops. This follows RFC 7947's route-server attribute transparency while choosing a deterministic per-client policy for this simulator.
+
+The UI must identify the displayed behavior as simulated.
+
+Status: **feature scope answered; routing policy and initialization still pending approval of the proposal above**. Until approved, these choices must not be implemented as user requirements. Independent deterministic engine and UI work can continue.
 
 
 ### D04 — Exact physical cabling
@@ -67,9 +75,23 @@ Follow-up answer, 2026-09-29: **“yes; only yaml; yes”** — every border pee
 | Border ↔ RS Ctrl | Confirmed: every border to all four RS Ctrl members | Confirmed IPv4/IPv6 unicast and EVPN Type 5 |
 | Fabric switch ↔ fabric switch | Confirmed: eBGP on every physical switch adjacency | Underlay IPv4/IPv6 scope to finalize |
 
-Supply ASN assignment and any required per-session policies. EVPN Type 5, VXLAN, and VPCs are confirmed by D02; Types 2/3 and SRv6/L3VPN are outside the current selected scope. Do not add other sessions, including intra-cluster peerings, without a corresponding requirement.
+**Proposal, 2026-09-29 — pending approval; the table below fills only the remaining session-family and ASN defaults:**
 
-Status: **membership and overlay feature scope answered; remaining family/policy details pending**. Do not invent unrequested intra-cluster peerings.
+| Endpoints | Proposed AFI/SAFI | Purpose |
+| --- | --- | --- |
+| Host ↔ ToR | IPv4 unicast, IPv6 unicast | Underlay |
+| Fabric switch ↔ fabric switch | IPv4 unicast, IPv6 unicast | Underlay |
+| Host ↔ RS Bolt | IPv4 unicast, IPv6 unicast, EVPN Type 5 | Underlay reachability and VPC prefixes |
+| RS Bolt ↔ RS Ctrl | IPv4 unicast, IPv6 unicast, EVPN Type 5 | Underlay reachability and VPC prefixes |
+| RS Ctrl ↔ RS User | IPv4 unicast, IPv6 unicast | Customer routing; no EVPN |
+| Customer VM ↔ RS User | IPv4 unicast, IPv6 unicast | Confirmed customer session scope |
+| Border ↔ RS Ctrl | IPv4 unicast, IPv6 unicast, EVPN Type 5 | Confirmed “all AFI” within this v1 scope |
+
+“EVPN Type 5” means AFI L2VPN / SAFI EVPN with Type-5 IP Prefix routes only. It does not authorize Types 1–4 or other AFI/SAFI. Session transport remains as already recorded in the confirmed table and is independent of these route families.
+
+Allocate a distinct private two-octet ASN to every BGP speaker, including each switch, host, RS member, and customer VM. Use deterministic role-scoped ID slots in these disjoint ranges (maximum sizes from D06): borders `64512–64515`; stems `64516–64519`; spines `64520–64527`; leaves `64528–64543`; ToRs `64544–64575`; hosts `64576–64639`; RS Bolt `64640–64655`; RS Ctrl `64656–64659`; RS User `64660–64663`; customer VMs `64664–64727`. Slots follow stable entity identity and scope, never screen position or VM placement; reject collisions and exhaustion. These ranges fit the 216-speaker cap and lie within RFC 6996's private-use two-octet range. The exact stable ID-to-slot mapping belongs in the Step 02 schema alongside the synthetic address allocation.
+
+Status: **membership answered; AFI/SAFI matrix and ASN scheme still pending approval of the proposal above**. Keep the confirmed relationships and transport details above distinct from these defaults. Do not add other sessions, including intra-cluster peerings, without a corresponding requirement.
 
 ### D06 — Addresses, identifiers, defaults, and capacity
 
