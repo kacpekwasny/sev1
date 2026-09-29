@@ -30,11 +30,6 @@ Still to answer: which best-path and import/export policies should be modeled, i
 
 Status: **data mode and feature scope answered; specific routing/initialization rules pending**. These remaining details block their corresponding behavior, not the agreed deterministic engine boundary.
 
-### D03 — Unfinished future requirement
-
-The request ends with “It will later need to”. What was the rest of that sentence? Does the future requirement impose any compatibility or export requirements on v1?
-
-Answer: **pending**. Blocks: declaring the scope complete; any affected architecture decision.
 
 ### D04 — Exact physical cabling
 
