@@ -133,7 +133,7 @@ Status: **control semantics answered**. Step 06 must test clustering, actual-hos
 
 ### D10 — Integration entry point and delivery
 
-D01 establishes that this will be part of the `sev1` website. Where should users reach it: a new DC page under the existing topology section, a replacement for a current view, or an embedded component in another page? Does it also need a standalone distributable, or is the independent entry point just for development? Does the unfinished future requirement in D03 answer this?
+D01 establishes that this will be part of the `sev1` website. Where should users reach it: a new DC page under the existing topology section, a replacement for a current view, or an embedded component in another page? Does it also need a standalone distributable, or is the independent entry point just for development?
 
 The parent project's conventions specify Polish copy, Poppins, and local assets. These remain applicable. Establish the final route/navigation and packaging contract before integrating; production embeds `web/` assets but keeps YAML content on disk.
 

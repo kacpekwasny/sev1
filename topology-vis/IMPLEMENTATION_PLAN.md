@@ -1,6 +1,6 @@
 # DC topology visualizer: implementation plan for GPT-Luna
 
-Status: **draft with explicit decision dependencies**. All implementation steps are pending. Read [DECISIONS.md](DECISIONS.md) before choosing behavior and follow the repeated development/verification/commit loop in [LUNA_GUIDE.md](LUNA_GUIDE.md).
+Status: **Step 01 implemented and verified; remaining steps are pending with explicit decision dependencies**. Read [DECISIONS.md](DECISIONS.md) before choosing behavior and follow the repeated development/verification/commit loop in [LUNA_GUIDE.md](LUNA_GUIDE.md).
 
 ## Intended outcome and evidence
 
@@ -110,7 +110,7 @@ Unnumbered sessions use modeled link-local endpoints plus explicit interface IDs
 
 ## Step 00 — Resolve the contract
 
-**Dependencies:** user answers. D01 and D02's data mode are answered. Resolve D02's fidelity and D03–D10 before their dependent steps. No application behavior is authorized by an unanswered question.
+**Dependencies:** user answers. D01 and D02's data mode are answered. Resolve D02's fidelity and D04–D10 before their dependent steps. No application behavior that depends on an unanswered question is authorized.
 
 **Develop:** write the agreed application boundary, data mode, initial scenarios, address/peering/cabling rules, control semantics, default/maximum scale, and delivery requirements into `DECISIONS.md`. Mark each remaining subquestion pending. Produce a small hand-checkable topology specification with the user-approved rules and expected counts/relationships. Record an explicit v1 scope and exclusions only after the user defines them.
 
@@ -120,9 +120,9 @@ Unnumbered sessions use modeled link-local endpoints plus explicit interface IDs
 
 ## Step 01 — Establish a runnable shell and checks
 
-**Dependencies:** confirmed D01; relevant D03 constraints; an implementation approach consistent with the existing project conventions. D10's final public route can remain pending during isolated development.
+**Dependencies:** confirmed D01; an implementation approach consistent with the existing project conventions. D10's final public route can remain pending during isolated development.
 
-**Develop:** create the smallest isolated development page/entry point, a clear empty state, and documented run/build/test commands. Define the reusable module's initialization, configuration loading, event/control boundary, and cleanup so it can mount in `sev1` without a rewrite. Pick one owner for simulation state; do not implement conflicting engines in Go and JavaScript. Record the source/test/config file layout and dependency versions. Preserve the existing lecture entry page and topology examples.
+**Develop:** create the smallest isolated development page/entry point, a clear empty state, and documented run/build/test commands. Define the reusable module's initialization, configuration loading, event/control boundary, and cleanup so it can mount in `sev1` without a rewrite. Go owns canonical configuration and simulation state; browser ES modules render state and send commands through an adapter. Keep the source and tests under the existing Go repository and browser assets under `web/static/dc-topology/`; do not add a Node build stack. The harness is `go run ./cmd/dc-topology`, and the eventual site adapter mounts `mountTopologyApp(root, { onCommand })`, delivers state with `setState`, and calls `destroy` when removed. Preserve the existing lecture entry page and topology examples.
 
 **Verify/fix:** run the app from documented commands; open it in a browser at desktop and narrow widths; check console errors and build output. Run existing integration tests if parent application code/templates change. Establish a meaningful smoke check for loading the application.
 
@@ -234,7 +234,7 @@ Complete the host/VM route-table inspectors and session advertised/received rout
 
 ## Step 12 — Integrate the independently developed feature into sev1
 
-**Dependencies:** Steps 01–11; D10 entry point/delivery answered; any D03 compatibility requirement handled.
+**Dependencies:** Steps 01–11; D10 entry point/delivery answered.
 
 **Develop:** mount the existing feature modules in the agreed site route/template, connect YAML loading and initial state, and add the agreed navigation. Reuse the tested engine and renderer. Apply site typography, colors, and Polish copy without rewriting the model. Package browser assets under embedded `web/`; account for disk-based content and the `-content` path. Preserve existing topology pages and lecture behavior unless the user explicitly requested a replacement.
 
@@ -290,4 +290,3 @@ Complete the host/VM route-table inspectors and session advertised/received rout
 | Withdrawals deferred | 07, 11; no withdrawal-dependent acceptance gate |
 | Scale, usability, and final delivery | 13 |
 | Verify, fix, commit, repeat | Every step; `LUNA_GUIDE.md` |
-| Unfinished future requirement | D03; amend affected steps after the answer |
