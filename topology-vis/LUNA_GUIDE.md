@@ -4,6 +4,12 @@ Your task is to implement the DC topology visualizer described in [TODO.md](TODO
 
 The current deliverable is a plan. Begin application implementation only when the user asks you to execute it. Do not interpret this file's existence as a request to run every step. The user has confirmed that development should proceed independently for speed, with eventual integration into `sev1`, and that the behavior must be a deterministic YAML-configured simulation. The user also authorized the agent to design fictional addressing; use the documented synthetic scheme and keep production addressing out of deliverables.
 
+The confirmed simulator scope includes EVPN Type 5, VXLAN, VPCs, and underlay ECMP; withdrawals are deferred. Customer and RS VMs support explicit YAML placement with deterministic round-robin fallback when placement is omitted, spreading RS cluster members across different hosts where possible. V counts customer VMs only.
+
+Count controls rebuild the topology, and the effective configuration must be exportable as YAML. RS cluster collapse combines members into one icon and preserves the actual network. Physical-link and BGP-session visibility remain independent switches. When clustering and “show infra VMs on actual hosts” are both enabled, anchor the cluster icon on the first member's host; do not move the other members in the model.
+
+Use the smaller user-supplied defaults and modest initial limits in the plan; do not hardcode the TODO's superseded four-border/four-stem/four-leaf example. Host IDs are unique within each bolt. RS clusters still contain four members.
+
 ## Read in this order
 
 1. Applicable `AGENTS.md` instructions, then `git status --short` and `git rev-parse --show-toplevel`.
@@ -66,9 +72,12 @@ Documentation-only commits need a diff/content/link review; they do not need an 
 - IPv6 session transport does not imply an IPv6-only route family. Record AFI/SAFI separately from transport and endpoint addressing.
 - Host/VM forwarding tables and BGP tables are different views. Do not fabricate a BGP session for a customer VM merely to make its route table nonempty.
 - Use the approved route-selection and policy rules. Physical shortest paths and BGP best paths are not interchangeable. Preserve multiple candidates when the approved behavior needs them.
+- Model Type 5 route identity and VPC forwarding contexts separately; identical prefixes in separate VPCs must not overwrite or leak into one another. Trace VXLAN encapsulation/decapsulation and the chosen underlay ECMP path explicitly.
+- Preserve explicit YAML VM placements and generate only missing placements using the agreed deterministic rule. Do not silently repair invalid explicit placements by moving VMs elsewhere.
+- Do not implement withdrawals or make withdrawal-driven failover a completion requirement for v1. Resetting/rebuilding a scenario is separate from protocol withdrawal behavior.
 - Animate events produced by the deterministic simulator. Do not invent extra route advertisements or packet hops in the drawing code.
 - Show unresolved/unreachable paths explicitly. Never invent connectivity to make an animation finish.
-- View toggles must not mutate the canonical network or route state. A control that intentionally changes topology must be presented as such and follow D09.
+- View toggles must not mutate the canonical network or route state. Count controls rebuild it; RS cluster collapse only changes the drawing. YAML exported from collapsed mode must retain all members and sessions.
 - Use stable entity IDs independent of labels and coordinates. Keep test fixtures reproducible; use seeded randomness only if the user chooses randomized placement.
 
 ## Keeping progress across sessions

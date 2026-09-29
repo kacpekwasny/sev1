@@ -22,9 +22,13 @@ Answer, 2026-09-29: **“A deterministic simulation configured in YAML.”**
 
 YAML describes the model, rules, and scenarios. Compute route and traffic behavior reproducibly from that model. Use supplied expected tables as test fixtures, not as a replacement for the simulator. Live collection is outside the current request.
 
-Still to answer: which routing rules must be modeled? Specify best-path selection, equal-cost forwarding, policy, withdrawals, and whether failures/convergence are in v1. Should the scenario begin with declared working RS transport reachability or simulate a cold start? The vault documents a bootstrap dependency when RSs themselves are VMs; do not invent a bootstrapping path. The UI must identify the displayed behavior as simulated.
+Fidelity answer, 2026-09-29: **“evpn 5; model vxlan; model vpcs; no withdrawls for now needed; ecmp in underlay should be;”**
 
-Status: **data mode answered; fidelity pending**. Remaining details block route-selection and forwarding behavior, not an agreed deterministic engine boundary.
+Confirmed v1 scope: EVPN Type 5, VXLAN encapsulation, VPCs with distinct routing contexts, and underlay ECMP. Route withdrawals are deferred. Do not add EVPN Types 2/3 or withdrawal-driven failure/reconvergence behavior to the current increment. A scenario reset or topology rebuild is not a simulated BGP withdrawal.
+
+Still to answer: which best-path and import/export policies should be modeled, including VPC membership, RD/RT/VNI assignment and any permitted route leaking? Confirm the Type 5 next-hop resolution model without introducing another EVPN route type. Should the scenario begin with declared working RS transport reachability or simulate a cold start? The vault documents a bootstrap dependency when RSs themselves are VMs; do not invent a bootstrapping path. The UI must identify the displayed behavior as simulated.
+
+Status: **data mode and feature scope answered; specific routing/initialization rules pending**. These remaining details block their corresponding behavior, not the agreed deterministic engine boundary.
 
 ### D03 — Unfinished future requirement
 
@@ -61,16 +65,16 @@ Follow-up answer, 2026-09-29: **“yes; only yaml; yes”** — every border pee
 | Endpoints | Membership / transport | Family status |
 | --- | --- | --- |
 | Host ↔ ToR | Attached ToRs, BGP unnumbered | Underlay IPv4/IPv6 scope |
-| Host ↔ RS Bolt | Confirmed: all four members serving the host's bolt; IPv6 transport | IPv4 unicast, IPv6 unicast, EVPN subset to finalize |
-| RS Bolt ↔ RS Ctrl | Confirmed: every bolt RS to all four controller RSs; IPv6 transport | IPv4 unicast, IPv6 unicast, EVPN subset to finalize |
+| Host ↔ RS Bolt | Confirmed: all four members serving the host's bolt; IPv6 transport | IPv4/IPv6 unicast support to finalize; EVPN Type 5 in scope |
+| RS Bolt ↔ RS Ctrl | Confirmed: every bolt RS to all four controller RSs; IPv6 transport | IPv4/IPv6 unicast support to finalize; EVPN Type 5 in scope |
 | RS Ctrl ↔ RS User | Confirmed: every controller RS to all four user RSs; IPv6 transport | IPv4/IPv6 unicast; vault says RS User has no EVPN |
 | Customer VM ↔ RS User | Confirmed: YAML-selected VMs to all four RS User members | Confirmed IPv4/IPv6 unicast |
-| Border ↔ RS Ctrl | Confirmed: every border to all four RS Ctrl members | Confirmed IPv4/IPv6 unicast and EVPN |
+| Border ↔ RS Ctrl | Confirmed: every border to all four RS Ctrl members | Confirmed IPv4/IPv6 unicast and EVPN Type 5 |
 | Fabric switch ↔ fabric switch | Confirmed: eBGP on every physical switch adjacency | Underlay IPv4/IPv6 scope to finalize |
 
-Confirm whether any other sessions exist, including within an RS cluster. Supply ASN assignment and any required per-session policies. Decide whether EVPN types 2, 3, and/or 5, VXLAN, VPC/VRF/VNI separation, or SRv6/L3VPN belong in v1. These are not automatically requirements merely because they occur in the vault.
+Supply ASN assignment and any required per-session policies. EVPN Type 5, VXLAN, and VPCs are confirmed by D02; Types 2/3 and SRv6/L3VPN are outside the current selected scope. Do not add other sessions, including intra-cluster peerings, without a corresponding requirement.
 
-Status: **membership answered; remaining families/policies/fidelity pending**. Follow-up questions have been sent for simulation fidelity. Do not invent unrequested intra-cluster peerings.
+Status: **membership and overlay feature scope answered; remaining family/policy details pending**. Do not invent unrequested intra-cluster peerings.
 
 ### D06 — Addresses, identifiers, defaults, and capacity
 
@@ -78,39 +82,54 @@ Answer, 2026-09-29: **“I do not want to expose real production IP schema. You 
 
 The agent is authorized to design fictional addressing. Use the synthetic scheme in `IMPLEMENTATION_PLAN.md`; keep all checked-in examples, screenshots, and fixture outputs independent of production addressing. This supersedes the ambiguous TODO address patterns, including the duplicated RS Ctrl label. It does not authorize choosing unknown scale or host naming semantics.
 
-Still to answer:
+Scale answer, 2026-09-29: **“default could be 2 border, 2 stem, 4 spine, 2 bolts, 2 leafs, 2 racks, 2 tors, 2 servers, 3 vms; max should be something sane, not too much; ids unique within bolt”**
 
-- Is the host number unique across its bolt or only within its rack? What happens beyond 999, given the three-digit host label suffix? The examples must remain `h2003`, `h13045`, and `h20999`.
-- What are the default and maximum values for spines, bolts, racks per bolt, hosts per rack, and customer VMs? Are eight spines a default, a minimum, or a fixed example?
-- What browser/device and load/interaction target define acceptable performance at that maximum?
+Confirmed: host IDs are unique within their bolt. Defaults, using the hierarchy already defined in TODO: two borders, two stems, four spines, two bolts, two leaves per bolt, two racks per bolt, two ToRs per rack, two hosts per rack, and three customer VMs. These smaller default counts supersede TODO's original four-border/four-stem/four-leaf/eight-spine example; RS clusters still have four members. D07 confirms that V counts only customer VMs.
 
-Status: **synthetic addressing delegated to the agent; naming/scale pending**. Remaining details block default/max fixtures and measurable scale acceptance.
+The user delegated a modest maximum. The agent-selected initial caps are four borders, four stems, eight spines, four bolts, four leaves per bolt, four racks per bolt, two ToRs per rack, four hosts per rack, and 64 customer VMs. Allow zero customer VMs; fabric dimensions must be positive and ToRs remain two per rack. The maximum has 64 hosts, so it stays below the three-digit host suffix limit. Retain the TODO's host-label examples as unit cases rather than supported whole-DC sizes.
+
+Still to answer: the target browser/device and quantitative responsiveness expectation. Step 13 should measure both the default and capped scenario and report results; do not claim an agreed performance SLA when none was supplied.
+
+Status: **synthetic addressing and modest caps delegated; defaults and bolt-scoped host IDs confirmed**. Performance targets remain open.
 
 ## Additional questions to resolve at their dependency boundary
 
 ### D07 — VM and route-server placement
 
-Does V count customer VMs only or include infrastructure VMs? How should customer VMs be distributed: explicit YAML placements, an even deterministic rule, or seeded random placement? Are there per-host limits?
+Answer, 2026-09-29: **“RS VM can be explicit in yaml, and if not it should be generated; the same for customer VMs”**
 
-Where should the RS VMs live? Specify placements or a placement rule for each cluster, including whether members must be on different hosts/racks/bolts. A served bolt and the bolt containing an RS VM are separate concepts: the vault explicitly allows them to differ. Identify other infrastructure VM roles needed in v1.
+Confirmed: honor explicit YAML placement for both RS and customer VMs; generate placement for either kind when omitted. Explicit placement takes precedence. The automatic fallback must be reproducible, consistent with the selected deterministic simulation.
 
-Answer: **pending**. Blocks: VM generation and physical display of RS VMs.
+Follow-up answer, 2026-09-29: **“ok; only customer;”** — use deterministic round-robin across hosts, preserve explicit placements, spread members of each RS cluster across different hosts where possible, and count only customer VMs in V.
+
+The fallback places VMs across the available hosts. The selected rule is host diversity within an RS cluster where possible; it does not require rack/bolt anti-affinity. A served bolt and the bolt containing an RS VM are separate concepts. Explicit placements remain authoritative, including co-location; when there are fewer than four hosts, generated RS members may reuse hosts after using the available distinct hosts. No additional infrastructure VM roles have been requested.
+
+Status: **placement and V semantics answered**. Use stable host/VM ordering, deterministic round-robin, and generated-placement tests in Step 04.
 
 ### D08 — Meaning of route tables and traffic examples
 
 Should “route table” show the guest OS forwarding table, host forwarding table, BGP received/selected/advertised routes, EVPN information, or several separate tables? Which fields and filters matter?
 
-Which traffic cases must v1 demonstrate: VMs on the same host, in the same rack, in different racks of one bolt, across bolts, internet/border traffic, or customer BGP failover? For control traffic, should the UI show logical BGP sessions, the physical paths carrying their packets, or both?
+Which traffic cases must v1 demonstrate: VMs on the same host, in the same rack, in different racks of one bolt, across bolts, or internet/border traffic? For control traffic, should the UI show logical BGP sessions, the physical paths carrying their packets, or both? VPC isolation and underlay ECMP are mandatory checks under D02; withdrawal-driven customer failover is deferred.
 
 Answer: **pending**. Blocks: final inspector contents and traffic scenario acceptance.
 
 ### D09 — Controls and YAML persistence
 
-Should count controls regenerate the network, filter an existing larger network, or support both as separate actions? Should changes reset the scenario or preserve compatible state? Should a user edit YAML on disk, upload it, edit it in the browser, download changed YAML, or use a selected subset of those workflows?
+Answer, 2026-09-29: **“it should rebuild the topo; exportable via yaml; in this case I don't want to rebuild the topo, I just want the visualization to hide all the connections and visually join all RSs from a cluster into a single icon”**
 
-When displaying one RS per cluster, should the UI show a named representative member or an aggregate of all four? What should happen when members have different sessions/routes/state? Hiding members must not silently delete them from the underlying network.
+Confirmed:
 
-Answer: **pending**. Blocks: count-control semantics, persistence, and cluster-collapse behavior.
+- Spine/bolt/rack/host/VM count controls rebuild the simulated topology. Recompute derived simulation state consistently; do not implement them as visibility filters.
+- The configured result must be exportable as YAML and reproduce the same model when loaded again.
+- One-RS-per-cluster mode is a presentation-only operation: combine the members into one cluster icon. Keep all actual RS members, placements, sessions, and route state; do not rebuild the topology or substitute one member for the cluster.
+- Collapsed display state must not erase members or sessions from YAML export.
+
+Clarification, 2026-09-29: **“Not sure what hide all connections mean; hide bgp sessions means hide bgp sessions; hide physical links, means hide physical links; when the switch \"show infra vms on actual hosts\" is on, and also clustering of infrastrucutre VMs is on, then cluster the VM at the host where the first VM from the cluster is located”**
+
+This clarification supersedes the earlier interpretation that clustering itself hides connections. BGP-session visibility and physical-link visibility are separate switches. Clustering does not override either. When both clustering and “show infra VMs on actual hosts” are enabled, anchor the aggregate icon on the host containing the first cluster member. Use the cluster's declared stable member order (generated members 1–4); this display anchor is not a new placement for the other members. Expose differing member details in the inspector rather than pretending all member states are identical. Additional upload/in-browser editing workflows are not required merely by the YAML export request.
+
+Status: **control semantics answered**. Step 06 must test clustering, actual-host placement, and both independent link-layer switches in combination.
 
 ### D10 — Integration entry point and delivery
 
