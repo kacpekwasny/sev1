@@ -35,6 +35,15 @@ try {
   assert(Math.abs(resized.width-before.width)>20);assert(resized.height<before.height-40);
   await handle.press('Home');
   assert(Math.abs((await page.locator('#dc-inspector').boundingBox()).width-before.width)<2);
+  await page.locator('#dc-details summary').filter({hasText:'Sesje BGP ('}).click();
+  const session=page.locator('#dc-details [data-session-id]').first();
+  const sessionID=await session.getAttribute('data-session-id'),title=await page.locator('#dc-inspector-heading').textContent();
+  await session.hover();await page.locator('.dc-session.preview').waitFor();
+  assert.equal(await page.locator('.dc-session.preview').getAttribute('data-entity-id'),sessionID);
+  assert.equal(await page.locator('#dc-inspector-heading').textContent(),title);
+  assert.equal(await page.locator('#dc-show-sessions').isChecked(),false);
+  await page.locator('#dc-inspector-grip').hover();
+  await page.locator('.dc-session.preview').waitFor({state:'detached'});
   await page.keyboard.press('Escape');
   assert.equal(await (await page.request.get(`${api}/config.yaml`)).text(),yaml);
   assert.deepEqual(errors,[]);await page.close();

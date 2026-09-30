@@ -163,7 +163,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   const inspectorHistory = [];
   let popupPosition = null, popupDrag = null, endpointPick = null, deviceMenu = null;
   let popupSize = null, popupResize = null;
-  let routeHover = null, previewFrame = 0;
+  let routeHover = null, sessionHover = null, previewFrame = 0;
   let packetReveal = null;
   const exploration = { update: null, packet: null };
   const exploreRequests = { update: 0, packet: 0 };
@@ -175,13 +175,20 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
   function previewRoute(element) {
     if(!element&&!routeHover)return;
+    sessionHover=null;
     routeHover=element?routeSelection(element):null;
     if(!previewFrame)previewFrame=requestAnimationFrame(()=>{previewFrame=0;if(!destroyed)renderGraph();});
   }
   function clearRoutePreview() {
     routeHover=null;
+    sessionHover=null;
     if(previewFrame)cancelAnimationFrame(previewFrame);
     previewFrame=0;
+  }
+  function previewSession(element) {
+    if(!element&&!sessionHover)return;
+    sessionHover=element?.dataset.sessionId??null;routeHover=null;
+    if(!previewFrame)previewFrame=requestAnimationFrame(()=>{previewFrame=0;if(!destroyed)renderGraph();});
   }
   function requestPacketReveal() {
     packetReveal = `${selected.type}/${selected.id}`;
@@ -482,10 +489,14 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if(event.type==="pointerover"&&event.pointerType!=="mouse"&&event.pointerType!=="pen")return;
     const route=event.target.closest("[data-route-id]");
     if(route&&detailsEl.contains(route)&&event.relatedTarget?.closest?.("[data-route-id]")!==route)previewRoute(route);
+    const session=event.target.closest("[data-session-id]");
+    if(session&&detailsEl.contains(session)&&event.relatedTarget?.closest?.("[data-session-id]")!==session)previewSession(session);
   };
   const onRouteLeave=(event)=>{
     const route=event.target.closest("[data-route-id]");
     if(route&&event.relatedTarget?.closest?.("[data-route-id]")!==route)previewRoute(null);
+    const session=event.target.closest("[data-session-id]");
+    if(session&&event.relatedTarget?.closest?.("[data-session-id]")!==session)previewSession(null);
   };
   listen(detailsEl,"pointerover",onRouteEnter);listen(detailsEl,"pointerout",onRouteLeave);
   listen(detailsEl,"focusin",onRouteEnter);listen(detailsEl,"focusout",onRouteLeave);
@@ -1073,16 +1084,17 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     }
     svg.append(edgeLayer);
 
-    if (showSessions.checked) {
+    if (showSessions.checked || sessionHover) {
       const sessionLayer = svgElement("g", { class: "dc-sessions" });
       for (const session of model.bgp_sessions) {
+        if(!showSessions.checked&&session.id!==sessionHover)continue;
         const step = illustration.sequence.find((item) => item.sessionID === session.id);
         const a = positions.entityPoints.get(step?.fromID ?? session.a.entity_id);
         const b = positions.entityPoints.get(step?.toID ?? session.b.entity_id);
         if (!a || !b) continue;
         const selectedClass = (selected?.type === "session" && selected.id === session.id ? " selected" :
           "") +
-          (illustrationIDs.has(session.id) ? " illustrative" : "");
+          (illustrationIDs.has(session.id) ? " illustrative" : "") + (sessionHover===session.id?" preview":"");
         const group = svgElement("g", {
           class: `dc-session${selectedClass}`, role: "button", tabindex: "0",
           "data-entity-type": "session", "data-entity-id": session.id,
@@ -1170,7 +1182,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function renderInspector(nodeByID, interfaceByID) {
-    if(routeHover) {clearRoutePreview();renderGraph();}
+    if(routeHover||sessionHover) {clearRoutePreview();renderGraph();}
     root.querySelector("#dc-inspector-back").disabled = !inspectorHistory.length;
     const key = selected ? `${selected.type}/${selected.id}/${selected.ownerID??""}` : "";
     const keep = key === inspectorSelectionKey;

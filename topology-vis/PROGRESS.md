@@ -186,4 +186,7 @@ repeat completed rework milestones.
 5. Back-arrow buttons discard inherited form padding and retain their square
    dimensions, so the glyph is centered. Shared close buttons benefit as well.
    Desktop/narrow inspector walkthrough and Go tests pass.
-6–12. Pending; follow D17's listed order.
+6. Hover/focus a session row to preview its exact graph connection without
+   navigating or fetching data. It also works while the general BGP layer is
+   hidden; leaving restores that layer's state. Desktop/narrow checks and Go tests pass.
+7–12. Pending; follow D17's listed order.
