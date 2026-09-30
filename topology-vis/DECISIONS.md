@@ -174,6 +174,25 @@ Status: **current direction confirmed; defaults selected under existing user aut
 
 Integration default, selected under existing autonomy authorization: browser edits use isolated in-memory workspaces, with 30-minute idle expiry and a cap of 16 retained edited scenarios. Read-only visitors share the default snapshot. Expired/evicted workspaces report a conflict rather than mixing a cached diagram with different tables. Exported YAML remains the persistence mechanism. Source is in `internal/content/dctopology/`; browser layout is in `web/static/dc-topology/`.
 
+### D12 — RS tiers, compact fabric, and hosted VM placement
+
+User direction, 2026-09-30: abstract RS VMs form tiers over the fabric: RS Bolt
+above the leaves it serves, one RS Ctrl cluster in the middle, and one RS User
+cluster at the top right. Border/stem devices start nearer the center; bolt
+components sit closer together. VMs sit above the host label in taller hosts.
+Rack and bolt outlines must not cross neighboring outlines.
+
+Authorized presentation defaults: use role-labeled cards containing the four
+individual RS members, or one aggregate icon when grouping is enabled. Reserve
+explicit, disjoint bolt/rack rectangles with racks contained inside their bolt.
+Host height follows its visible VM count; host labels sit below their badges.
+Keep the 48-unit maximum drag radius, with tighter bounds inside compact cells
+so devices and badges stay within their groups. Preserve actual placements,
+first-member cluster anchors, sessions, expected tables, and YAML exports.
+
+Status: **implemented and browser-verified**. D12 refines presentation in R03 and
+Steps 03/04/06; it does not change canonical network semantics.
+
 ## Recording an answer
 
 Record the latest user direction and affected milestones. If it changes previously implemented work, reopen the affected acceptance checks; do not claim the old checks verify new behavior. Distinguish direct user requirements from authorized implementation defaults. Preserve the original TODO while keeping this decision record and the active plan authoritative for later changes.

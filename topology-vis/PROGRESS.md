@@ -4,7 +4,7 @@ Updated: 2026-09-30
 
 ## Current status
 
-R00–R06 and the revised Steps 00–13 are implemented and verified. The explorer is
+R00–R07 and the revised Steps 00–13 are implemented and verified. The explorer is
 integrated at `/topologie/dc/`, linked from Topologie, and shares its source with
 the standalone harness. Git and parent-site writes are available. D03 remains
 absent; the original `TODO.md` is unchanged.
@@ -14,8 +14,8 @@ Baseline: user commit `9c50463`. Working rework commits:
 - `0468b7a` — JavaScript workspace and popup inspection.
 - `cf51c7c` — bounded dragging, keyboard controls, and layout reset/fit.
 - `d8b54dd` — expected route snapshots and optional illustrative route flow.
-- Site integration, source relocation, browser isolation, and final checks are
-  in the feature commit containing this checkpoint; obtain its hash from Git.
+- `295c4dd` — site integration, source relocation, and browser isolation.
+- The D12/R07 layout refinement is in the feature commit containing this checkpoint.
 
 ## Delivered behavior
 
@@ -24,7 +24,13 @@ configuration dialog. Device/VM/cluster/link/session/route inspectors open over
 the canvas, support close/Escape and focus return, and keep stale responses from
 replacing a newer selection. Dragging is bounded to 48 layout units, with edge/VM
 anchor tracking, pointer/touch cancellation, arrow/Home controls, reset, and fit.
-Host rows reserve room for VM badges at capped size.
+Compact centered border/stem rows lead into closer bolt components. Taller hosts
+contain VM badges above their names. Abstract RS cards form tiers over the fabric:
+Bolt above its served leaves, Ctrl centered, User at the top right. Cards retain
+individual members or collapse to one icon. Explicit rack/bolt rectangles keep
+sibling outlines separate and racks inside their bolt. Tighter cell drag bounds
+preserve containment while host movement carries its badges. The interaction hint
+sits below the canvas so it cannot obscure host labels.
 
 Go calculates expected route/forwarding snapshots on initial load and configuration
 rebuild. Route flow is an independent, initially disabled illustrative switch using
@@ -52,8 +58,11 @@ Run `go run . -dev` and open `/topologie/dc/`, or `go run ./cmd/dc-topology` on 
   stale responses, mouse/touch/keyboard dragging, invariant tables/export, layer
   and RS combinations, reduced motion, packet paths, invalid/zero-count rebuilds,
   export/reload, browser isolation, capped layout, and listener/animation teardown.
-- Latest local measurement: default page load 266 ms; capped scenario load and
-  initial calculation 2,124 ms. Capped model: 128 devices, 432 cables, 88 VMs,
+  R07 adds geometric containment, centered rows, RS tier placement, disjoint
+  sibling outlines, badge/host tracking, immediate movement away from cell limits,
+  and small/co-located/mixed host counts, across all four RS display combinations.
+- Latest local measurement: default page load 287 ms; capped scenario load and
+  initial calculation 1,944 ms. Capped model: 128 devices, 432 cables, 88 VMs,
   1,040 sessions. These are local observations, not an SLA.
 - Embedded production page checked from `/tmp` with an absolute `-content` path;
   standalone harness checked with shared assets at desktop/narrow widths.

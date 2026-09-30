@@ -49,7 +49,7 @@ body.dc-harness { margin: 0; min-width: 320px; background: #0b1018; }
 .dc-workspace { position: relative; isolation: isolate; }
 .dc-graph-scroll { overflow: auto; height: min(70vh, 780px); min-height: 480px; overscroll-behavior: contain; background: radial-gradient(ellipse at 50% 0%, #153c392b, transparent 55%), radial-gradient(circle, #43536940 1px, transparent 1px), #0e1621; background-size: auto, 20px 20px, auto; scrollbar-color: #334559 #0e1621; }
 .dc-topology-svg { display: block; margin-inline: auto; font-family: Poppins, system-ui, sans-serif; }
-.dc-canvas-note { position: absolute; left: 18px; bottom: 14px; background: #101823df; border: 1px solid #273342; border-radius: 8px; padding: 7px 12px; color: #94a7ba; font-size: 10px; pointer-events: none; }
+.dc-canvas-note { color: #94a7ba; font-size: 9px; }
 .dc-canvas-note span { margin-right: 8px; color: var(--dc-accent); }
 .dc-graph-footer { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 12px 20px; border-top: 1px solid var(--dc-border); color: var(--dc-muted); font-size: 9px; }
 .dc-legend { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 7px; }
@@ -63,6 +63,10 @@ body.dc-harness { margin: 0; min-width: 320px; background: #0b1018; }
 .dc-group-box.rack { fill: #17253888; stroke: #2c4155; }
 .dc-group-label { fill: #7c96af; font-size: 11px; font-weight: 600; text-anchor: start; }
 .dc-row-label { fill: #526e89; font-size: 9px; font-weight: 600; letter-spacing: .16em; text-anchor: start; }
+.dc-rs-tier { fill: #201a30; stroke: #78618f; stroke-width: 1; }
+.dc-rs-tier.rs_ctrl { fill: #242039; stroke: #9b7bbc; }
+.dc-rs-tier.rs_user { fill: #2b2236; stroke: #b691c6; }
+.dc-rs-tier-label { fill: #c7acdf; font-size: 10px; font-weight: 600; text-anchor: start; letter-spacing: .04em; }
 .dc-edge, .dc-session { cursor: pointer; }
 .dc-edge-line { stroke: #54718a; stroke-width: 1.3; opacity: .55; }
 .dc-edge-hit, .dc-session-hit { stroke: transparent; stroke-width: 12; }
@@ -162,7 +166,6 @@ body.dc-harness { margin: 0; min-width: 320px; background: #0b1018; }
   .dc-graph-footer { padding: 12px; flex-wrap: wrap; gap: 8px; }
   .dc-traffic-list, .dc-playback { padding: 10px 12px; }
   .dc-count-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .dc-canvas-note { left: 8px; bottom: 8px; font-size: 9px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .dc-app *, .dc-app *::after { animation: none !important; transition: none !important; }

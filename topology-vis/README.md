@@ -30,7 +30,8 @@ Expected BGP/forwarding tables and exports load on demand inside the popup.
 Escape or the close button dismisses it and restores focus. The topology remains
 visible; on narrow screens the popup fills most of the canvas width.
 
-Drag a device to make a small visual adjustment, bounded to a 48-layout-unit radius.
+Drag a device to make a small visual adjustment, bounded to a 48-layout-unit radius
+and tighter limits inside compact cells to keep devices and badges contained.
 Its connected lines follow. Arrow keys move a focused icon, Shift increases the
 step, and Home restores its anchor. Reset układu clears offsets; Dopasuj adjusts
 zoom to the canvas width. Moving a host carries its displayed VM anchors.
@@ -39,6 +40,11 @@ Dragging changes only the drawing, and offsets clear on a configuration rebuild.
 Łącza and Sesje BGP are independent switches. RS grouping retains four actual
 members per cluster. With RS na hostach enabled, a collapsed icon anchors to the
 first member's real host; the other members keep their own placements and tables.
+VM badges occupy the upper part of taller hosts, above their names. Turn off
+RS na hostach for tiered RS cards over the fabric: Bolt above its served leaves,
+Ctrl centered, and User at the top right. Expanded cards show all four members;
+Grupuj RS replaces them with one aggregate icon. Rack outlines stay inside their
+bolt, with gaps between neighboring racks and bolts.
 
 Przepływ tras is off initially. Enable it with the BGP layer to show a fixed,
 illustrative host → RS Bolt → RS Ctrl → border sequence on valid sessions.

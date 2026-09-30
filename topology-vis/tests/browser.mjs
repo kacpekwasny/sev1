@@ -27,10 +27,72 @@ const getText = async (path) => (await context.request.get(`${api}${path}`)).tex
 const getJSON = async (path) => (await context.request.get(`${api}${path}`)).json();
 const baseYAML = await getText("/config.yaml");
 const baseTable = await getText("/inspector?kind=speaker&id=border-1");
+const checkLayout = async (model = null) => {
+  model ??= await getJSON("/model");
+  const violations = await page.evaluate((model) => {
+    const failures = [];
+    const rect = (selector) => document.querySelector(selector)?.getBoundingClientRect();
+    const contains = (outer, inner) => outer && inner && inner.left >= outer.left - .1 && inner.right <= outer.right + .1 && inner.top >= outer.top - .1 && inner.bottom <= outer.bottom + .1;
+    const overlaps = (a, b) => a && b && Math.min(a.right, b.right) - Math.max(a.left, b.left) > .1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > .1;
+    const nodeRect = (id) => rect(`.dc-node[data-entity-id="${id}"] rect`);
+    const groupRect = (id) => rect(`.dc-group-box[data-group-id="${id}"]`);
+    for (const group of model.groups) {
+      const box = groupRect(group.id);
+      if (!box) failures.push(`Missing outline: ${group.id}`);
+      if (group.parent_id && !contains(groupRect(group.parent_id), box)) failures.push(`Rack escapes bolt: ${group.id}`);
+      for (const id of group.node_ids) if (!contains(box, nodeRect(id))) failures.push(`Device escapes group: ${id}`);
+      for (const other of model.groups) {
+        if (group.id < other.id && group.kind === other.kind && overlaps(box, groupRect(other.id))) failures.push(`Sibling outlines cross: ${group.id}, ${other.id}`);
+      }
+    }
+    const hosts = model.nodes.filter((node) => node.kind === "host");
+    for (const host of hosts) {
+      for (const other of hosts) if (host.id < other.id && overlaps(nodeRect(host.id), nodeRect(other.id))) failures.push(`Hosts overlap: ${host.id}, ${other.id}`);
+    }
+    const vms = [...document.querySelectorAll(".dc-vm")];
+    for (const vm of vms) {
+      const box = vm.querySelector("rect").getBoundingClientRect();
+      if (vm.dataset.onHost === "true") {
+        const host = nodeRect(vm.dataset.hostId);
+        const label = rect(`.dc-node[data-entity-id="${vm.dataset.hostId}"] .dc-node-label`);
+        if (!contains(host, box) || box.bottom >= label.top) failures.push(`VM must be inside host above its name: ${vm.dataset.entityId}`);
+        for (const other of hosts) if (other.id !== vm.dataset.hostId && overlaps(box, nodeRect(other.id))) failures.push(`VM overlaps another host: ${vm.dataset.entityId}`);
+      }
+      for (const other of vms) if (vm.dataset.entityId < other.dataset.entityId && overlaps(box, other.querySelector("rect").getBoundingClientRect())) failures.push(`VM badges overlap: ${vm.dataset.entityId}, ${other.dataset.entityId}`);
+    }
+    const tiers = [...document.querySelectorAll(".dc-rs-tier")];
+    const graph = document.querySelector(".dc-topology-svg").getBoundingClientRect();
+    for (const kind of ["border", "stem"]) {
+      const devices = model.nodes.filter((node) => node.kind === kind).map((node) => nodeRect(node.id));
+      const left = Math.min(...devices.map((box) => box.left)), right = Math.max(...devices.map((box) => box.right));
+      if (Math.abs((left + right) / 2 - (graph.left + graph.right) / 2) > .1 || right - left >= graph.width * .5) failures.push(`${kind} must form a compact centered row`);
+    }
+    for (const tier of tiers) {
+      const box = tier.getBoundingClientRect();
+      for (const node of model.nodes) if (overlaps(box, nodeRect(node.id))) failures.push(`RS tier covers a device: ${tier.dataset.rsRole}, ${node.id}`);
+      for (const group of model.groups) if (overlaps(box, groupRect(group.id))) failures.push(`RS tier crosses fabric outline: ${group.id}`);
+      if (tier.dataset.rsRole === "rs_bolt") {
+        const leaves = model.nodes.filter((node) => node.kind === "leaf" && node.bolt_id === Number(tier.dataset.servedBolt));
+        const bolt = groupRect(`bolt-${tier.dataset.servedBolt}`);
+        if (Math.abs((box.left + box.right) / 2 - (bolt.left + bolt.right) / 2) > .1 || leaves.some((node) => box.bottom >= nodeRect(node.id).top)) failures.push("RS Bolt must be centered above its leaves");
+      } else if (tier.dataset.rsRole === "rs_ctrl") {
+        if (Math.abs((box.left + box.right) / 2 - (graph.left + graph.right) / 2) > .1) failures.push("RS Ctrl must be centered");
+      } else {
+        const ctrl = rect('.dc-rs-tier[data-rs-role="rs_ctrl"]');
+        if (box.left <= (graph.left + graph.right) / 2 || box.bottom >= ctrl.top) failures.push("RS User must be on the top right");
+      }
+      const members = vms.filter((vm) => vm.dataset.onHost === "false" && vm.classList.contains(tier.dataset.rsRole) && (tier.dataset.rsRole !== "rs_bolt" || model.vms.find((member) => member.id === vm.dataset.entityId || member.cluster_id === vm.dataset.entityId)?.served_bolt === Number(tier.dataset.servedBolt)));
+      for (const vm of members) if (!contains(box, vm.querySelector("rect").getBoundingClientRect())) failures.push(`VM escapes RS tier: ${vm.dataset.entityId}`);
+    }
+    return failures;
+  }, model);
+  assert.deepEqual(violations, [], "Topology geometry");
+};
 assert.equal(await page.locator(".dc-node").count(), 28);
 assert(await page.locator("#dc-inspector").isHidden());
 assert.equal(await page.locator('script[src*="htmx"]').count(), 0);
 assert.equal(await page.locator("#dc-show-route-flow").isChecked(), false);
+await checkLayout();
 await page.screenshot({ path: `${output}/desktop.png`, fullPage: true, animations: "disabled" });
 
 // A delayed result for a previous selection must not replace the current popup.
@@ -102,6 +164,7 @@ for (const collapsed of [true, false]) {
     await page.locator("#dc-show-infra-hosts").setChecked(hosted);
     assert.equal(await page.locator(".dc-session.illustrative").count(), 3);
     assert.equal(await page.locator(".dc-vm.cluster").count(), collapsed ? 4 : 0);
+    await checkLayout();
   }
 }
 await page.emulateMedia({ reducedMotion: "reduce" });
@@ -112,6 +175,8 @@ await page.locator("#dc-show-sessions").uncheck();
 assert.equal(await page.locator("#dc-route-marker").getAttribute("visibility"), "hidden");
 await page.locator("#dc-show-route-flow").uncheck();
 assert.equal(await page.locator(".dc-session.illustrative").count(), 0);
+await page.locator("#dc-fit").click();
+await page.screenshot({ path: `${output}/abstract.png`, fullPage: true, animations: "disabled" });
 await page.locator("#dc-show-infra-hosts").check();
 assert.equal(await getText("/config.yaml"), baseYAML);
 assert.equal(await getText("/inspector?kind=speaker&id=border-1"), baseTable);
@@ -165,6 +230,7 @@ const touchContext = await browser.newContext({ viewport: { width: 390, height: 
 const touchPage = await touchContext.newPage(); touchPage.on("pageerror", (error) => errors.push(error.message));
 await touchPage.goto(target);
 const touchNode = touchPage.locator('[data-entity-type="node"][data-entity-id="border-1"]'); await touchNode.waitFor();
+await touchNode.scrollIntoViewIfNeeded();
 const touchBase = await touchNode.getAttribute("transform");
 const touchBox = await touchNode.boundingBox();
 const cdp = await touchContext.newCDPSession(touchPage);
@@ -193,22 +259,64 @@ await page.locator("#dc-config-close").click();
 const maximumModel = await getJSON("/model");
 assert.equal(maximumModel.bgp_sessions.length, 1040); assert.equal(maximumModel.vms.length, 88);
 await page.locator("#dc-show-sessions").check(); assert.equal(await page.locator(".dc-session").count(), 1040);
-const overlappingHosts = await page.evaluate(() => {
-  const hosts = [...document.querySelectorAll(".dc-node.host")].map((item) => item.getBoundingClientRect());
-  return [...document.querySelectorAll(".dc-vm")].filter((item) => {
-    const vm = item.getBoundingClientRect();
-    return hosts.some((host) => Math.min(vm.right, host.right) - Math.max(vm.left, host.left) > 1 && Math.min(vm.bottom, host.bottom) - Math.max(vm.top, host.top) > 1);
-  }).length;
-});
-assert.equal(overlappingHosts, 0, "VM badges must not cover devices in the next host row");
+await checkLayout();
 await page.screenshot({ path: `${output}/maximum.png`, fullPage: true, animations: "disabled" });
+for (const collapsed of [true, false]) {
+  await page.locator("#dc-collapse-rs").setChecked(collapsed);
+  for (const hosted of [true, false]) {
+    await page.locator("#dc-show-infra-hosts").setChecked(hosted);
+    await checkLayout();
+  }
+}
+await page.screenshot({ path: `${output}/maximum-abstract.png`, fullPage: true, animations: "disabled" });
 await node.press("ArrowRight"); await node.press("Home");
+
+// Racks stay disjoint at drag limits; a host carries its badges and can move
+// back immediately after reaching its cell boundary.
+await page.locator("#dc-show-infra-hosts").check();
+const host = page.locator('.dc-node.host[data-entity-id="host-b1-h1"]');
+const vm = page.locator('.dc-vm.customer[data-host-id="host-b1-h1"]').first();
+const hostBefore = numbers(await host.getAttribute("transform"));
+const vmBefore = numbers(await vm.getAttribute("transform"));
+for (let i = 0; i < 12; i++) await host.press("ArrowRight");
+const hostAtLimit = numbers(await host.getAttribute("transform"));
+const vmAtLimit = numbers(await vm.getAttribute("transform"));
+assert(hostAtLimit[0] > hostBefore[0] && hostAtLimit[0] - hostBefore[0] <= 48);
+assert.equal(vmAtLimit[0] - vmBefore[0], hostAtLimit[0] - hostBefore[0]);
+await checkLayout(maximumModel);
+await host.press("ArrowLeft"); assert(numbers(await host.getAttribute("transform"))[0] < hostAtLimit[0]);
+for (const selector of ['.dc-node.host[data-entity-id="host-b1-h1"]', '.dc-node.tor[data-entity-id="tor-b1-r1-1"]', '.dc-node.leaf[data-entity-id="leaf-b1-1"]', '.dc-vm.customer[data-host-id="host-b1-h1"]']) {
+  const entity = page.locator(selector).first();
+  for (const direction of ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"]) {
+    for (let i = 0; i < 9; i++) await entity.press(direction);
+    await checkLayout(maximumModel);
+  }
+  await entity.press("Home");
+}
 
 // An unrelated browser still sees the default. The current browser reload keeps its scenario.
 const independent = await browser.newContext();
 assert.match(await (await independent.request.get(`${api}/config.yaml`)).text(), /spines: 4/);
 await independent.close();
 await page.reload(); await page.waitForFunction(() => document.querySelectorAll(".dc-node").length === 128);
+
+// Small/mixed fabrics and co-located VM placement reserve the same boundaries.
+for (const hostsPerRack of [1, 3]) {
+  const small = baseYAML.replace(/borders: 2/, "borders: 4").replace(/bolts: 2/, "bolts: 1").replace(/leaves_per_bolt: 2/, "leaves_per_bolt: 4")
+    .replace(/racks_per_bolt: 2/, "racks_per_bolt: 1").replace(/hosts_per_rack: 2/, `hosts_per_rack: ${hostsPerRack}`)
+    .replace(/bolt_id: 2/g, "bolt_id: 1").replace(/host_id: 2/g, "host_id: 1");
+  const response = await context.request.post(`${api}/config`, { data: small, headers: { "Content-Type": "application/yaml" } });
+  assert.equal(response.status(), 200);
+  await page.reload(); await node.waitFor();
+  const smallModel = await getJSON("/model");
+  for (const collapsed of [true, false]) {
+    await page.locator("#dc-collapse-rs").setChecked(collapsed);
+    for (const hosted of [true, false]) {
+      await page.locator("#dc-show-infra-hosts").setChecked(hosted);
+      await checkLayout(smallModel);
+    }
+  }
+}
 
 // Teardown must cancel both animation frames and listeners on retained DOM nodes.
 await page.evaluate(async () => {

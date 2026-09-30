@@ -30,7 +30,6 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       </div>
       <div class="dc-workspace">
         <div id="dc-graph" class="dc-graph-scroll"><p class="dc-empty">Buduję widok topologii…</p></div>
-        <div class="dc-canvas-note"><span aria-hidden="true">◎</span> Kliknij: szczegóły · przeciągnij: ustawienie</div>
         <aside id="dc-inspector" class="dc-inspector" role="dialog" aria-labelledby="dc-inspector-heading" tabindex="-1" hidden>
           <div class="dc-inspector-bar"><span class="dc-kicker">INSPEKTOR / OCZEKIWANY STAN</span>
             <button id="dc-inspector-close" class="dc-icon-button" type="button" aria-label="Zamknij inspektor">×</button></div>
@@ -38,6 +37,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         </aside>
       </div>
       <div class="dc-graph-footer"><span class="dc-legend"><i class="legend-switch"></i> fabric <i class="legend-host"></i> host <i class="legend-vm"></i> route server <i class="legend-customer"></i> VM klienta</span>
+        <span class="dc-canvas-note"><span aria-hidden="true">◎</span> Kliknij: szczegóły · przeciągnij: ustawienie</span>
         <span id="dc-flow-note">Adresy i tablice są obliczanym przykładem.</span></div>
       <div id="dc-traffic-list" class="dc-traffic-list" aria-label="Scenariusze ruchu"></div>
       <div class="dc-playback" role="group" aria-label="Sterowanie ilustracją pakietu">
@@ -182,7 +182,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const step = event.shiftKey ? 12 : 6;
       const delta = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[event.key];
       if (event.key === "Home") viewOffsets.delete(id);
-      else viewOffsets.set(id, boundedOffset(offset.x + delta[0], offset.y + delta[1]));
+      else viewOffsets.set(id, boundedOffset(offset.x + delta[0], offset.y + delta[1], currentPositions?.offsetBounds.get(id)));
       renderGraph();
       focusEntity({ type: entity.dataset.entityType, id });
     } else if (event.key === "Enter" || event.key === " ") {
@@ -242,7 +242,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       graphEl.classList.add("is-dragging");
     }
     event.preventDefault();
-    viewOffsets.set(drag.id, boundedOffset(drag.offset.x + point.x - drag.point.x, drag.offset.y + point.y - drag.point.y));
+    viewOffsets.set(drag.id, boundedOffset(drag.offset.x + point.x - drag.point.x, drag.offset.y + point.y - drag.point.y, currentPositions?.offsetBounds.get(drag.id)));
     if (!dragFrame) dragFrame = requestAnimationFrame(() => { dragFrame = 0; renderGraph(); });
   };
   const onInspectorClick = (event) => {
@@ -649,52 +649,36 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     currentPositions = positions;
     const nodeByID = new Map(model.nodes.map((node) => [node.id, node]));
     const interfaceByID = new Map(model.interfaces.map((iface) => [iface.id, iface]));
-    const hostByID = nodeByID;
     const routeSessionIDs = selected?.type === "route"
       ? new Set((model.route_state?.advertisements ?? []).filter((item) => item.route_id === selected.id).map((item) => item.session_id))
       : new Set();
     illustration.sequence = showRouteFlow.checked ? routeFlowSequence() : [];
     const illustrationIDs = new Set(illustration.sequence.map((step) => step.sessionID));
     const groupLayer = svgElement("g", { class: "dc-groups", "aria-hidden": "true" });
+    const rsLayer = svgElement("g", { class: "dc-rs-tiers", "aria-hidden": "true" });
     for (const group of model.groups) {
-      const memberPositions = group.node_ids.map((id) => positions.nodes.get(id)).filter(Boolean);
-      if (group.kind === "bolt") {
-        for (const childID of group.child_group_ids ?? []) {
-          const child = model.groups.find((candidate) => candidate.id === childID);
-          if (child) memberPositions.push(...child.node_ids.map((id) => positions.nodes.get(id)).filter(Boolean));
-        }
-      }
-      const memberVMs = positions.displayItems.filter((item) => {
-        const host = hostByID.get(item.hostID);
-        if (!item.onHost || !host) return false;
-        if (group.kind === "rack") return host.group_id === group.id;
-        return host.bolt_id === Number(group.id.slice("bolt-".length));
-      });
-      memberPositions.push(...memberVMs.map((item) => positions.displayPoints.get(item.id)).filter(Boolean));
-      if (!memberPositions.length) continue;
-      const xs = memberPositions.map((point) => point.x);
-      const ys = memberPositions.map((point) => point.y);
-      const x1 = Math.min(...xs) - 64;
-      const x2 = Math.max(...xs) + 64;
-      const y1 = Math.min(...ys) - (group.kind === "bolt" ? 42 : 36);
-      const y2 = Math.max(...ys) + 38;
+      const box = positions.groups.get(group.id);
+      if (!box) continue;
       groupLayer.append(svgElement("rect", {
-        x: x1, y: y1, width: Math.max(130, x2 - x1), height: y2 - y1,
+        ...box, "data-group-id": group.id,
         rx: 14, class: `dc-group-box ${group.kind === "bolt" ? "bolt" : "rack"}`,
       }));
-      groupLayer.append(svgText(x1 + 10, y1 + 18, group.label, "dc-group-label"));
+      groupLayer.append(svgText(box.x + 10, box.y + 18, group.label, "dc-group-label"));
+    }
+    for (const tier of positions.rsTiers) {
+      rsLayer.append(svgElement("rect", {
+        x: tier.x, y: tier.y, width: tier.width, height: tier.height, rx: 14,
+        class: `dc-rs-tier ${tier.role}`, "data-rs-role": tier.role, "data-served-bolt": tier.bolt ?? "",
+      }));
+      rsLayer.append(svgText(tier.x + 14, tier.y + 22, tier.label, "dc-rs-tier-label"));
     }
     const defs = svgElement("defs", {});
     const arrow = svgElement("marker", { id: "dc-flow-arrow", viewBox: "0 0 8 8", refX: 7, refY: 4, markerWidth: 5, markerHeight: 5, orient: "auto" });
     arrow.append(svgElement("path", { d: "M0 0 L8 4 L0 8Z", fill: "#d4b1fc" }));
     defs.append(arrow); svg.append(defs, groupLayer);
 
-    for (const [label, y] of [["BORDER", 82], ["STEM", 189], ["SPINE", 296], ["LEAF", 409], ["TOR", 549], ["HOSTY", 679]]) {
+    for (const [label, y] of positions.rowLabels) {
       svg.append(svgText(12, y, label, "dc-row-label"));
-    }
-    if (positions.displayItems.some((item) => !item.onHost)) {
-      const y = Math.min(...positions.displayItems.filter((item) => !item.onHost).map((item) => positions.displayPoints.get(item.id)?.y ?? 0));
-      svg.append(svgText(12, y, "INFRA · WIDOK ABSTRAKCYJNY", "dc-row-label"));
     }
 
     const edgeLayer = svgElement("g", { class: "dc-edges" });
@@ -718,8 +702,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
           "aria-label": `Łącze ${nodeByID.get(link.a_node_id)?.label} — ${nodeByID.get(link.b_node_id)?.label}`,
         });
         const direction = Math.sign(b.y - a.y) || 1;
-        const x1 = a.x, y1 = a.y + direction * 22;
-        const x2 = b.x, y2 = b.y - direction * 22;
+        const x1 = a.x, y1 = a.y + direction * a.height / 2;
+        const x2 = b.x, y2 = b.y - direction * b.height / 2;
         group.append(svgElement("line", { x1, y1, x2, y2, class: "dc-edge-hit" }));
         group.append(svgElement("line", { x1, y1, x2, y2, class: "dc-edge-line" }));
         edgeLayer.append(group);
@@ -751,6 +735,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       svg.append(sessionLayer);
     }
 
+    svg.append(rsLayer);
     const nodeLayer = svgElement("g", { class: "dc-nodes" });
     const vmCountByHost = new Map();
     for (const vm of model.vms) vmCountByHost.set(vm.host_id, (vmCountByHost.get(vm.host_id) ?? 0) + 1);
@@ -764,9 +749,10 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         "aria-label": `${kindLabels[node.kind] ?? node.kind}: ${node.label}`,
         "aria-description": "Enter: szczegóły. Strzałki: przesuń. Home: przywróć pozycję.",
       });
-      group.append(svgElement("rect", { x: -47, y: -22, width: 94, height: 44, rx: 9 }));
-      group.append(svgText(0, -2, node.label, "dc-node-label"));
-      group.append(svgText(0, 14, node.kind === "host" ? `${vmCountByHost.get(node.id) ?? 0} VM · ${node.interface_ids.length} interfejsy` : `AS ${node.asn}`, "dc-node-subtitle"));
+      group.append(svgElement("rect", { x: -point.width / 2, y: -point.height / 2, width: point.width, height: point.height, rx: 9 }));
+      const labelY = node.kind === "host" ? point.height / 2 - 25 : -2;
+      group.append(svgText(0, labelY, node.label, "dc-node-label"));
+      group.append(svgText(0, labelY + 16, node.kind === "host" ? `${vmCountByHost.get(node.id) ?? 0} VM · ${node.interface_ids.length} interfejsy` : `AS ${node.asn}`, "dc-node-subtitle"));
       nodeLayer.append(group);
     }
     svg.append(nodeLayer);
@@ -779,6 +765,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const group = svgElement("g", {
         class: `dc-vm ${item.role}${item.entityType === "cluster" ? " cluster" : ""}${selectedClass}`, transform: `translate(${point.x} ${point.y})`,
         role: "button", tabindex: "0", "data-entity-type": item.entityType, "data-entity-id": item.id,
+        "data-host-id": item.hostID, "data-on-host": item.onHost,
         "aria-label": `${item.label}${item.onHost ? `, host ${item.hostID}` : ", widok abstrakcyjny"}`,
         "aria-description": "Enter: szczegóły. Strzałki: przesuń. Home: przywróć pozycję.",
       });
@@ -1028,93 +1015,125 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   };
 }
 
-function boundedOffset(x, y) {
+function boundedOffset(x, y, bounds) {
   const scale = Math.min(1, 48 / (Math.hypot(x, y) || 1));
-  return { x: x * scale, y: y * scale };
+  return {
+    x: Math.max(bounds?.left ?? -48, Math.min(bounds?.right ?? 48, x * scale)),
+    y: Math.max(bounds?.top ?? -48, Math.min(bounds?.bottom ?? 48, y * scale)),
+  };
 }
 
 function layout(model, options) {
   const t = model.config.topology;
-  const margin = 120;
-  const blockWidth = Math.max(240, t.racks_per_bolt * 230, t.leaves_per_bolt * 110 + 60);
-  const width = Math.max(1040, margin * 2 + t.bolts * blockWidth);
-  let height = 820;
+  const rackWidth = 252, rackGap = 16, boltPadding = 16, boltGap = 32;
+  const blockWidth = Math.max(t.racks_per_bolt * rackWidth + (t.racks_per_bolt - 1) * rackGap + boltPadding * 2, t.leaves_per_bolt * 116 + 32);
+  const fabricWidth = t.bolts * blockWidth + (t.bolts - 1) * boltGap;
+  const width = Math.max(1040, fabricWidth + 160, !options.showInfraOnHosts ? (t.borders - 1) * 124 + 862 : 0);
+  const margin = (width - fabricWidth) / 2;
   const nodes = new Map();
+  const offsetBounds = new Map();
+  const groups = new Map();
+  const rsTiers = [];
   const displayPoints = new Map();
   const entityPoints = new Map();
   const displayItems = makeDisplayItems(model.vms, options.collapseRouteServers);
   const hostedCounts = new Map();
   for (const item of displayItems) {
-    if (item.role === "customer" || options.showInfraOnHosts) hostedCounts.set(item.hostID, (hostedCounts.get(item.hostID) ?? 0) + 1);
+    item.onHost = item.role === "customer" || options.showInfraOnHosts;
+    if (item.onHost) hostedCounts.set(item.hostID, (hostedCounts.get(item.hostID) ?? 0) + 1);
   }
-  const hostRowGap = Math.max(105, 75 + Math.max(0, ...hostedCounts.values()) * 30);
+  const abstract = displayItems.some((item) => !item.onHost);
+  const spineY = abstract ? 340 : 250, leafY = abstract ? 545 : 350;
+  const rackTop = leafY + 65, torY = rackTop + 55, hostTop = torY + 60;
+  const hostHeight = (id) => Math.max(80, (hostedCounts.get(id) ?? 0) * 28 + 52);
+  const maxHostHeight = Math.max(80, ...model.nodes.filter((node) => node.kind === "host").map((node) => hostHeight(node.id)));
+  const hostRowGap = maxHostHeight + 28;
+  const rackBottom = hostTop + (Math.ceil(t.hosts_per_rack / 2) - 1) * hostRowGap + maxHostHeight + 26;
+
+  // Reserve disjoint cells before applying visual offsets. A small drag stays
+  // inside its cell and group; neither neighboring outlines nor VM badges cross.
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+  const placeNode = (node, x, y, bounds, nodeWidth = 94, nodeHeight = 44) => {
+    const offset = options.offsets?.get(node.id) ?? { x: 0, y: 0 };
+    offsetBounds.set(node.id, bounds);
+    nodes.set(node.id, {
+      x: x + clamp(offset.x, bounds?.left ?? -48, bounds?.right ?? 48),
+      y: y + clamp(offset.y, bounds?.top ?? -48, bounds?.bottom ?? 48),
+      width: nodeWidth, height: nodeHeight,
+    });
+  };
   const tiers = [
-    ["border", 78], ["stem", 185], ["spine", 292],
+    ["border", 70], ["stem", 160], ["spine", spineY],
   ];
   for (const [kind, y] of tiers) {
     const members = model.nodes.filter((node) => node.kind === kind).sort((a, b) => a.role_index - b.role_index);
-    evenPositions(members, margin, width - margin).forEach((x, index) => nodes.set(members[index].id, { x, y }));
+    const span = kind === "spine" ? fabricWidth - 120 : (members.length - 1) * 124;
+    const bounds = abstract && kind === "stem" ? { top: -12, bottom: 12 } : abstract && kind === "spine" ? { top: -4, bottom: 8 } : undefined;
+    evenPositions(members, (width - span) / 2, (width + span) / 2).forEach((x, index) => placeNode(members[index], x, y, bounds));
   }
   for (let bolt = 1; bolt <= t.bolts; bolt++) {
-    const start = margin + (bolt - 1) * blockWidth;
+    const start = margin + (bolt - 1) * (blockWidth + boltGap);
     const end = start + blockWidth;
+    groups.set(`bolt-${bolt}`, { x: start, y: leafY - 46, width: blockWidth, height: rackBottom + 16 - (leafY - 46) });
     const leaves = model.nodes.filter((node) => node.kind === "leaf" && node.bolt_id === bolt).sort((a, b) => a.role_index - b.role_index);
-    evenPositions(leaves, start + 58, end - 58).forEach((x, index) => nodes.set(leaves[index].id, { x, y: 405 }));
+    const leafCell = blockWidth / leaves.length;
+    leaves.forEach((node, index) => placeNode(node, start + leafCell * (index + .5), leafY, {
+      left: -Math.min(48, leafCell / 2 - 55), right: Math.min(48, leafCell / 2 - 55), top: -4, bottom: 20,
+    }));
+    if (abstract) rsTiers.push({ role: "rs_bolt", bolt, label: `RS Bolt · Bolt ${bolt}`, x: (start + end) / 2 - 120, y: leafY - 164, width: 240, height: 108 });
+    const rackStartX = (start + end - t.racks_per_bolt * rackWidth - (t.racks_per_bolt - 1) * rackGap) / 2;
     for (let rack = 1; rack <= t.racks_per_bolt; rack++) {
-      const rackStart = start + (rack - 1) * (blockWidth / t.racks_per_bolt);
-      const rackEnd = start + rack * (blockWidth / t.racks_per_bolt);
+      const rackStart = rackStartX + (rack - 1) * (rackWidth + rackGap);
+      const rackEnd = rackStart + rackWidth;
       const tors = model.nodes.filter((node) => node.kind === "tor" && node.bolt_id === bolt && node.rack_id === rack).sort((a, b) => a.role_index - b.role_index);
+      groups.set(tors[0].group_id, { x: rackStart, y: rackTop, width: rackWidth, height: rackBottom - rackTop });
       const hosts = model.nodes.filter((node) => node.kind === "host" && node.bolt_id === bolt && node.rack_id === rack).sort((a, b) => a.host_id - b.host_id);
-      evenPositions(tors, rackStart + 50, rackEnd - 50).forEach((x, index) => nodes.set(tors[index].id, { x, y: 545 }));
-      if (hosts.length <= 2) {
-        evenPositions(hosts, rackStart + 56, rackEnd - 56).forEach((x, index) => nodes.set(hosts[index].id, { x, y: 675 }));
-      } else {
-        const columns = [rackStart + 58, rackEnd - 58];
-        hosts.forEach((host, index) => {
-          const row = Math.floor(index / 2);
-          const column = hosts.length === 3 && index === 2 ? (rackStart + rackEnd) / 2 : columns[index % 2];
-          nodes.set(host.id, { x: column, y: 675 + row * hostRowGap });
-        });
-      }
+      const columns = [rackStart + 64, rackEnd - 64];
+      tors.forEach((node, index) => placeNode(node, columns[index], torY, { left: -10, right: 10, top: -8, bottom: 20 }));
+      hosts.forEach((host, index) => {
+        const row = Math.floor(index / 2);
+        const centered = hosts.length === 1 || hosts.length === 3 && index === 2;
+        const x = centered ? (rackStart + rackEnd) / 2 : columns[index % 2];
+        const height = hostHeight(host.id);
+        placeNode(host, x, hostTop + row * hostRowGap + height / 2, {
+          left: centered ? -48 : -8, right: centered ? 48 : 8, top: -12, bottom: 12,
+        }, 104, height);
+      });
     }
   }
-  for (const [id, point] of nodes) {
-    const offset = options.offsets?.get(id);
-    if (offset) nodes.set(id, { ...point, x: point.x + offset.x, y: point.y + offset.y });
+  if (abstract) {
+    rsTiers.push({ role: "rs_ctrl", label: "RS Ctrl · klaster", x: width / 2 - 120, y: 202, width: 240, height: 108 });
+    rsTiers.push({ role: "rs_user", label: "RS User · klaster", x: width - 320, y: 24, width: 240, height: 108 });
   }
   const hostCounts = new Map();
-  const abstractItems = [];
   for (const item of displayItems) {
-    item.onHost = item.role === "customer" || options.showInfraOnHosts;
-    if (!item.onHost) { abstractItems.push(item); continue; }
+    if (!item.onHost) continue;
     const index = hostCounts.get(item.hostID) ?? 0;
     hostCounts.set(item.hostID, index + 1);
-    const hostPoint = nodes.get(item.hostID);
-    if (!hostPoint) continue;
-    displayPoints.set(item.id, { x: hostPoint.x, y: hostPoint.y + 55 + index * 30, kind: "vm" });
+    const host = nodes.get(item.hostID);
+    if (!host) continue;
+    const offset = options.offsets?.get(item.id) ?? { x: 0, y: 0 };
+    offsetBounds.set(item.id, { left: -4, right: 4, top: -1, bottom: 1 });
+    displayPoints.set(item.id, { x: host.x + clamp(offset.x, -4, 4), y: host.y - host.height / 2 + 24 + index * 28 + clamp(offset.y, -1, 1) });
   }
-  if (abstractItems.length) {
-    const columns = Math.max(1, Math.floor((width - 160) / 120));
-    const rows = Math.ceil(abstractItems.length / columns);
-    const startY = Math.max(770, ...Array.from(nodes.values(), (point) => point.y + 95), ...Array.from(displayPoints.values(), (point) => point.y + 50));
-    abstractItems.forEach((item, index) => {
-      const column = index % columns;
-      const row = Math.floor(index / columns);
-      displayPoints.set(item.id, { x: margin + 60 + column * 120, y: startY + row * 38, kind: "vm" });
+  for (const tier of rsTiers) {
+    const items = displayItems.filter((item) => !item.onHost && item.role === tier.role && (tier.role !== "rs_bolt" || item.members[0].served_bolt === tier.bolt));
+    items.forEach((item, index) => {
+      const offset = options.offsets?.get(item.id) ?? { x: 0, y: 0 };
+      offsetBounds.set(item.id, { left: -7, right: 7, top: -3, bottom: 3 });
+      displayPoints.set(item.id, {
+        x: tier.x + tier.width / 2 + (items.length === 1 ? 0 : (index % 2 === 0 ? -55 : 55)) + clamp(offset.x, -7, 7),
+        y: tier.y + (items.length === 1 ? 66 : 50 + Math.floor(index / 2) * 32) + clamp(offset.y, -3, 3),
+      });
     });
-    height = Math.max(height, startY + rows * 38 + 28);
-  }
-  for (const [id, point] of displayPoints) {
-    const offset = options.offsets?.get(id);
-    if (offset) displayPoints.set(id, { ...point, x: point.x + offset.x, y: point.y + offset.y });
   }
   for (const node of model.nodes) entityPoints.set(node.id, nodes.get(node.id));
   for (const item of displayItems) {
     const point = displayPoints.get(item.id);
     for (const vm of item.members) entityPoints.set(vm.id, point);
   }
-  const lastVMY = Math.max(height - 30, ...Array.from(displayPoints.values(), (point) => point.y + 20));
-  return { nodes, displayPoints, entityPoints, displayItems, width, height: lastVMY + 30 };
+  const rowLabels = [["BORDER", 74], ["STEM", 164], ["SPINE", spineY + 4], ["LEAF", leafY + 4], ["TOR", torY + 4], ["HOSTY", hostTop + 24]];
+  return { nodes, groups, rsTiers, rowLabels, offsetBounds, displayPoints, entityPoints, displayItems, width, height: rackBottom + 44 };
 }
 
 function makeDisplayItems(vms, collapseRouteServers) {
