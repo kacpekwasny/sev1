@@ -26,6 +26,7 @@ var (
 
 type Config struct {
 	SchemaVersion int                 `yaml:"schema_version" json:"schema_version"`
+	Addressing    AddressingConfig    `yaml:"addressing,omitempty" json:"addressing,omitempty"`
 	Topology      TopologyConfig      `yaml:"topology" json:"topology"`
 	VPCs          []VPCConfig         `yaml:"vpcs" json:"vpcs"`
 	CustomerVMs   CustomerVMConfig    `yaml:"customer_vms" json:"customer_vms"`
@@ -141,6 +142,10 @@ func (c Config) Validate() error {
 			add(path, fmt.Sprintf("wartość musi mieścić się w zakresie %d–%d", min, max))
 		}
 	}
+	ipv6 := c.Addressing.IPv6
+	if !ipv6.validate(add) {
+		ipv6 = IPv6Config{} // Continue collecting diagnostics without parsing invalid pools.
+	}
 	t := c.Topology
 	checkRange("topology.borders", t.Borders, 1, 4)
 	checkRange("topology.stems", t.Stems, 1, 4)
@@ -225,8 +230,8 @@ func (c Config) Validate() error {
 			if address.Is4() && !customerIPv4Pool.Contains(address) {
 				add(addressPath, "adres IPv4 musi pochodzić z syntetycznej puli 10.64.0.0/10")
 			}
-			if address.Is6() && !documentationV6.Contains(address) {
-				add(addressPath, "adres IPv6 musi pochodzić z dokumentacyjnej puli 2001:db8::/32")
+			if address.Is6() && !ipv6.customerAddressAllowed(address) {
+				add(addressPath, "adres IPv6 musi pochodzić z puli dokumentacyjnej lub addressing.ipv6.customer_prefix")
 			}
 			seenAddresses[key] = true
 		}
@@ -240,7 +245,7 @@ func (c Config) Validate() error {
 		}
 		addresses := []string{
 			ipv4FromPool("10.64.0.0/10", uint64(id)).String(),
-			identityIPv6(6, 0, uint32(id)).String(),
+			ipv6.identity(6, 0, uint32(id)).String(),
 		}
 		paths := []string{fmt.Sprintf("customer_vms[%d].addresses[0]", id), fmt.Sprintf("customer_vms[%d].addresses[1]", id)}
 		familyReplaced := map[bool]bool{}
@@ -335,8 +340,8 @@ func (c Config) Validate() error {
 		}
 		if prefix, err := netip.ParsePrefix(route.Prefix); err != nil {
 			add(path+".prefix", "niepoprawny prefiks IP")
-		} else if !syntheticPrefix(prefix) {
-			add(path+".prefix", "użyj adresu z puli syntetycznej lub dokumentacyjnej")
+		} else if !c.syntheticPrefix(prefix) {
+			add(path+".prefix", "użyj adresu z puli syntetycznej, dokumentacyjnej lub zadeklarowanej puli IPv6")
 		} else {
 			key := fmt.Sprintf("%d/%s/%d", route.VPCID, prefix.Masked(), route.BorderID)
 			if routeKeys[key] {
@@ -370,8 +375,8 @@ func (c Config) Validate() error {
 		if hasPrefix {
 			if prefix, err := netip.ParsePrefix(flow.DestinationPrefix); err != nil {
 				add(path+".destination_prefix", "niepoprawny prefiks IP")
-			} else if !syntheticPrefix(prefix) {
-				add(path+".destination_prefix", "użyj adresu z puli syntetycznej lub dokumentacyjnej")
+			} else if !c.syntheticPrefix(prefix) {
+				add(path+".destination_prefix", "użyj adresu z puli syntetycznej, dokumentacyjnej lub zadeklarowanej puli IPv6")
 			}
 		}
 	}
@@ -397,7 +402,7 @@ func validateHostRef(path string, host HostRef, boltCount, hostsPerBolt int, add
 	}
 }
 
-func syntheticPrefix(prefix netip.Prefix) bool {
+func (c Config) syntheticPrefix(prefix netip.Prefix) bool {
 	address := prefix.Addr().Unmap()
 	if address.Is4() {
 		for _, pool := range routeIPv4Pools {
@@ -407,5 +412,14 @@ func syntheticPrefix(prefix netip.Prefix) bool {
 		}
 		return false
 	}
-	return documentationV6.Contains(address) && prefix.Bits() >= documentationV6.Bits()
+	if documentationV6.Contains(address) && prefix.Bits() >= documentationV6.Bits() {
+		return true
+	}
+	for _, pool := range c.Addressing.IPv6.pools() {
+		parsed, err := netip.ParsePrefix(pool.prefix)
+		if err == nil && parsed.Contains(address) && prefix.Bits() >= parsed.Bits() {
+			return true
+		}
+	}
+	return false
 }

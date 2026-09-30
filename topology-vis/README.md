@@ -35,6 +35,8 @@ Expected BGP selection retains one default per family, with physical underlay
 ECMP to the selected border; specific VM and configured static egress routes take
 precedence. Public defaults do not enter private guest VRFs. External uplinks are
 outside the drawn fabric; the model ends the default's packet path at the border.
+Every physical fabric and host link is IPv6 link-local only; BGP transport
+includes interface scope. Device loopbacks and IPv4 VTEPs remain numbered.
 Kernel views show the resolved dataplane: local VM /32 and /128 static routes
 use unnumbered TAPs; remote VM and recursive customer routes use an illustrative
 L3-SVI (`br<VNI>`) backed by `vxlan<VNI>`, with neighbor/router-MAC/FDB context.
@@ -105,7 +107,7 @@ Pressing outside the compact send-action popup dismisses it.
 
 Packet examples use IPv4 ICMP or IPv6 ICMPv6 Echo Request. Customer VM pairs obey
 VPC forwarding/isolation; choosing a border targets a configured static egress
-prefix or its identity address. Borders advertise no BGP routes. Static IPv4/IPv6
+prefix or its identity address. Borders advertise public defaults. Static IPv4/IPv6
 routes to both borders remain available in underlay and tenant contexts; inspect
 them in Trasy do border, separately from expected BGP RIBs.
 Nodes and infra VMs use underlay paths. Unsupported tenant destinations report why
@@ -175,6 +177,39 @@ preserves the last valid scenario. Export/reload reproduces its network and expe
 tables, preserving all RS members and actual placements even when dragged/collapsed.
 Reducing the customer count removes references to deleted customer VMs.
 
+IPv6 identities are configurable in `addressing.ipv6`:
+
+```yaml
+addressing:
+  ipv6:
+    fabric_prefix: 2001:db8:1::/48
+    host_prefix: 2001:db8:2::/48
+    rs_bolt_prefix: 2001:db8:3::/48
+    rs_ctrl_prefix: 2001:db8:4::/48
+    rs_user_prefix: 2001:db8:5::/48
+    customer_prefix: 2001:db8:6::/48
+    suffix: 1
+```
+
+Each role prefix must be an aligned, distinct IPv6 /48 from global unicast or
+ULA space. Fields are optional; omitted fields use the values above, including
+when validating overlap with configured roles. The address layout is
+`<role prefix /48>:<scope 16-bit>:<entity 32-bit>:<suffix 32-bit>`.
+Scope is the bolt ID for hosts/RS Bolt, otherwise zero; entities retain their
+stable existing IDs. Integers are decimal in YAML and hexadecimal in IPv6 output.
+For example, `host_prefix: fd42:1234:20::/48` and `suffix: 42` produce
+`fd42:1234:20:1:0:1:0:2a` for h1001. Suffix may be 0–4294967295.
+The shipped example remains documentation-only; custom prefixes are illustrative
+configuration and do not contact external routers.
+
+All generated loopbacks, VM addresses, IPv6 BGP transports, route origins,
+RIB/FIB entries and inspected IPv6 packets use the configured identities.
+Physical links remain link-local and VXLAN VTEPs remain IPv4. Explicit customer
+IPv6 overrides may use the customer prefix or the legacy documentation pool;
+route-origin/traffic prefixes may additionally use any declared IPv6 role pool.
+Export/load and count rebuilds preserve the scheme; invalid schemes leave the
+last valid snapshot intact.
+
 Edited scenarios are private to the browser and stay in memory. They expire after
 30 idle minutes or server restart; at most 16 edited scenarios are retained, with
 the oldest evicted when necessary. An expired scenario reports an error instead
@@ -242,5 +277,10 @@ and packet-marker alignment with its yellow track at both viewport widths.
 Measured timings are local observations, not a performance guarantee; see
 [PROGRESS.md](PROGRESS.md) for the latest verification.
 
-Every physical fabric and host link is IPv6 link-local only; BGP transport
-includes interface scope. Device loopbacks and IPv4 VTEPs remain numbered.
+IPv6 configuration and physical-link checks:
+
+```sh
+PLAYWRIGHT_MODULE=/path/to/playwright-core/index.mjs \
+TOPOLOGY_URL=http://127.0.0.1:8081/topologie/dc/ \
+node topology-vis/tests/addressing.mjs
+```

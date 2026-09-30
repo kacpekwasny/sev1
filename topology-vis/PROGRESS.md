@@ -399,11 +399,25 @@ both widths; screenshots reviewed. Go tests/build/vet pass, including IPv4/IPv6
 external-packet destinations and distinct private border FDB mappings.
 Commit: the commit containing this checkpoint.
 
-## D25 — in progress
+## D25 — complete
 
-All physical links now use scoped link-local IPv6 and unnumbered BGP, without
-IPv4/global IPv6 interface addresses. Removed the unused numbered-link allocator.
-Loopbacks, VXLAN VTEPs and advertised families are preserved. Go tests and
-embedded production build pass. Chrome verifies GUI/Linux FIBs, scoped
-link-local nexthops and route inspection at desktop/narrow widths.
-Commit: the commit containing this checkpoint. Configurable IPv6 identities are next.
+1. All physical links use scoped link-local IPv6 and unnumbered BGP, without
+   IPv4/global IPv6 interface addresses. Removed the numbered-link allocator.
+   Loopbacks, IPv4 VTEPs and advertised families remain separate. Go tests/build
+   and desktop/narrow Chrome GUI/Linux FIB inspection pass. Commit: `44d8306`.
+2. YAML `addressing.ipv6` configures six role /48s and an optional 32-bit suffix.
+   The remaining scope/entity fields retain stable allocation. Empty settings
+   preserve legacy identities. Aligned, distinct global-unicast/ULA pools are
+   validated including inherited defaults; customer/scenario overrides accept
+   configured pools. Generation, BGP, RIB/FIB and IPv6 packets share the scheme.
+   YAML export/reload and count rebuild retain it; invalid input is atomic.
+   The shipped YAML includes explicit legacy defaults and the drawer explains
+   where to edit them. Go tests/build/vet and JS syntax checks pass. Chrome at
+   1280×900 and 390×844 checks custom ULA/suffix, invalid-pool rejection, export,
+   count rebuild, resolved VXLAN FIB and restoration. Kernel, route fanout and
+   packet playback walkthroughs pass with embedded assets; screenshots reviewed.
+   Full configuration/layout walkthrough passes with no browser errors; capped
+   128-device/1040-session load and calculation measured 2.65 seconds locally.
+   Commit: the commit containing this checkpoint.
+
+No pending D25 work. Preview: http://127.0.0.1:8099/topologie/dc/.

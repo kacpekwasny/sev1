@@ -149,7 +149,7 @@ func buildVMs(config Config, nodes []Node) ([]VM, error) {
 				chosen[member] = host
 				used[host.ID] = true
 			}
-			vm := newRouteServerVM(role, servedBolt, member, host, explicit)
+			vm := newRouteServerVM(config.Addressing.IPv6, role, servedBolt, member, host, explicit)
 			vms = append(vms, vm)
 		}
 		return nil
@@ -187,13 +187,13 @@ func buildVMs(config Config, nodes []Node) ([]VM, error) {
 		if hasOverride && override.VPCID != nil {
 			vpcID = *override.VPCID
 		}
-		vms = append(vms, newCustomerVM(id, host, vpcID, override.Addresses, explicit))
+		vms = append(vms, newCustomerVM(config.Addressing.IPv6, id, host, vpcID, override.Addresses, explicit))
 	}
 	sort.Slice(vms, func(i, j int) bool { return vms[i].ID < vms[j].ID })
 	return vms, nil
 }
 
-func newRouteServerVM(role VMRole, servedBolt, member int, host Node, explicit bool) VM {
+func newRouteServerVM(scheme IPv6Config, role VMRole, servedBolt, member int, host Node, explicit bool) VM {
 	roleCode, entity, asn := uint16(0), uint32(member), uint32(0)
 	label := ""
 	clusterID := string(role)
@@ -222,7 +222,7 @@ func newRouteServerVM(role VMRole, servedBolt, member int, host Node, explicit b
 		infraIndex = uint32(20 + member)
 	}
 	ipv4 := ipv4FromPool("10.32.0.0/12", uint64(infraIndex)).String()
-	ipv6 := identityIPv6(roleCode, scope, entity).String()
+	ipv6 := scheme.identity(roleCode, scope, entity).String()
 	return VM{
 		ID: id, Label: label, Role: role, ClusterID: clusterID, Member: member,
 		ServedBolt: servedBolt, HostID: host.ID, HostBoltID: host.BoltID,
@@ -231,9 +231,9 @@ func newRouteServerVM(role VMRole, servedBolt, member int, host Node, explicit b
 	}
 }
 
-func newCustomerVM(id int, host Node, vpcID uint32, explicitAddresses []string, explicitPlace bool) VM {
+func newCustomerVM(scheme IPv6Config, id int, host Node, vpcID uint32, explicitAddresses []string, explicitPlace bool) VM {
 	ipv4 := ipv4FromPool("10.64.0.0/10", uint64(id)).String()
-	ipv6 := identityIPv6(6, 0, uint32(id)).String()
+	ipv6 := scheme.identity(6, 0, uint32(id)).String()
 	addresses := []string{ipv4, ipv6}
 	familyReplaced := map[bool]bool{}
 	for _, raw := range explicitAddresses {

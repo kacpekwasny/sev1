@@ -78,7 +78,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     <dialog id="dc-config-dialog" class="dc-config-dialog" aria-labelledby="dc-config-title">
       <div class="dc-inspector-bar"><div><p class="dc-kicker">SCENARIUSZ</p><h2 id="dc-config-title">Konfiguracja sieci</h2></div>
         <button id="dc-config-close" class="dc-icon-button" type="button" aria-label="Zamknij konfigurację">×</button></div>
-      <p class="dc-config-help">Zmień rozmiar lub wczytaj YAML. Oczekiwane tablice tras zostaną przeliczone po przebudowie.</p>
+      <p class="dc-config-help">Zmień rozmiar lub wczytaj YAML. Oczekiwane tablice tras zostaną przeliczone po przebudowie. Prefiksy /48 dla ról i sufiks IPv6 ustawisz w <code>addressing.ipv6</code>; łącza fizyczne pozostają link-local.</p>
       <form id="dc-count-form" class="dc-count-controls"><h3>Rozmiar topologii</h3>
         <div class="dc-count-grid">
           <label>Spines <input name="spines" type="number" min="1" max="8" required></label>

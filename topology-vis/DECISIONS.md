@@ -432,7 +432,17 @@ All physical links have only interface-scoped link-local IPv6: no IPv4 or
 global IPv6 addresses or connected prefixes. Both host–ToR and fabric BGP
 use these scoped endpoints, retaining IPv4/IPv6 AFIs. Device loopbacks and
 IPv4 VXLAN VTEPs remain numbered identities. The second increment exposes
-the IPv6 identity scheme in YAML with backward-compatible defaults.
+the IPv6 identity scheme in YAML with backward-compatible defaults. Authorized
+implementation defaults: `addressing.ipv6` holds six distinct aligned role /48
+prefixes (`fabric_prefix`, `host_prefix`, `rs_bolt_prefix`, `rs_ctrl_prefix`,
+`rs_user_prefix`, `customer_prefix`) and an optional 32-bit `suffix`. Omitted
+fields preserve the existing role pools and suffix 1. Each prefix may use global
+unicast or ULA; scope/entity allocation stays deterministic. The layout is
+48-bit role prefix / 16-bit scope / 32-bit entity / 32-bit suffix. Explicit VM
+overrides retain legacy documentation-pool compatibility and also accept the
+customer pool; scenario prefixes accept declared pools. Validation rejects invalid
+or overlapping role pools, including inherited ones; rejected YAML preserves the
+last valid snapshot. This extends D06's formerly fixed documentation schema.
 Commit the two requirements separately.
 
 ## Recording an answer

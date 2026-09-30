@@ -1,5 +1,17 @@
 schema_version: 1
 
+# Adresy /128: <prefiks roli /48>:<bolt lub 0>:<ID 32-bit>:<suffix 32-bit>.
+# Łącza fizyczne pozostają wyłącznie link-local.
+addressing:
+  ipv6:
+    fabric_prefix: 2001:db8:1::/48
+    host_prefix: 2001:db8:2::/48
+    rs_bolt_prefix: 2001:db8:3::/48
+    rs_ctrl_prefix: 2001:db8:4::/48
+    rs_user_prefix: 2001:db8:5::/48
+    customer_prefix: 2001:db8:6::/48
+    suffix: 1
+
 topology:
   borders: 2
   stems: 2

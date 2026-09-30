@@ -90,6 +90,7 @@ func BuildTopology(config Config) (Model, error) {
 	if err := config.Validate(); err != nil {
 		return Model{}, err
 	}
+	ipv6 := config.Addressing.IPv6
 	model := Model{Config: config}
 	nodeIndex := make(map[string]int)
 	addNode := func(node Node) error {
@@ -103,24 +104,24 @@ func BuildTopology(config Config) (Model, error) {
 	addGroup := func(group Group) { model.Groups = append(model.Groups, group) }
 	t := config.Topology
 	for id := 1; id <= t.Borders; id++ {
-		if err := addNode(newFabricNode(NodeBorder, id, 0, 0, 0)); err != nil {
+		if err := addNode(newFabricNode(ipv6, NodeBorder, id, 0, 0, 0)); err != nil {
 			return Model{}, err
 		}
 	}
 	for id := 1; id <= t.Stems; id++ {
-		if err := addNode(newFabricNode(NodeStem, id, 0, 0, 0)); err != nil {
+		if err := addNode(newFabricNode(ipv6, NodeStem, id, 0, 0, 0)); err != nil {
 			return Model{}, err
 		}
 	}
 	for id := 1; id <= t.Spines; id++ {
-		if err := addNode(newFabricNode(NodeSpine, id, 0, 0, 0)); err != nil {
+		if err := addNode(newFabricNode(ipv6, NodeSpine, id, 0, 0, 0)); err != nil {
 			return Model{}, err
 		}
 	}
 	for bolt := 1; bolt <= t.Bolts; bolt++ {
 		group := Group{ID: boltGroupID(bolt), Kind: "bolt", Label: fmt.Sprintf("Bolt %02d", bolt)}
 		for leaf := 1; leaf <= t.LeavesPerBolt; leaf++ {
-			node := newFabricNode(NodeLeaf, leaf, bolt, 0, 0)
+			node := newFabricNode(ipv6, NodeLeaf, leaf, bolt, 0, 0)
 			node.GroupID = group.ID
 			group.NodeIDs = append(group.NodeIDs, node.ID)
 			if err := addNode(node); err != nil {
@@ -131,7 +132,7 @@ func BuildTopology(config Config) (Model, error) {
 			rackGroup := Group{ID: rackGroupID(bolt, rack), Kind: "rack", Label: fmt.Sprintf("Rack %02d", rack), ParentID: group.ID}
 			group.ChildGroupIDs = append(group.ChildGroupIDs, rackGroup.ID)
 			for tor := 1; tor <= 2; tor++ {
-				node := newFabricNode(NodeToR, tor, bolt, rack, 0)
+				node := newFabricNode(ipv6, NodeToR, tor, bolt, rack, 0)
 				node.GroupID = rackGroup.ID
 				rackGroup.NodeIDs = append(rackGroup.NodeIDs, node.ID)
 				if err := addNode(node); err != nil {
@@ -140,7 +141,7 @@ func BuildTopology(config Config) (Model, error) {
 			}
 			for host := 1; host <= t.HostsPerRack; host++ {
 				hostID := (rack-1)*t.HostsPerRack + host
-				node := newHostNode(bolt, rack, hostID)
+				node := newHostNode(ipv6, bolt, rack, hostID)
 				node.GroupID = rackGroup.ID
 				rackGroup.NodeIDs = append(rackGroup.NodeIDs, node.ID)
 				if err := addNode(node); err != nil {
@@ -241,7 +242,7 @@ func BuildTopology(config Config) (Model, error) {
 	return model, nil
 }
 
-func newFabricNode(kind NodeKind, id, bolt, rack, host int) Node {
+func newFabricNode(ipv6 IPv6Config, kind NodeKind, id, bolt, rack, host int) Node {
 	nodeID := ""
 	label := ""
 	var ipv4Index, ipv6ID uint32
@@ -268,17 +269,17 @@ func newFabricNode(kind NodeKind, id, bolt, rack, host int) Node {
 		ipv4Index, ipv6ID, asn = uint32(32+slot), uint32(32+slot), uint32(64544+slot-1)
 	}
 	ipv4 := ipv4FromPool("10.0.0.0/12", uint64(ipv4Index))
-	ipv6 := identityIPv6(1, 0, ipv6ID)
-	return Node{ID: nodeID, Label: label, Kind: kind, RoleIndex: id, ASN: asn, IPv4: ipv4.String(), IPv6: ipv6.String(), BoltID: bolt, RackID: rack}
+	v6 := ipv6.identity(1, 0, ipv6ID)
+	return Node{ID: nodeID, Label: label, Kind: kind, RoleIndex: id, ASN: asn, IPv4: ipv4.String(), IPv6: v6.String(), BoltID: bolt, RackID: rack}
 }
 
-func newHostNode(bolt, rack, hostID int) Node {
+func newHostNode(ipv6 IPv6Config, bolt, rack, hostID int) Node {
 	globalID := (bolt-1)*16 + hostID
 	ipv4 := ipv4FromPool("10.16.0.0/12", uint64(globalID))
-	ipv6 := identityIPv6(2, uint16(bolt), uint32(hostID))
+	v6 := ipv6.identity(2, uint16(bolt), uint32(hostID))
 	return Node{
 		ID: hostNodeID(bolt, hostID), Label: HostLabel(bolt, hostID), Kind: NodeHost,
-		ASN: uint32(64576 + globalID - 1), IPv4: ipv4.String(), IPv6: ipv6.String(),
+		ASN: uint32(64576 + globalID - 1), IPv4: ipv4.String(), IPv6: v6.String(),
 		BoltID: bolt, RackID: rack, HostID: hostID, RoleIndex: hostID, GroupID: rackGroupID(bolt, rack),
 	}
 }
@@ -328,15 +329,6 @@ func ipv4FromPool(rawPrefix string, offset uint64) netip.Addr {
 	return netip.AddrFrom4([4]byte{
 		byte(value >> 24), byte(value >> 16), byte(value >> 8), byte(value),
 	})
-}
-
-func identityIPv6(role, scope uint16, entity uint32) netip.Addr {
-	var raw [16]byte
-	parts := [8]uint16{0x2001, 0x0db8, role, scope, uint16(entity >> 16), uint16(entity), 0, 1}
-	for i, part := range parts {
-		binary.BigEndian.PutUint16(raw[i*2:], part)
-	}
-	return netip.AddrFrom16(raw)
 }
 
 // Link-local addresses are reusable because every endpoint carries its interface scope.

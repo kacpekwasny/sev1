@@ -124,7 +124,8 @@ Suggested YAML areas are `schema_version`, topology counts/rules, addressing rul
 
 ## Synthetic addressing selected under D06 authorization
 
-Use `2001:db8::/32` for simulated IPv6 identities, the prefix reserved for documentation by [RFC 3849](https://www.rfc-editor.org/rfc/rfc3849.html). Define this fictional layout in YAML:
+D25 exposes the six role /48s and suffix in YAML (R22); the following remains
+the backward-compatible default layout. Use `2001:db8::/32` for example IPv6 identities, the prefix reserved for documentation by [RFC 3849](https://www.rfc-editor.org/rfc/rfc3849.html). Define this fictional layout in YAML:
 
 `2001:db8:<role>:<scope>:<entity-high>:<entity-low>:0:1`
 
@@ -323,5 +324,8 @@ IPv6 only. Preserve numbered loopbacks, IPv4 VTEPs and both unicast AFIs.
 
 ## R22 — Configurable IPv6 identities (D25)
 
-Pending: expose the identity addressing scheme in YAML, validate it and retain
-its values through rebuild/export/load. Omitted settings preserve existing identities.
+Implemented: `addressing.ipv6` configures each role's /48 and the 32-bit suffix;
+16-bit bolt/DC scope and 32-bit stable entity IDs retain deterministic allocations.
+Global unicast/ULA prefixes are allowed. Validate aligned, distinct pools and
+preserve YAML through count rebuild/export/load. Omitted settings retain legacy
+identities; physical link-local addressing and IPv4 VTEPs stay independent.
