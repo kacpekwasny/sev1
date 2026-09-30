@@ -180,4 +180,7 @@ repeat completed rework milestones.
 3. Every inspector disclosure groups its children with a consistent indented
    branch and tinted left border, including RIBs, sessions, interfaces and bits.
    Desktop/narrow Chrome checks and Go tests pass.
-4–12. Pending; follow D17's listed order.
+4. Inspector resize handle supports pointer/touch input and keyboard dimensions;
+   Home restores defaults, cancellation restores the preceding size, and dimensions
+   stay bounded by the workspace. Desktop/narrow checks and Go tests pass.
+5–12. Pending; follow D17's listed order.

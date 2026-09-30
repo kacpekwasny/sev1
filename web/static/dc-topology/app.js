@@ -47,6 +47,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
             <label class="dc-rib-control">Tablice <select id="dc-rib-view"><option value="gui">GUI</option><option value="linux">Linux / FRR</option></select></label>
             <button id="dc-inspector-close" class="dc-icon-button" type="button" aria-label="Zamknij inspektor">×</button></div>
           <div id="dc-details" class="dc-details"></div>
+          <button id="dc-inspector-resize" class="dc-popup-resize" type="button" aria-label="Zmień rozmiar inspektora; strzałki zmieniają wymiary, Home przywraca">◢</button>
         </aside>
       </div>
       <div id="dc-route-legend" class="dc-route-legend" hidden><span class="learned">● Fioletowy: droga ogłoszenia do tego RIB</span><span class="points-to">● Żółty: droga do next hop / celu</span></div>
@@ -161,6 +162,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   let inspectorSelectionKey = "";
   const inspectorHistory = [];
   let popupPosition = null, popupDrag = null, endpointPick = null, deviceMenu = null;
+  let popupSize = null, popupResize = null;
   let routeHover = null, previewFrame = 0;
   let packetReveal = null;
   const exploration = { update: null, packet: null };
@@ -217,6 +219,12 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     detailsEl.scrollTop=previous.scroll;
   }
   function clampPopup() {
+    if(popupSize) {
+      const workspace=inspectorEl.parentElement;
+      popupSize.width=Math.max(Math.min(300,workspace.clientWidth-16),Math.min(popupSize.width,workspace.clientWidth-16));
+      popupSize.height=Math.max(Math.min(220,workspace.clientHeight-16),Math.min(popupSize.height,workspace.clientHeight-16));
+      inspectorEl.style.width=`${popupSize.width}px`;inspectorEl.style.height=`${popupSize.height}px`;
+    } else {inspectorEl.style.removeProperty("width");inspectorEl.style.removeProperty("height");}
     if(!popupPosition) {for(const prop of ["left","top","right"])inspectorEl.style.removeProperty(prop);return;}
     if(inspectorEl.hidden)return;
     const workspace=inspectorEl.parentElement;
@@ -511,6 +519,35 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     clampPopup();
   });
   listen(window,"resize",()=>{clampPopup();positionDeviceMenu();});
+  const resizeHandle=root.querySelector("#dc-inspector-resize");
+  listen(resizeHandle,"pointerdown",event=>{
+    if(!event.isPrimary||event.button!==0)return;
+    const box=inspectorEl.getBoundingClientRect(),parent=inspectorEl.parentElement.getBoundingClientRect();
+    popupResize={id:event.pointerId,x:event.clientX,y:event.clientY,width:box.width,height:box.height,
+      previousSize:popupSize&&{...popupSize},previousPosition:popupPosition&&{...popupPosition}};
+    popupPosition={x:box.x-parent.x,y:box.y-parent.y};
+    resizeHandle.setPointerCapture(event.pointerId);event.preventDefault();
+  });
+  listen(resizeHandle,"pointermove",event=>{
+    if(!popupResize||popupResize.id!==event.pointerId)return;
+    popupSize={width:popupResize.width+event.clientX-popupResize.x,height:popupResize.height+event.clientY-popupResize.y};clampPopup();
+  });
+  const finishResize=event=>{
+    if(!popupResize||popupResize.id!==event.pointerId)return;
+    if(event.type==="pointercancel") {popupSize=popupResize.previousSize;popupPosition=popupResize.previousPosition;clampPopup();}
+    popupResize=null;if(resizeHandle.hasPointerCapture(event.pointerId))resizeHandle.releasePointerCapture(event.pointerId);
+  };
+  for(const type of ["pointerup","pointercancel","lostpointercapture"])listen(resizeHandle,type,finishResize);
+  listen(resizeHandle,"keydown",event=>{
+    if(!["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home"].includes(event.key))return;
+    event.preventDefault();
+    if(event.key==="Home")popupSize=null;
+    else {
+      const box=inspectorEl.getBoundingClientRect(),step=event.shiftKey?64:16;
+      popupSize={width:box.width+({ArrowLeft:-step,ArrowRight:step}[event.key]??0),height:box.height+({ArrowUp:-step,ArrowDown:step}[event.key]??0)};
+    }
+    clampPopup();
+  });
   listen(graphEl,"scroll",positionDeviceMenu);
   listen(root.querySelector("#dc-device-actions-close"),"click",()=>{deviceMenu=null;positionDeviceMenu();});
   listen(document,"pointerdown",event=>{
@@ -843,7 +880,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       viewOffsets.clear();
       inspectorEl.hidden = true;
       selected = null;
-      inspectorHistory.length = 0; popupPosition = null; endpointPick = null; deviceMenu = null;
+      inspectorHistory.length = 0; popupPosition = null; popupSize = null; endpointPick = null; deviceMenu = null;
       clampPopup(); updatePickBanner();
       resetAnimation();
       for (const kind of ["update", "packet"]) { exploration[kind] = null; exploreRequests[kind]++; exploreErrors[kind] = ""; }

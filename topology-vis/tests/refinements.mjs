@@ -27,6 +27,14 @@ try {
   const branches=await page.locator('#dc-details details').evaluateAll(items=>items.every(item=>
     item.children.length===2&&item.firstElementChild.tagName==='SUMMARY'&&item.lastElementChild.classList.contains('dc-disclosure-body')));
   assert.equal(branches,true,'Every disclosure must visibly group its children');
+  const handle=page.locator('#dc-inspector-resize');await handle.scrollIntoViewIfNeeded();
+  const before=await page.locator('#dc-inspector').boundingBox(),grip=await handle.boundingBox();
+  await page.mouse.move(grip.x+grip.width/2,grip.y+grip.height/2);await page.mouse.down();
+  await page.mouse.move(grip.x+grip.width/2+(viewport.width>500?80:-30),grip.y+grip.height/2-70,{steps:5});await page.mouse.up();
+  const resized=await page.locator('#dc-inspector').boundingBox();
+  assert(Math.abs(resized.width-before.width)>20);assert(resized.height<before.height-40);
+  await handle.press('Home');
+  assert(Math.abs((await page.locator('#dc-inspector').boundingBox()).width-before.width)<2);
   await page.keyboard.press('Escape');
   assert.equal(await (await page.request.get(`${api}/config.yaml`)).text(),yaml);
   assert.deepEqual(errors,[]);await page.close();
