@@ -336,6 +336,14 @@ in the sequential VM → RS User → RS Ctrl illustration. Packet markers share 
 yellow physical-port/TAP geometry and skip node interiors at transit hops.
 These rules supersede earlier border-origin defaults.
 
+### D18 — Compact controls, wrapped packet fields, and shallower hierarchy
+
+Latest user request: make the destination action popup smaller; hover any fragment
+of a wrapped packet field to highlight all its fragments; reduce inspector indents.
+Commit each implemented point separately. The host RIB route-detail question is
+answer-only: preserve its behavior. Its rows are topology-wide exports of one
+route, not additional routes in the inspected host's RIB.
+
 ## Recording an answer
 
 Record the latest user direction and affected milestones. If it changes previously implemented work, reopen the affected acceptance checks; do not claim the old checks verify new behavior. Distinguish direct user requirements from authorized implementation defaults. Preserve the original TODO while keeping this decision record and the active plan authoritative for later changes.

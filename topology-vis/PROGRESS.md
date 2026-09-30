@@ -226,3 +226,15 @@ checks pass. Desktop/narrow screenshots were inspected. The fresh production
 binary was tested with content on disk and embedded assets from outside the repo.
 Latest local default load was 168 ms; maximum rebuild was 2,702 ms (128 devices,
 432 cables, 88 VMs, 1,040 sessions). No shared-state changes required a new race run.
+
+## D18 inspector refinements
+
+1. Destination action popup is narrower (196 px instead of 230 px), with smaller
+   spacing and controls. The grouped-RS member selector fits the compact width.
+   Desktop/narrow screenshots and controls checked; Chrome refinements and Go
+   tests pass.
+2. Wrapped packet field hover — pending.
+3. Host RIB route-detail question — answered without changing route inspection.
+   The list contains expected exports of the selected route across topology-wide
+   BGP sessions, rather than extra routes in the inspected host's RIB.
+4. Shallower disclosure hierarchy — pending.
