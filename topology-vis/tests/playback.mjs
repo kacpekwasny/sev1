@@ -19,6 +19,17 @@ try {
     await page.waitForFunction(()=>document.querySelector('#dc-play').textContent==='Wstrzymaj pakiet');
     assert.equal(await page.locator(`[data-traffic-id="${id}"]`).evaluate(b=>b.classList.contains('active')),true);
     assert.deepEqual(await page.locator('.dc-packet-track').evaluateAll(lines=>lines.map(l=>[l.dataset.from,l.dataset.to])),packet.display_hop_ids.slice(1).map((id,i)=>[packet.display_hop_ids[i],id]));
+    const tracks=await page.locator('.dc-packet-track, .dc-packet-internal-track').evaluateAll(ls=>ls.map(l=>({from:l.dataset.from,to:l.dataset.to,a:[l.x1.baseVal.value,l.y1.baseVal.value],b:[l.x2.baseVal.value,l.y2.baseVal.value]})));
+    for(let i=1;i<tracks.length;i++)assert.deepEqual(tracks[i-1].b,tracks[i].a,'Yellow traversal must be connected through each node');
+    if(id!=='lokalny-host') {
+     assert(tracks.some(t=>t.from===t.to),'Fabric packets need node-interior traversal');
+     await page.waitForFunction(()=>document.querySelector('#dc-packet-marker').dataset.internal==='true');
+     const point=await position();
+     assert(tracks.filter(t=>t.from===t.to).some(t=>{
+      const [x,y]=point,[a,b]=t.a,[c,d]=t.b,scale=((x-a)*(c-a)+(y-b)*(d-b))/((c-a)**2+(d-b)**2);
+      return scale>0&&scale<1&&Math.hypot(x-a-scale*(c-a),y-b-scale*(d-b))<.01;
+     }),'A real frame must show the packet crossing the node interior');
+    }
     const start=await position();
     await page.waitForFunction(([x,y])=>{const m=document.querySelector('#dc-packet-marker');return Math.hypot(Number(m.getAttribute('cx'))-x,Number(m.getAttribute('cy'))-y)>1;},start);
     await page.locator('#dc-play').click();const paused=await position();

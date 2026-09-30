@@ -122,7 +122,7 @@ try {
   await page.keyboard.press('Escape');
   const onYellow=()=>page.evaluate(()=>{
     const m=document.querySelector('#dc-packet-marker'),x=Number(m.getAttribute('cx')),y=Number(m.getAttribute('cy'));
-    return [...document.querySelectorAll('.dc-packet-track')].some(l=>{
+    return [...document.querySelectorAll('.dc-packet-track, .dc-packet-internal-track')].some(l=>{
       const a=l.x1.baseVal.value,b=l.y1.baseVal.value,c=l.x2.baseVal.value,d=l.y2.baseVal.value;
       const t=Math.max(0,Math.min(1,((x-a)*(c-a)+(y-b)*(d-b))/((c-a)**2+(d-b)**2||1)));
       return Math.hypot(x-a-t*(c-a),y-b-t*(d-b))<.01;

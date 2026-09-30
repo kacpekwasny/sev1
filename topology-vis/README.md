@@ -109,7 +109,9 @@ replays the selected path even when the OS requests
 reduced motion. Decorative route animation still honors that preference. Hiding
 physical links pauses playback, including packets between custom endpoints.
 The packet marker travels on the yellow cable/TAP segments, using device ports
-and jumping from ingress to egress at transit hops.
+and continuously crossing node interiors from ingress to egress. Yellow interior
+segments connect adjacent cable/TAP contacts; playback keeps the current hop
+highlighted while traversing its node.
 TTL, Echo fields, and payload are illustrative; this is not a packet capture.
 
 Pakiet bit po bicie shows the serialized sample in 32-bit rows. Click a field or
@@ -189,6 +191,7 @@ node --input-type=module --check < web/static/dc-topology/inspection.js
 node --input-type=module --check < web/static/dc-topology/packet-bits.js
 node --input-type=module --check < web/static/dc-topology/route-paths.js
 node topology-vis/tests/packet-bits.mjs
+node topology-vis/tests/packet-path.mjs
 ```
 
 The optional browser walkthrough in [tests/browser.mjs](tests/browser.mjs) uses an

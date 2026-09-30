@@ -290,3 +290,5 @@ body.dc-page { background: #0b1018; }
 .dc-flow-examples label { display: flex; align-items: center; gap: 8px; }
 .dc-flow-examples select { max-width: min(440px, 65vw); font: inherit; color: #edf4fa; background: #233549; border: 1px solid #4c627a; border-radius: 6px; padding: 5px; }
 .dc-session.is-flow-current .dc-session-line { stroke: #f0dcff; stroke-width: 4; }
+
+.dc-packet-internal-track { stroke: #ffe16a; stroke-width: 3; fill: none; opacity: .7; pointer-events: none; }

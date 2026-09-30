@@ -391,6 +391,8 @@ Original IPv4/IPv6 routes continue through Ctrl and Bolt to every host neighbor
 (and borders); no conversion into EVPN happens at Ctrl. Hosts install public routes
 in the default VRF and recursively resolve their VM next hops through EVPN.
 Default VMs belong to the default/public VRF on VNI 3, not private VPC 1.
+Schema ID 0 names that VRF, with RT target:64512:0; positive IDs retain the
+private mappings. This supersedes D02's former positive-only/default-private rule.
 Keep explicit private VPCs and forwarding isolation. Packet markers traverse each
 node continuously between incoming and outgoing link contacts. Commit each of the
 three requested points, incorporating the public-VRF clarification into point 2.

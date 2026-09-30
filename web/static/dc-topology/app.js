@@ -2,7 +2,7 @@ const NS = "http://www.w3.org/2000/svg";
 import { appendRIB, appendFIB, identifyRoute, appendOriginatedRoutes, appendBorderRoutes } from "./tables.js";
 import { routeFlowStreams } from "./route-flow.js";
 import { displayNames } from "./labels.js";
-import { physicalPoints, tapPoints, packetSegments } from "./packet-path.js";
+import { physicalPoints, tapPoints, packetSegments, packetTraversal, packetPosition } from "./packet-path.js";
 import { routePaths } from "./route-paths.js";
 import { appendBGPBits } from "./packet-bits.js";
 import { explorerMarkup, appendUpdateInspection, appendPacketInspection } from "./inspection.js";
@@ -184,6 +184,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   let suppressClickUntil = 0;
   let currentPositions = null;
   let currentPacketSegments = [];
+  let currentPacketTraversal = [];
   let inspectorSelectionKey = "";
   const inspectorHistory = [];
   let popupPosition = null, popupDrag = null, endpointPick = null, deviceMenu = null;
@@ -870,7 +871,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function animationDuration() {
-    return currentPacketSegments.length * 900;
+    return currentPacketTraversal.reduce((sum,segment)=>sum+segment.duration,0);
   }
 
   function animationElapsed(now = performance.now()) {
@@ -885,17 +886,12 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       return;
     }
     if(!currentPacketSegments.length) {marker.setAttribute("visibility","hidden");return;}
-    const duration = animationDuration();
-    // rAF timestamps can precede performance.now() when playback starts mid-frame.
-    const progress = Math.max(0, Math.min(1, animationElapsed(now) / duration));
-    const scaled = progress * currentPacketSegments.length;
-    const segment = Math.min(currentPacketSegments.length - 1, Math.floor(scaled));
-    const fraction = progress >= 1 ? 1 : scaled - segment;
-    const [a,b]=currentPacketSegments[segment].points;
-    marker.setAttribute("cx", String(a.x + (b.x - a.x) * fraction));
-    marker.setAttribute("cy", String(a.y + (b.y - a.y) * fraction));
-    marker.setAttribute("visibility", "visible");
-    for (const item of detailsEl.querySelectorAll(".dc-packet-hop")) item.classList.toggle("is-current", Number(item.dataset.hopIndex) === Math.floor(scaled));
+    const point=packetPosition(currentPacketTraversal,animationElapsed(now));
+    if(!point) {marker.setAttribute("visibility","hidden");return;}
+    marker.setAttribute("cx",String(point.x));marker.setAttribute("cy",String(point.y));
+    marker.setAttribute("visibility","visible");
+    marker.dataset.hopIndex=String(point.hopIndex);marker.dataset.internal=String(point.internal);
+    for(const item of detailsEl.querySelectorAll(".dc-packet-hop"))item.classList.toggle("is-current",Number(item.dataset.hopIndex)===point.hopIndex);
   }
 
   function updatePlaybackControls() {
@@ -1115,6 +1111,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
 
     currentPositions = positions;
     currentPacketSegments = packetSegments(model,positions,selectedPath());
+    currentPacketTraversal = packetTraversal(currentPacketSegments);
     const nodeByID = new Map(model.nodes.map((node) => [node.id, node]));
     const interfaceByID = new Map(model.interfaces.map((iface) => [iface.id, iface]));
     const inspectedPaths = routePaths(model, routeHover??selected);
@@ -1274,9 +1271,9 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       svg.append(localLayer);
     }
 
-    if(!routeHover&&showLinks.checked)for(const segment of currentPacketSegments) {
+    if(!routeHover&&showLinks.checked)for(const segment of currentPacketTraversal) {
       const [a,b]=segment.points;
-      svg.append(svgElement("line",{x1:a.x,y1:a.y,x2:b.x,y2:b.y,class:"dc-packet-track","data-from":segment.from,"data-to":segment.to,"aria-hidden":"true"}));
+      svg.append(svgElement("line",{x1:a.x,y1:a.y,x2:b.x,y2:b.y,class:segment.internal?"dc-packet-internal-track":"dc-packet-track","data-from":segment.from,"data-to":segment.to,"data-duration":segment.duration,"aria-hidden":"true"}));
     }
     const vmLayer = svgElement("g", { class: "dc-vms" });
     for (const item of positions.displayItems) {

@@ -330,7 +330,7 @@ Next: no pending D20/D21 work. Preview: http://127.0.0.1:8099/topologie/dc/.
 Examples illustrate the expected snapshot; they do not simulate convergence.
 
 
-## D22 — in progress
+## D22 — complete
 
 1. RS User → customer VM exports are blocked in reachability and export policy.
    Customer tables retain their own origins without received peer routes; original
@@ -348,5 +348,16 @@ Examples illustrate the expected snapshot; they do not simulate convergence.
    every RS Bolt/host/family export, six recursive routes on every host, IPv4
    VTEPs, VNI 3 traffic and non-VXLAN border egress. Go tests/build and all existing
    Chrome walkthroughs pass; focused desktop/narrow fanout/recursion check passes.
+   Commit: `25932c1`.
+3. Packet traversal connects each incoming cable/TAP contact to the outgoing
+   contact with a short interior segment. The shared clock/geometry stays continuous
+   across boundaries and clamps negative first-frame timestamps. Hop highlighting
+   stays on the transit node; pause/inspect/rewind retain the same saved path.
+   Geometry tests verify interior midpoints and no jumps on either side of every
+   boundary. Real Chrome frames cross node interiors at desktop/narrow widths with
+   both motion preferences; existing packet/yellow-track checks also pass.
+   All Go tests, build, vet, packet-bit and geometry checks pass. Final production
+   browser walkthroughs check embedded assets and both viewports.
    Commit: the commit containing this checkpoint.
-3. Continuous ingress-to-egress packet travel through nodes — pending.
+
+No pending D22 work; preview remains http://127.0.0.1:8099/topologie/dc/.

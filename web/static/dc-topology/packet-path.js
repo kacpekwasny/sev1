@@ -1,5 +1,4 @@
-// Shared geometry for the drawn yellow links and the moving packet. Node
-// interiors are not links: delivery jumps from ingress to egress at each hop.
+// Shared geometry for yellow links and continuous ingress-to-egress traversal.
 export function physicalPoints(a,b) {
   const direction=Math.sign(b.y-a.y)||1;
   return [{x:a.x,y:a.y+direction*a.height/2},{x:b.x,y:b.y-direction*b.height/2}];
@@ -26,4 +25,29 @@ export function packetSegments(model,positions,ids) {
     result.push({from,to,points,hopIndex:index-1});
   }
   return result;
+}
+
+export function packetTraversal(links) {
+  const result=[];
+  for(const link of links) {
+    const previous=result.at(-1)?.points[1],start=link.points[0];
+    if(previous&&Math.hypot(previous.x-start.x,previous.y-start.y)>.001) {
+      result.push({from:link.from,to:link.from,points:[previous,start],hopIndex:link.hopIndex,internal:true,duration:350});
+    }
+    result.push({...link,duration:900});
+  }
+  return result;
+}
+
+export function packetPosition(traversal,elapsed) {
+  if(!traversal.length)return null;
+  // A first rAF timestamp may precede the Play click's performance.now().
+  let remaining=Math.max(0,elapsed);
+  for(const [index,segment] of traversal.entries()) {
+    if(remaining<=segment.duration||index===traversal.length-1) {
+      const fraction=Math.min(1,remaining/segment.duration),[a,b]=segment.points;
+      return {x:a.x+(b.x-a.x)*fraction,y:a.y+(b.y-a.y)*fraction,hopIndex:fraction===1&&!segment.internal?segment.hopIndex+1:segment.hopIndex,internal:Boolean(segment.internal)};
+    }
+    remaining-=segment.duration;
+  }
 }
