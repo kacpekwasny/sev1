@@ -23,11 +23,13 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         <label><input id="dc-show-sessions" type="checkbox"> Sesje BGP</label>
         <label><input id="dc-show-infra-hosts" type="checkbox" checked> RS na hostach</label>
         <label><input id="dc-collapse-rs" type="checkbox"> Grupuj RS</label>
+        <button id="dc-layout-reset" class="dc-tool-button" type="button">Reset układu</button>
+        <button id="dc-fit" class="dc-tool-button" type="button">Dopasuj</button>
         <label class="dc-zoom"><span class="dc-sr-only">Powiększenie</span><input id="dc-zoom" type="range" min="50" max="150" value="85" step="5"><output id="dc-zoom-value">85%</output></label>
       </div>
       <div class="dc-workspace">
         <div id="dc-graph" class="dc-graph-scroll"><p class="dc-empty">Buduję widok topologii…</p></div>
-        <div class="dc-canvas-note"><span aria-hidden="true">◎</span> Kliknij, aby zajrzeć do urządzenia</div>
+        <div class="dc-canvas-note"><span aria-hidden="true">◎</span> Kliknij: szczegóły · przeciągnij: ustawienie</div>
         <aside id="dc-inspector" class="dc-inspector" role="dialog" aria-labelledby="dc-inspector-heading" tabindex="-1" hidden>
           <div class="dc-inspector-bar"><span class="dc-kicker">INSPEKTOR / OCZEKIWANY STAN</span>
             <button id="dc-inspector-close" class="dc-icon-button" type="button" aria-label="Zamknij inspektor">×</button></div>
@@ -120,6 +122,12 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   const inspectorLoaded = new Set();
   const inspectorPending = new Set();
   const inspectorErrors = new Map();
+  const viewOffsets = new Map();
+  let drag = null;
+  let dragFrame = 0;
+  let suppressClickUntil = 0;
+  let currentPositions = null;
+  let inspectorSelectionKey = "";
   const animation = { playing: false, elapsed: 0, startedAt: 0, frame: 0 };
 
   const onSubmit = (event) => {
@@ -141,12 +149,14 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       : (selected?.type === "traffic" || selected?.type === "session") && !showLinks.checked;
     if (animation.playing && layerHidden) pauseAnimation();
     renderGraph();
+    renderInspector();
   };
   const onZoom = () => {
     zoomOutput.value = `${zoomInput.value}%`;
     renderGraph();
   };
   const onGraphClick = (event) => {
+    if (event.detail > 0 && performance.now() < suppressClickUntil) { suppressClickUntil = 0; return; }
     const entity = event.target.closest("[data-entity-type]");
     if (!entity || !graphEl.contains(entity)) return;
     selected = { type: entity.dataset.entityType, id: entity.dataset.entityId };
@@ -158,10 +168,77 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     openInspector();
   };
   const onGraphKey = (event) => {
-    if ((event.key === "Enter" || event.key === " ") && event.target.matches("[data-entity-type]")) {
+    const entity = event.target.closest("[data-entity-type]");
+    if (!entity || !graphEl.contains(entity)) return;
+    if (isDraggable(entity) && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home"].includes(event.key)) {
       event.preventDefault();
-      event.target.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      const id = entity.dataset.entityId;
+      const offset = viewOffsets.get(id) ?? { x: 0, y: 0 };
+      const step = event.shiftKey ? 12 : 6;
+      const delta = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[event.key];
+      if (event.key === "Home") viewOffsets.delete(id);
+      else viewOffsets.set(id, boundedOffset(offset.x + delta[0], offset.y + delta[1]));
+      renderGraph();
+      focusEntity({ type: entity.dataset.entityType, id });
+    } else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      entity.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     }
+  };
+
+  function isDraggable(entity) {
+    return ["node", "vm", "cluster"].includes(entity?.dataset.entityType);
+  }
+
+  function graphPoint(event) {
+    const svg = graphEl.querySelector("svg");
+    const matrix = svg?.getScreenCTM();
+    return matrix ? new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse()) : null;
+  }
+
+  function endDrag(event, cancelled = false) {
+    if (!drag || (event && event.pointerId !== drag.pointerID)) return;
+    const previous = drag;
+    drag = null;
+    if (dragFrame) cancelAnimationFrame(dragFrame);
+    dragFrame = 0;
+    graphEl.classList.remove("is-dragging");
+    if (graphEl.hasPointerCapture(previous.pointerID)) graphEl.releasePointerCapture(previous.pointerID);
+    if (cancelled) {
+      if (previous.hadOffset) viewOffsets.set(previous.id, previous.offset);
+      else viewOffsets.delete(previous.id);
+    }
+    if (previous.moved) {
+      suppressClickUntil = performance.now() + 300;
+      renderGraph();
+      focusEntity({ type: previous.type, id: previous.id });
+    }
+  }
+
+  const onPointerDown = (event) => {
+    if (drag || !event.isPrimary || event.button !== 0) return;
+    suppressClickUntil = 0;
+    const entity = event.target.closest("[data-entity-type]");
+    if (!isDraggable(entity)) return;
+    const point = graphPoint(event);
+    if (!point) return;
+    drag = { id: entity.dataset.entityId, type: entity.dataset.entityType, pointerID: event.pointerId,
+      point, clientX: event.clientX, clientY: event.clientY, offset: viewOffsets.get(entity.dataset.entityId) ?? { x: 0, y: 0 },
+      hadOffset: viewOffsets.has(entity.dataset.entityId), moved: false };
+  };
+  const onPointerMove = (event) => {
+    if (!drag || event.pointerId !== drag.pointerID) return;
+    if (!drag.moved && Math.hypot(event.clientX - drag.clientX, event.clientY - drag.clientY) < 4) return;
+    const point = graphPoint(event);
+    if (!point) return;
+    if (!drag.moved) {
+      drag.moved = true;
+      graphEl.setPointerCapture(event.pointerId);
+      graphEl.classList.add("is-dragging");
+    }
+    event.preventDefault();
+    viewOffsets.set(drag.id, boundedOffset(drag.offset.x + point.x - drag.point.x, drag.offset.y + point.y - drag.point.y));
+    if (!dragFrame) dragFrame = requestAnimationFrame(() => { dragFrame = 0; renderGraph(); });
   };
   const onInspectorClick = (event) => {
     const route = event.target.closest("[data-route-id]");
@@ -215,6 +292,18 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   listen(zoomInput, "input", onZoom);
   listen(graphEl, "click", onGraphClick);
   listen(graphEl, "keydown", onGraphKey);
+  listen(graphEl, "pointerdown", onPointerDown);
+  listen(graphEl, "pointermove", onPointerMove);
+  listen(graphEl, "pointerup", (event) => endDrag(event));
+  listen(graphEl, "pointercancel", (event) => endDrag(event, true));
+  listen(graphEl, "lostpointercapture", (event) => endDrag(event, true));
+  listen(window, "pointerup", (event) => endDrag(event));
+  listen(root.querySelector("#dc-layout-reset"), "click", () => {
+    endDrag(null, true);
+    viewOffsets.clear();
+    renderGraph();
+  });
+  listen(root.querySelector("#dc-fit"), "click", fitGraph);
   listen(detailsEl, "click", onInspectorClick);
   listen(trafficList, "click", onTrafficClick);
   listen(playButton, "click", onPlaybackClick);
@@ -313,6 +402,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const positions = layout(state.model, {
       showInfraOnHosts: showInfraOnHosts.checked,
       collapseRouteServers: collapseRouteServers.checked,
+      offsets: viewOffsets,
     });
     const points = path.map((id) => positions.nodes.get(id)).filter(Boolean);
     if (points.length < 2) { marker.setAttribute("visibility", "hidden"); return; }
@@ -342,6 +432,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const positions = layout(state.model, {
       showInfraOnHosts: showInfraOnHosts.checked,
       collapseRouteServers: collapseRouteServers.checked,
+      offsets: viewOffsets,
     });
     const from = positions.entityPoints.get(event.from_id);
     const to = positions.entityPoints.get(event.to_id);
@@ -431,6 +522,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       inspectorLoaded.clear();
       inspectorPending.clear();
       inspectorErrors.clear();
+      endDrag(null, true);
+      viewOffsets.clear();
       inspectorEl.hidden = true;
       selected = null;
       resetAnimation();
@@ -525,6 +618,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const positions = layout(model, {
       showInfraOnHosts: showInfraOnHosts.checked,
       collapseRouteServers: collapseRouteServers.checked,
+      offsets: viewOffsets,
     });
     const svg = document.createElementNS(NS, "svg");
     const zoom = Number(zoomInput.value) / 100;
@@ -535,6 +629,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     svg.style.width = `${Math.ceil(positions.width * zoom)}px`;
     svg.style.height = `${Math.ceil(positions.height * zoom)}px`;
 
+    currentPositions = positions;
     const nodeByID = new Map(model.nodes.map((node) => [node.id, node]));
     const interfaceByID = new Map(model.interfaces.map((iface) => [iface.id, iface]));
     const hostByID = nodeByID;
@@ -643,6 +738,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         class: `dc-node ${node.kind}${selectedClass}`, transform: `translate(${point.x} ${point.y})`,
         role: "button", tabindex: "0", "data-entity-type": "node", "data-entity-id": node.id,
         "aria-label": `${kindLabels[node.kind] ?? node.kind}: ${node.label}`,
+        "aria-description": "Enter: szczegóły. Strzałki: przesuń. Home: przywróć pozycję.",
       });
       group.append(svgElement("rect", { x: -47, y: -22, width: 94, height: 44, rx: 9 }));
       group.append(svgText(0, -2, node.label, "dc-node-label"));
@@ -660,6 +756,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         class: `dc-vm ${item.role}${item.entityType === "cluster" ? " cluster" : ""}${selectedClass}`, transform: `translate(${point.x} ${point.y})`,
         role: "button", tabindex: "0", "data-entity-type": item.entityType, "data-entity-id": item.id,
         "aria-label": `${item.label}${item.onHost ? `, host ${item.hostID}` : ", widok abstrakcyjny"}`,
+        "aria-description": "Enter: szczegóły. Strzałki: przesuń. Home: przywróć pozycję.",
       });
       group.append(svgElement("rect", { x: -47, y: -12, width: 94, height: 24, rx: 7 }));
       group.append(svgText(0, 4, item.label, "dc-vm-label"));
@@ -671,10 +768,29 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     graphEl.replaceChildren(svg);
     updateAnimationMarker();
     updatePlaybackControls();
-    renderInspector(nodeByID, interfaceByID);
   }
 
   function renderInspector(nodeByID, interfaceByID) {
+    const key = selected ? `${selected.type}/${selected.id}` : "";
+    const keep = key === inspectorSelectionKey;
+    const opened = keep ? [...detailsEl.querySelectorAll("details[open]")].map((item) => item.querySelector("summary")?.textContent.split(" · ")[0]) : [];
+    const scroll = keep ? detailsEl.scrollTop : 0;
+    renderInspectorContent(nodeByID, interfaceByID);
+    for (const item of detailsEl.querySelectorAll("details")) {
+      if (opened.includes(item.querySelector("summary")?.textContent.split(" · ")[0])) item.open = true;
+    }
+    detailsEl.scrollTop = scroll;
+    inspectorSelectionKey = key;
+  }
+
+  function fitGraph() {
+    if (!currentPositions) return;
+    zoomInput.value = String(Math.max(50, Math.min(150, Math.floor((graphEl.clientWidth - 16) / currentPositions.width * 100 / 5) * 5)));
+    onZoom();
+    graphEl.scrollTo({ top: 0, left: 0 });
+  }
+
+  function renderInspectorContent(nodeByID, interfaceByID) {
     if (!state.model || !selected) inspectorEl.hidden = true;
     if (!state.model) {
       detailsEl.innerHTML = "<p>Wybierz urządzenie lub łącze po wczytaniu modelu.</p>";
@@ -879,12 +995,19 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     setState,
     destroy() {
       destroyed = true;
+      endDrag(null, true);
+      if (dragFrame) cancelAnimationFrame(dragFrame);
       events.abort();
       if (configDialog.open) configDialog.close();
       if (animation.frame) cancelAnimationFrame(animation.frame);
       root.replaceChildren();
     },
   };
+}
+
+function boundedOffset(x, y) {
+  const scale = Math.min(1, 48 / (Math.hypot(x, y) || 1));
+  return { x: x * scale, y: y * scale };
 }
 
 function layout(model, options) {
@@ -926,6 +1049,10 @@ function layout(model, options) {
       }
     }
   }
+  for (const [id, point] of nodes) {
+    const offset = options.offsets?.get(id);
+    if (offset) nodes.set(id, { ...point, x: point.x + offset.x, y: point.y + offset.y });
+  }
   const displayItems = makeDisplayItems(model.vms, options.collapseRouteServers);
   const hostCounts = new Map();
   const abstractItems = [];
@@ -948,6 +1075,10 @@ function layout(model, options) {
       displayPoints.set(item.id, { x: margin + 60 + column * 120, y: startY + row * 38, kind: "vm" });
     });
     height = Math.max(height, startY + rows * 38 + 28);
+  }
+  for (const [id, point] of displayPoints) {
+    const offset = options.offsets?.get(id);
+    if (offset) displayPoints.set(id, { ...point, x: point.x + offset.x, y: point.y + offset.y });
   }
   for (const node of model.nodes) entityPoints.set(node.id, nodes.get(node.id));
   for (const item of displayItems) {

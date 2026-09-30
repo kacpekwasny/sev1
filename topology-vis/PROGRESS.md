@@ -47,3 +47,10 @@ When asked to execute, follow R00–R06 in the revised plan: commit the existing
 - Verified in installed headless Chrome via Playwright at 1280×900 and 390×844: initial popup hidden, node selection, overlay bounds inside canvas, Escape dismissal/focus return, config dialog, preservation of a count draft, and no document overflow at narrow width. In-app Node REPL is unavailable; external Chrome is the local fallback.
 - `go test ./...`, site/harness builds, JavaScript syntax, and `git diff --check` passed.
 - Next: R03 dragging, R04 expected-snapshot wording/API, R05 optional illustrative flow, then R06 site integration and full browser acceptance.
+
+## Rework checkpoint — R03
+
+- R01/R02 committed as `0468b7a`.
+- Added pointer/touch-ready bounded device/VM/cluster offsets, connected-line tracking, pointer-cancel rollback, click/drag distinction, arrow/Home keyboard controls, reset layout, and fit-to-width. Hosts carry their displayed VM anchors when moved; canonical VM placements stay intact. Inspector section/scroll state survives detail refreshes.
+- Chrome desktop checks passed: exact 48-unit radius, edge tracking, click after drag, keyboard/Home/reset, offsets preserved through layer/zoom changes, cancellation rollback, and unchanged YAML/expected speaker tables. Narrow fit inspected; JavaScript syntax and `git diff --check` passed.
+- Next: independent illustrative route flow and expected-snapshot cleanup, then site integration and broader browser acceptance.

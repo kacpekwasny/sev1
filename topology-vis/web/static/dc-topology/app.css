@@ -167,3 +167,8 @@ body.dc-harness { margin: 0; min-width: 320px; background: #0b1018; }
 @media (prefers-reduced-motion: reduce) {
   .dc-app *, .dc-app *::after { animation: none !important; transition: none !important; }
 }
+
+.dc-tool-button { border: 1px solid var(--dc-border); background: transparent; color: #a7b6c8; border-radius: 6px; padding: 5px 8px; font-size: 9px !important; }
+.dc-tool-button:hover { background: #243448; color: var(--dc-ink); }
+.dc-node, .dc-vm { cursor: grab; touch-action: none; user-select: none; }
+.dc-graph-scroll.is-dragging, .is-dragging .dc-node, .is-dragging .dc-vm { cursor: grabbing; }
