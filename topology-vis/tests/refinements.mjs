@@ -18,6 +18,13 @@ try {
   assert.equal(await page.locator('.dc-edge').count(),0);
   await page.locator('#dc-show-underlay').check();
   assert.equal(await page.locator('.dc-node').count(),initial);
+  await page.locator('.dc-node[data-entity-id="host-b1-h1"] .dc-node-label').click();
+  assert.equal(await page.locator('#dc-device-actions').isVisible(),true);
+  await page.locator('#dc-action-family').selectOption('ipv6');
+  assert.equal(await page.locator('#dc-device-actions').isVisible(),true);
+  await page.locator('#dc-inspector-grip').click();
+  assert.equal(await page.locator('#dc-device-actions').isHidden(),true);
+  await page.keyboard.press('Escape');
   assert.equal(await (await page.request.get(`${api}/config.yaml`)).text(),yaml);
   assert.deepEqual(errors,[]);await page.close();
  }

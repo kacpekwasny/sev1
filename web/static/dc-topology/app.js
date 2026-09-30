@@ -513,6 +513,11 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   listen(window,"resize",()=>{clampPopup();positionDeviceMenu();});
   listen(graphEl,"scroll",positionDeviceMenu);
   listen(root.querySelector("#dc-device-actions-close"),"click",()=>{deviceMenu=null;positionDeviceMenu();});
+  listen(document,"pointerdown",event=>{
+    if(deviceMenu&&!root.querySelector("#dc-device-actions").contains(event.target)) {
+      deviceMenu=null;positionDeviceMenu();
+    }
+  });
   listen(root.querySelector("#dc-send-to"),"click",()=>{
     if(!deviceMenu)return;
     const form=root.querySelector("#dc-packet-form");

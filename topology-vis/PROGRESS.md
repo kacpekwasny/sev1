@@ -174,4 +174,7 @@ repeat completed rework milestones.
    switches and attached physical links while preserving hosts/VMs, valid overlay
    sessions, routes and YAML. Hidden physical paths pause packet playback.
    Desktop/narrow Chrome checks and Go tests pass.
-2–12. Pending; follow D17's listed order.
+2. Outside pointer presses dismiss the compact send-action popup, including
+   presses in the inspector or outside the app. Controls inside it stay usable.
+   Desktop/narrow Chrome checks and Go tests pass.
+3–12. Pending; follow D17's listed order.
