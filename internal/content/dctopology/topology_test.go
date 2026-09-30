@@ -300,7 +300,7 @@ func TestBuildMaximumBGPSessionMatrix(t *testing.T) {
 
 func exampleConfig(t *testing.T) Config {
 	t.Helper()
-	data, err := os.ReadFile("../../examples/default.yaml")
+	data, err := os.ReadFile("../../../content/dc-topology/default.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}

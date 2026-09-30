@@ -15,10 +15,15 @@
   <meta property="og:image" content="{{.BaseURL}}/static/og.png">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="/static/app.css">
+  {{if .DCTopology}}
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%2392efcb' d='M16 2 30 16 16 30 2 16Z'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/dc-topology/app.css">
+  {{else}}
   <script src="/static/vendor/htmx.min.js" defer></script>
   <script src="/static/vendor/htmx-ext-sse.js" defer></script>
+  {{end}}
 </head>
-<body{{if .Bare}} class="bare"{{end}}>
+<body{{if .DCTopology}} class="dc-page"{{else if .Bare}} class="bare"{{end}}>
 {{/* Wejściówka dostaje ten sam pasek, tylko bez tła i bez kreski - ma leżeć
      na plakacie, a nie dzielić go na dwie części. */}}
 <header class="topbar{{if .Bare}} clean{{end}}">
@@ -27,7 +32,7 @@
     <a href="/wyklady/" {{if eq .Path "/wyklady/"}}class="on"{{end}}>Wykłady</a>
     <a href="/notatki/" {{if eq .Path "/notatki/"}}class="on"{{end}}>Notatki</a>
     <a href="/notatki/graf" {{if eq .Path "/notatki/graf"}}class="on"{{end}}>Graf</a>
-    <a href="/topologie/" {{if eq .Path "/topologie/"}}class="on"{{end}}>Topologie</a>
+    <a href="/topologie/" {{if or (eq .Path "/topologie/") .DCTopology}}class="on"{{end}}>Topologie</a>
     <a href="/zadania/" {{if eq .Path "/zadania/"}}class="on"{{end}}>Zadania</a>
     {{template "live-nav" .OnAir}}
   </nav>

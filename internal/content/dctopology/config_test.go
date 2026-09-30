@@ -8,7 +8,7 @@ import (
 )
 
 func TestParseDefaultExample(t *testing.T) {
-	data, err := os.ReadFile("../../examples/default.yaml")
+	data, err := os.ReadFile("../../../content/dc-topology/default.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}

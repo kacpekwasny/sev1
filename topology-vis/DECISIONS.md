@@ -1,8 +1,8 @@
 # Decisions and implementation defaults
 
-Status on 2026-09-30: **D11 is the latest authoritative direction and supersedes earlier simulator fidelity and inspector-layout requirements.** The user requests an engaging JavaScript frontend, popup inspectors over the topology, initial expected-table calculation, optional illustrative route flow, and small device drag adjustments. The current task updates instructions/plans; application rework is pending. Earlier cabling, peering, placement, synthetic addressing, counts, and integration decisions remain applicable.
+Status on 2026-09-30: **D11 is the latest authoritative direction and supersedes earlier simulator fidelity and inspector-layout requirements.** The user requests an engaging JavaScript frontend, popup inspectors over the topology, initial expected-table calculation, optional illustrative route flow, and small device drag adjustments. The user resumed implementation after committing baseline `9c50463`; the rework and site integration are now implemented. Earlier cabling, peering, placement, synthetic addressing, counts, and integration decisions remain applicable.
 
-The user approved defaults and authorized reasonable assumptions and autonomous work while unavailable. Browser acceptance and parent-site write access are execution constraints, not missing product approvals.
+The user approved defaults and authorized reasonable assumptions and autonomous work while unavailable. Git/parent-site writes are available, and desktop/narrow browser acceptance has run; see progress for actual checks.
 
 ## Decision record
 
@@ -12,7 +12,7 @@ Answer, 2026-09-29: **“I want you to develop this independently for speed, but
 
 Develop the feature in isolation with a dedicated development entry point and a defined mounting/data boundary. Include a final `sev1` integration step. Preserve the parent site's Go, template, local-asset, and Polish UI conventions. D11 explicitly authorizes a JavaScript frontend without htmx for this feature; retain the existing ES-module approach by default. Do not create a new Git repository.
 
-Current facts: `topology-vis/` contains the original `TODO.md` and the isolated implementation; its Git root is the parent `sev1/` repository. The parent has an existing, much simpler topology view. Keep that working during independent development.
+Current facts: `topology-vis/` contains the original `TODO.md` and handoff documentation; implementation now lives in parent content/web/cmd paths; its Git root is the parent `sev1/` repository. The parent has an existing, much simpler topology view. Keep that working during independent development.
 
 Status: **product boundary answered**. Step 01 must document the concrete module/harness layout and its integration contract. The latest JavaScript direction is an authorized departure from the htmx convention for this visualizer. Routine implementation choices may be made under the user’s delegation.
 
@@ -161,16 +161,18 @@ Status: **resolved by agent-selected defaults under the user's explicit authoriz
 
 User direction, 2026-09-30:
 
-- **“Commit work.”** Preserve the existing implementation in a scoped baseline commit before reworking it, then commit verified increments. The current Git staging attempt failed because `/Users/kkwasny/code/sev1/.git/index.lock` cannot be created under workspace permissions; this is an execution blocker, not a missing user approval.
+- **“Commit work.”** Preserve the existing implementation in a scoped baseline commit before reworking it, then commit verified increments. The current Git staging attempt failed because `/Users/kkwasny/code/sev1/.git/index.lock` cannot be created under workspace permissions; this earlier execution blocker was resolved when the user granted parent workspace access and committed baseline `9c50463`.
 - **“I would like the frontend to be much more interesting, I don't want it to be HTMX. I want a nice looking dynamic JS.”** Make the topology the primary workspace with a substantial visual redesign and JavaScript interactions. Other site pages may continue using htmx.
 - **“When I cick on a device, it can be inspected, but it should be a popup over the topology not displayed somewhere up.”** Put device details in an overlay on the graph. Authorized default: use the same popup for hosts, VMs, links, sessions, routes, and clusters, with close/Escape, focus return, scrollable content, and a narrow-screen overlay sheet.
 - **“The app does not need to simulate the BGP, it can make a simple initial calculation of expected route tables.”** Calculate a deterministic snapshot on YAML load/count rebuild. Reuse useful static domain code; remove requirements for update queues, convergence simulation, event traces, or learning playback. Tables remain inspectable without animation.
 - **“The view of ‘routes flow’ is also just a gimmick, this is something we know how the flow is happening, it can be hardcoded and only enabled with a switch.”** Use an independently switched illustrative flow. Authorized defaults: off initially, a curated fixed sequence mapped to valid current BGP relationships, clear Polish illustrative label, no table mutations, reduced-motion static direction, and stop/clear when disabled. Hardcoded presentation does not permit nonexistent topology connections.
 - **“I'd like the devices to be draggable so you can kinda move them around just slightly.”** Dragging adjusts view coordinates only. Authorized defaults: a maximum offset radius of 48 SVG layout units from the generated anchor, a small drag threshold, pointer/touch/cancel support, connected-edge tracking, keyboard equivalent, and reset-layout control. Preserve offsets for surviving IDs across presentation switches, clear them on configuration rebuild, and exclude them from exported YAML. A dragged RS cluster remains a visual projection of its real members.
 
-The latest turn ends with **“Make instructions for GPT-Luna from what I wrote above, edit existing plans to be aligned with new notes”**. This deliverable is documentation and planning, not execution of the frontend redesign. Implementation begins when requested, using the rework milestones R00–R06. Earlier implementation and automated checks remain baseline evidence, not acceptance of these new requirements.
+The latest turn ends with **“Make instructions for GPT-Luna from what I wrote above, edit existing plans to be aligned with new notes”**. That turn delivered documentation and planning. The user subsequently asked to resume work; R00–R06 are now implemented, with current verification recorded in `PROGRESS.md`.
 
 Status: **current direction confirmed; defaults selected under existing user authorization**. D11 overrides conflicting D01/D02/D08 wording and prior plan Steps 03/05/07/08/10/13. Physical/peering matrices, VPC isolation, VM placement, count controls, RS presentation rules, and eventual integration remain in scope.
+
+Integration default, selected under existing autonomy authorization: browser edits use isolated in-memory workspaces, with 30-minute idle expiry and a cap of 16 retained edited scenarios. Read-only visitors share the default snapshot. Expired/evicted workspaces report a conflict rather than mixing a cached diagram with different tables. Exported YAML remains the persistence mechanism. Source is in `internal/content/dctopology/`; browser layout is in `web/static/dc-topology/`.
 
 ## Recording an answer
 

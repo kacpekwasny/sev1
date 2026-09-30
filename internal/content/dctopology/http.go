@@ -50,6 +50,10 @@ func NewAPIHandler(initialYAML []byte) (http.Handler, error) {
 		return nil, err
 	}
 	store := &configStore{config: config, snapshot: model, loaded: true}
+	return newAPIHandler(store, initialYAML), nil
+}
+
+func newAPIHandler(store *configStore, initialYAML []byte) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/status", store.status)
 	mux.HandleFunc("GET /api/model", store.model)
@@ -62,7 +66,7 @@ func NewAPIHandler(initialYAML []byte) (http.Handler, error) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(initialYAML)
 	})
-	return mux, nil
+	return mux
 }
 
 type countUpdate struct {

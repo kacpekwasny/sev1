@@ -1,12 +1,12 @@
 # DC topology visualizer: implementation plan for GPT-Luna
 
-Status on 2026-09-30: **The existing isolated implementation is a baseline, not completion of the new design. The user requested a substantial frontend rework, popup inspection, bounded device dragging, initial expected-table calculation, and optional illustrative route flow. This revision updates instructions and plans only; the rework has not been implemented.** Earlier automated checks passed; browser acceptance and parent-site integration remain open. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
+Status on 2026-09-30: **R00–R06 are implemented and verified, including `/topologie/dc/` integration and default/capped desktop/narrow browser acceptance. The integration feature commit contains the final progress checkpoint.** The user committed the baseline as `9c50463`; rework commits are recorded in [PROGRESS.md](PROGRESS.md). The milestones and older steps below remain the implementation/acceptance contract, not a request to repeat completed work. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
 
 ## Current rework contract and execution order
 
 The latest user request supersedes prior BGP simulation/event-playback requirements and the htmx convention for this feature. Build an engaging JavaScript topology workspace, inspect entities in a popup over that workspace, compute expected route tables on initial load/rebuild, and make route flow a decorative, independently switched illustration. Devices support small visual position adjustments by dragging. Keep confirmed network semantics and YAML configuration intact. The user authorizes reasonable assumptions and autonomous execution; no framework or new build system is required by “dynamic JS”.
 
-Execute these milestones before treating the older steps below as complete under the revised scope:
+These milestones define the revised scope; consult progress before executing an unfinished increment:
 
 | Milestone | Work | Acceptance and suggested commit |
 | --- | --- | --- |
@@ -18,7 +18,7 @@ Execute these milestones before treating the older steps below as complete under
 | R05 — Optional illustrative flow | Replace route-announcement playback with a dedicated switch, off initially. A fixed sequence projected onto valid current sessions is sufficient; mark it illustrative and respect reduced motion. Retain useful data/control traffic examples without building a protocol simulator. | Toggle off stops/clears animation; only actual connections are used; missing endpoints are handled; drag/collapse/layer changes update or suppress paths; tables never change. `feat(topology): add optional illustrative route flow` |
 | R06 — Verify and integrate | Finish browser acceptance, docs, and `/topologie/dc/` integration when parent paths are writable. Preserve existing site routes and behavior. | Required Go/JS checks and desktop/narrow walkthrough; record actual scale measurements and outstanding blockers. `feat(topology): integrate redesigned DC explorer` |
 
-The 48-layout-unit drag bound, ephemeral offsets, popup behavior, and illustrative-flow defaults are specified in the guide and D11. These are authorized defaults that may be refined during usability checks. Do not implement the redesign during an instructions-only task.
+The 48-layout-unit drag bound, ephemeral offsets, popup behavior, and illustrative-flow defaults are specified in the guide and D11. These are authorized defaults that may be refined during usability checks. The latest user explicitly resumed implementation; the earlier instructions-only limit no longer applies.
 
 ## Intended outcome and evidence
 
@@ -56,7 +56,7 @@ Host IDs are unique within each bolt and labels use the existing three-digit suf
 
 ## Relevant existing code
 
-The first plan preceded application code; the current baseline now lives in `topology-vis/cmd/`, `topology-vis/internal/dctopology/`, and `topology-vis/web/static/dc-topology/`. It is a subdirectory of the Go lecture-site repository. Develop the new feature in isolation while keeping this eventual integration map:
+The first plan preceded application code; the integrated implementation now lives in `cmd/dc-topology/`, `internal/content/dctopology/`, and `web/static/dc-topology/`. The original lecture topology remains separate. This map describes the neighboring site code:
 
 | Responsibility | Existing location relative to the Git root | Implication |
 | --- | --- | --- |
@@ -140,7 +140,7 @@ Unnumbered sessions use modeled link-local endpoints plus explicit interface IDs
 
 **Dependencies:** confirmed D01; an implementation approach consistent with the existing project conventions. D10's `/topologie/dc/` route is selected for eventual integration.
 
-**Develop:** create the smallest isolated development page/entry point, a clear empty state, and documented run/build/test commands. Define the reusable module's initialization, configuration loading, event/control boundary, and cleanup so it can mount in `sev1` without a rewrite. Go owns canonical configuration and expected route state; browser ES modules render state and send commands through an adapter. Keep the source and tests under the existing Go repository and browser assets under `web/static/dc-topology/`; do not add a Node build stack. From the Git root, the current harness is `go run ./topology-vis/cmd/dc-topology`, and the eventual site adapter mounts `mountTopologyApp(root, { onCommand })`, delivers state with `setState`, and calls `destroy` when removed. Preserve the existing lecture entry page and topology examples.
+**Develop:** create the smallest isolated development page/entry point, a clear empty state, and documented run/build/test commands. Define the reusable module's initialization, configuration loading, event/control boundary, and cleanup so it can mount in `sev1` without a rewrite. Go owns canonical configuration and expected route state; browser ES modules render state and send commands through an adapter. Keep the source and tests under the existing Go repository and browser assets under `web/static/dc-topology/`; do not add a Node build stack. From the Git root, the current harness is `go run ./cmd/dc-topology`, and the eventual site adapter mounts `mountTopologyApp(root, { onCommand })`, delivers state with `setState`, and calls `destroy` when removed. Preserve the existing lecture entry page and topology examples.
 
 **Verify/fix:** run the app from documented commands; open it in a browser at desktop and narrow widths; check console errors and build output. Run existing integration tests if parent application code/templates change. Establish a meaningful smoke check for loading the application.
 

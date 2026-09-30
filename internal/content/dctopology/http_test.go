@@ -11,7 +11,7 @@ import (
 )
 
 func TestSummaryDefaultCounts(t *testing.T) {
-	data, err := os.ReadFile("../../examples/default.yaml")
+	data, err := os.ReadFile("../../../content/dc-topology/default.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestSummaryDefaultCounts(t *testing.T) {
 }
 
 func TestInvalidConfigDoesNotReplaceActiveConfig(t *testing.T) {
-	initial, err := os.ReadFile("../../examples/default.yaml")
+	initial, err := os.ReadFile("../../../content/dc-topology/default.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestInvalidConfigDoesNotReplaceActiveConfig(t *testing.T) {
 }
 
 func TestValidConfigReplacesAndExportsActiveConfig(t *testing.T) {
-	initial, err := os.ReadFile("../../examples/default.yaml")
+	initial, err := os.ReadFile("../../../content/dc-topology/default.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestValidConfigReplacesAndExportsActiveConfig(t *testing.T) {
 }
 
 func TestModelEndpointReturnsCurrentPhysicalGraph(t *testing.T) {
-	initial, err := os.ReadFile("../../examples/default.yaml")
+	initial, err := os.ReadFile("../../../content/dc-topology/default.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func TestModelEndpointReturnsCurrentPhysicalGraph(t *testing.T) {
 }
 
 func TestInspectorEndpointReturnsOnlyRequestedRouteDetails(t *testing.T) {
-	initial, err := os.ReadFile("../../examples/default.yaml")
+	initial, err := os.ReadFile("../../../content/dc-topology/default.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestInspectorEndpointReturnsOnlyRequestedRouteDetails(t *testing.T) {
 }
 
 func TestCountUpdateRebuildsAtomicallyAndExportsEffectiveConfig(t *testing.T) {
-	initial, err := os.ReadFile("../../examples/default.yaml")
+	initial, err := os.ReadFile("../../../content/dc-topology/default.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +206,7 @@ func TestCountUpdateRebuildsAtomicallyAndExportsEffectiveConfig(t *testing.T) {
 }
 
 func TestCountUpdateToZeroRemovesOnlyReferencesToDeletedCustomerVMs(t *testing.T) {
-	initial, err := os.ReadFile("../../examples/default.yaml")
+	initial, err := os.ReadFile("../../../content/dc-topology/default.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}

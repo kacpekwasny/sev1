@@ -1,6 +1,6 @@
 # GPT-Luna implementation instructions
 
-Implement the DC topology visualizer using [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) and [DECISIONS.md](DECISIONS.md). Work in complete increments: **develop → verify → fix → review → commit → repeat**. This revision is an instruction and planning deliverable; execute the rework when asked to implement it.
+Implement the DC topology visualizer using [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) and [DECISIONS.md](DECISIONS.md). Work in complete increments: **develop → verify → fix → review → commit → repeat**. The rework is now implemented; use [PROGRESS.md](PROGRESS.md) to identify completed work before making further changes.
 
 ## Latest user direction — 2026-09-30
 
@@ -22,7 +22,7 @@ The user already approved defaults and said **“You can make assumptions here�
 3. [PROGRESS.md](PROGRESS.md), then the next rework milestone in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 4. Only the relevant code, tests, and original [TODO.md](TODO.md) sections.
 
-The Git root is the parent `sev1/` repository; the current implementation is under `topology-vis/`. Preserve the user's TODO and unrelated changes. Existing code is a starting point, not proof that the new design is complete.
+The Git root is `sev1/`; implementation lives in `internal/content/dctopology/`, `web/static/dc-topology/`, and `cmd/dc-topology/`. `topology-vis/` holds the guide, plan, decisions, progress, and optional browser walkthrough. Preserve the user's TODO and unrelated changes. Existing code is a starting point, not proof that the new design is complete.
 
 ## Implementation defaults
 
@@ -62,18 +62,18 @@ If a tool or filesystem restriction blocks a check or commit, record the exact f
 Run from the actual Git root. Do not use broad `git add .`/`git add -A`, destructive reset/clean, or commit someone else's staged changes. Review mixed files at hunk level.
 
 ```sh
-go run ./topology-vis/cmd/dc-topology   # independent harness, port 8084
+go run ./cmd/dc-topology   # independent harness, port 8084
 go test ./...
 go build .
 go vet ./...
-node --input-type=module --check < topology-vis/web/static/dc-topology/app.js
-node --input-type=module --check < topology-vis/web/static/dc-topology/dev.js
+node --input-type=module --check < web/static/dc-topology/app.js
+node --input-type=module --check < web/static/dc-topology/dev.js
 ```
 
 Run `gofmt` on modified Go files. For shared-state changes, run relevant race tests; the parent site's checks are `go test -race ./internal/live ./internal/web`. Keep assets local and eventual site integration at `/topologie/dc/`. Other site pages may retain htmx; the visualizer itself uses JavaScript.
 
 Documentation-only changes need content/link/diff review, not unrelated application tests. Keep [PROGRESS.md](PROGRESS.md) concise: implemented versus planned work, validation evidence, blockers, next action. Report actual commit hashes from Git history.
 
-## Prompt to start the rework
+## Prompt to continue implementation
 
-> Execute the rework in `topology-vis/LUNA_GUIDE.md` and `topology-vis/IMPLEMENTATION_PLAN.md`. First inspect Git status and commit our existing implementation if Git metadata is writable, preserving unrelated work. Build a polished JavaScript topology workspace with inspectors in popups over the graph and bounded device dragging. Compute expected route tables on configuration load/rebuild; simplify away BGP convergence/event simulation. Add an optional, initially disabled illustrative route-flow switch. Use the approved defaults and make reasonable assumptions without waiting for me. Verify each complete increment, review it, commit it, update progress, and continue. Report blocked commits or unavailable browser checks precisely; do not claim they passed.
+> Continue the DC visualizer using `topology-vis/LUNA_GUIDE.md`, `IMPLEMENTATION_PLAN.md`, and `PROGRESS.md`. Inspect Git status and existing commits first; do not repeat completed rework milestones. Keep the JavaScript topology workspace, popup inspection, bounded dragging, initial expected route tables, and optional illustrative flow contract. Make reasonable assumptions within the authorized scope, verify each requested increment, review and commit only your changes, and update progress. Preserve unrelated work and report any unavailable checks precisely.

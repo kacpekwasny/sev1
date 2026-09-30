@@ -34,6 +34,7 @@ type Server struct {
 	mu    sync.RWMutex
 	cache *content.Library
 	tpl   *templates
+	dcAPI http.Handler
 }
 
 func New(opts Options) (*Server, error) {
@@ -46,6 +47,11 @@ func New(opts Options) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	dcAPI, err := newDCTopologyAPI(opts.ContentDir)
+	if err != nil {
+		return nil, err
+	}
+	s.dcAPI = dcAPI
 	s.cache, s.tpl = lib, tpl
 	s.routes()
 	return s, nil
@@ -102,6 +108,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/graf.json", s.handleGraphJSON)
 
 	s.mux.HandleFunc("GET /topologie/{$}", s.handleTopologies)
+	s.mux.HandleFunc("GET /topologie/dc/{$}", s.handleDCTopology)
+	s.mux.HandleFunc("/api/dc-topology/", s.handleDCTopologyAPI)
 	s.mux.HandleFunc("GET /topologie/{slug}", s.handleTopology)
 	s.mux.HandleFunc("GET /topologie/{slug}/widok/{view}", s.handleTopologyView)
 

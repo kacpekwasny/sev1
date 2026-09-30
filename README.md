@@ -158,6 +158,13 @@ wie, **gdzie to leży na ekranie** (x, y).
 W notatkach ASCII art zostaje — plik `.md` ma działać w Obsidianie. Notatka linkuje do
 wersji interaktywnej przez `[[topologie/spine-leaf|…]]`.
 
+**Eksplorator DC.** `/topologie/dc/` to osobna, dynamiczna aplikacja JavaScript:
+urządzenia można lekko przesuwać, a szczegóły otwierają się nad topologią.
+Konfiguracja YAML przelicza oczekiwane tablice tras; przełącznik przepływu tras
+włącza poglądową ilustrację. Kod nie symuluje konwergencji BGP. Osobny harness:
+`go run ./cmd/dc-topology` (port 8084). Opis konfiguracji i sprawdzeń:
+[topology-vis/README.md](topology-vis/README.md).
+
 **Graf notatek.** `/notatki/graf` rysuje wikilinki jako graf (canvas, ~100 linii bez
 bibliotek). Kropki są klikalne.
 
