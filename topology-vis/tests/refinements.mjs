@@ -89,6 +89,33 @@ try {
   await touch.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
   assert(Math.abs((await page.locator('#dc-inspector').boundingBox()).width-touchStart.width)<2,'Cancelled touch resize restores the original dimensions');
   await touch.send('Emulation.setTouchEmulationEnabled',{enabled:false});await touch.detach();
+  await page.locator('#dc-details summary').filter({hasText:'Maszyny wirtualne ('}).click();
+  const hostTitle=await page.locator('#dc-inspector-heading').textContent();
+  const hostedVMs=model.vms.filter(vm=>vm.host_id==='host-b1-h1');
+  for(const onHost of [false,true])for(const grouped of [false,true]) {
+    await page.locator('#dc-show-infra-hosts').setChecked(onHost);
+    await page.locator('#dc-collapse-rs').setChecked(grouped);
+    await page.locator('#dc-graph svg').evaluate(svg=>svg.dataset.hoverCheck='unchanged');
+    for(const vm of hostedVMs) {
+      const row=page.locator(`#dc-details [data-vm-id="${vm.id}"]`);
+      await row.hover();
+      const badge=page.locator('.dc-vm.preview');await badge.waitFor();
+      assert.equal(await badge.count(),1,'Only the hovered VM projection is highlighted');
+      assert.equal(await badge.getAttribute('data-entity-id'),grouped&&vm.role!=='customer'?vm.cluster_id:vm.id);
+      assert.equal(await page.locator('#dc-inspector-heading').textContent(),hostTitle);
+      assert.equal(await page.locator('#dc-graph svg').getAttribute('data-hover-check'),'unchanged','Hover must preserve the graph and running playback');
+    }
+    await page.locator('#dc-inspector-grip').hover();
+    await page.locator('.dc-vm.preview').waitFor({state:'detached'});
+    const row=page.locator(`#dc-details [data-vm-id="${hostedVMs[0].id}"]`);
+    await row.focus();await page.locator('.dc-vm.preview').waitFor();
+    await row.press('Tab');await page.locator('.dc-vm.preview').waitFor();
+    await page.locator('#dc-details summary').filter({hasText:'Maszyny wirtualne ('}).focus();
+    await page.locator('.dc-vm.preview').waitFor({state:'detached'});
+  }
+  await page.locator('#dc-show-infra-hosts').check();
+  await page.locator('#dc-collapse-rs').uncheck();
+  await page.locator('#dc-details summary').filter({hasText:'Maszyny wirtualne ('}).click();
   await page.locator('#dc-details summary').filter({hasText:'Sesje BGP ('}).click();
   const session=page.locator('#dc-details [data-session-id]').first();
   const sessionID=await session.getAttribute('data-session-id'),title=await page.locator('#dc-inspector-heading').textContent();

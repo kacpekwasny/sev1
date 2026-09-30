@@ -90,7 +90,9 @@ body.dc-harness { margin: 0; min-width: 320px; background: #0b1018; }
 .dc-vm rect { fill: #2e243f; stroke: #9b7bbc; stroke-width: 1; }
 .dc-vm.customer rect { fill: #3b3021; stroke: #cba15c; }
 .dc-vm.cluster rect { stroke-width: 2; stroke-dasharray: 3 2; }
-.dc-vm:hover rect, .dc-vm:focus-visible rect, .dc-vm.selected rect { stroke: #c2fbe5; stroke-width: 2; }
+.dc-vm:hover rect, .dc-vm:focus-visible rect, .dc-vm.selected rect, .dc-vm.preview rect { stroke: #c2fbe5; stroke-width: 2; }
+.dc-vm.preview rect { filter: drop-shadow(0 0 4px #70d2b0); }
+.dc-hosted-vm:hover, .dc-hosted-vm:focus-visible { background: #e2f6ee; outline: 2px solid #70b99d; outline-offset: 2px; border-radius: 3px; }
 .dc-vm-label { fill: #d7c9e5; font-size: 9px; font-weight: 600; pointer-events: none; }
 .dc-vm.customer .dc-vm-label { fill: #f1d7a7; }
 .dc-packet-marker { fill: #ffc36c; stroke: #fff7e8; stroke-width: 2; filter: drop-shadow(0 0 6px #ffa736bb); pointer-events: none; }

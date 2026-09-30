@@ -361,3 +361,14 @@ Examples illustrate the expected snapshot; they do not simulate convergence.
    Commit: the commit containing this checkpoint.
 
 No pending D22 work; preview remains http://127.0.0.1:8099/topologie/dc/.
+
+## D23 — complete
+
+Host VM entries highlight the matching topology badge on hover or keyboard focus,
+including grouped RS clusters and abstract placement. Updating the badge class
+preserves graph elements, inspector selection and playback. Preview cleanup uses
+the existing inspector lifecycle. Chrome checks at 1280×900 and 390×844 verify
+every hosted VM in all four projection modes, pointer departure, focus changes,
+collapsed-list cleanup and Escape dismissal. Desktop/narrow screenshots reviewed.
+Go tests and embedded production build pass.
+Commit: the commit containing this checkpoint.

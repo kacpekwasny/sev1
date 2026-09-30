@@ -1,6 +1,6 @@
 # DC topology visualizer: implementation plan for GPT-Luna
 
-Status on 2026-09-30: **R00–R17 are implemented.** The user committed the baseline as `9c50463`; rework commits and verification are recorded in [PROGRESS.md](PROGRESS.md). The milestones and older steps below remain the implementation/acceptance contract, not a request to repeat completed work. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
+Status on 2026-09-30: **R00–R18 are implemented.** The user committed the baseline as `9c50463`; rework commits and verification are recorded in [PROGRESS.md](PROGRESS.md). The milestones and older steps below remain the implementation/acceptance contract, not a request to repeat completed work. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
 
 ## Current rework contract and execution order
 
@@ -31,6 +31,7 @@ These milestones define the revised scope; consult progress before executing an 
 | R15 — Focus route inspection | Apply D20: directed learned-path animation on hover/click, edge/corner inspector resizing, and remove topology-wide exports from route details. | Three commits. Check candidate context, direction/movement/reduced motion, GUI/Linux navigation, mouse/touch/keyboard resizing and cancellation at both widths. |
 | R16 — Repair and explain flow | Apply D21: repair traffic playback/inspection teleport, show RS fanout, complete at end devices, and cycle advertisement examples by default. | Four commits after R15. Reproduce real playback failure and verify position continuity; use expected exports for branching and end-device delivery without simulating BGP convergence. |
 | R17 — Correct customer and packet paths | Apply D22: import-only customer sessions, all-host RS Bolt fanout, unchanged unicast in the default VRF recursively resolved via VM EVPN, public VNI 3 defaults, and continuous packet traversal through nodes. | Three commits. Verify every Bolt/host/family export, recursive default-VRF forwarding, explicit private VPC isolation, and real packet frames across link-contact boundaries at both widths. |
+| R18 — Preview hosted VMs | Apply D23: highlight topology VMs when hovering over the host inspector's VM entries; support keyboard focus and grouped RS projections. | Verify hosted/abstract and grouped/expanded modes at both widths, unchanged selection/playback, and preview cleanup. |
 
 
 The 48-layout-unit drag bound, ephemeral offsets, popup behavior, and illustrative-flow defaults are specified in the guide and D11. These are authorized defaults that may be refined during usability checks. The latest user explicitly resumed implementation; the earlier instructions-only limit no longer applies.

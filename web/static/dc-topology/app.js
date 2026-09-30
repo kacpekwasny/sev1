@@ -189,7 +189,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   const inspectorHistory = [];
   let popupPosition = null, popupDrag = null, endpointPick = null, deviceMenu = null;
   let popupSize = null, popupResize = null;
-  let routeHover = null, sessionHover = null, previewFrame = 0;
+  let routeHover = null, sessionHover = null, vmHover = null, previewFrame = 0;
   let packetReveal = null;
   const exploration = { update: null, packet: null };
   const exploreRequests = { update: 0, packet: 0 };
@@ -202,11 +202,13 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
   function previewRoute(element) {
     if(!element&&!routeHover)return;
+    previewVM(null);
     sessionHover=null;
     routeHover=element?routeSelection(element):null;
     if(!previewFrame)previewFrame=requestAnimationFrame(()=>{previewFrame=0;if(!destroyed)renderGraph();});
   }
   function clearRoutePreview() {
+    previewVM(null);
     routeHover=null;
     sessionHover=null;
     if(previewFrame)cancelAnimationFrame(previewFrame);
@@ -214,8 +216,15 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
   function previewSession(element) {
     if(!element&&!sessionHover)return;
+    previewVM(null);
     sessionHover=element?.dataset.sessionId??null;routeHover=null;
     if(!previewFrame)previewFrame=requestAnimationFrame(()=>{previewFrame=0;if(!destroyed)renderGraph();});
+  }
+  function previewVM(element) {
+    vmHover=element?.dataset.vmId??null;
+    // Use the current projection: an RS member may be represented by a cluster.
+    const item=currentPositions?.displayItems.find(item=>item.members.some(vm=>vm.id===vmHover));
+    for(const badge of graphEl.querySelectorAll(".dc-vm"))badge.classList.toggle("preview",badge.dataset.entityId===item?.id);
   }
   function requestPacketReveal() {
     packetReveal = `${selected.type}/${selected.id}`;
@@ -521,12 +530,16 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if(route&&detailsEl.contains(route)&&event.relatedTarget?.closest?.("[data-route-id]")!==route)previewRoute(route);
     const session=event.target.closest("[data-session-id]");
     if(session&&detailsEl.contains(session)&&event.relatedTarget?.closest?.("[data-session-id]")!==session)previewSession(session);
+    const vm=event.target.closest("[data-vm-id]");
+    if(vm&&detailsEl.contains(vm)&&event.relatedTarget?.closest?.("[data-vm-id]")!==vm)previewVM(vm);
   };
   const onRouteLeave=(event)=>{
     const route=event.target.closest("[data-route-id]");
     if(route&&event.relatedTarget?.closest?.("[data-route-id]")!==route)previewRoute(null);
     const session=event.target.closest("[data-session-id]");
     if(session&&event.relatedTarget?.closest?.("[data-session-id]")!==session)previewSession(null);
+    const vm=event.target.closest("[data-vm-id]");
+    if(vm&&event.relatedTarget?.closest?.("[data-vm-id]")!==vm)previewVM(null);
   };
   listen(detailsEl,"pointerover",onRouteEnter);listen(detailsEl,"pointerout",onRouteLeave);
   listen(detailsEl,"focusin",onRouteEnter);listen(detailsEl,"focusout",onRouteLeave);
@@ -1281,7 +1294,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       if (!point) continue;
       const selectedClass = (selected?.type === item.entityType && selected.id === item.id ? " selected" : "") + endpointClass(item.id);
       const group = svgElement("g", {
-        class: `dc-vm ${item.role}${item.entityType === "cluster" ? " cluster" : ""}${selectedClass}`, transform: `translate(${point.x} ${point.y})`,
+        class: `dc-vm ${item.role}${item.entityType === "cluster" ? " cluster" : ""}${selectedClass}${item.members.some(vm=>vm.id===vmHover)?" preview":""}`, transform: `translate(${point.x} ${point.y})`,
         role: "button", tabindex: "0", "data-entity-type": item.entityType, "data-entity-id": item.id,
         "data-host-id": item.hostID, "data-on-host": item.onHost,
         "aria-label": displayNames(`${item.label}${item.onHost ? `, host ${item.hostID}` : ", widok abstrakcyjny"}`),
@@ -1306,6 +1319,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function renderInspector(nodeByID, interfaceByID) {
+    previewVM(null);
     if(routeHover||sessionHover) {clearRoutePreview();renderGraph();}
     root.querySelector("#dc-inspector-back").disabled = !inspectorHistory.length;
     const key = selected ? `${selected.type}/${selected.id}/${selected.ownerID??""}` : "";
@@ -1390,6 +1404,10 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         vmDetails.append(vmSummary);
         for (const vm of hosted) {
           const row = document.createElement("p"); row.textContent = `${vm.label} · ${vm.ipv4} · ${vm.ipv6}`;
+          row.className="dc-hosted-vm";
+          row.dataset.vmId=vm.id;
+          row.tabIndex=0;
+          row.title="Najedź lub ustaw fokus, aby podświetlić maszynę w topologii";
           vmDetails.append(row);
         }
         detailsEl.append(vmDetails);

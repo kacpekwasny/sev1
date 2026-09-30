@@ -397,6 +397,14 @@ Keep explicit private VPCs and forwarding isolation. Packet markers traverse eac
 node continuously between incoming and outgoing link contacts. Commit each of the
 three requested points, incorporating the public-VRF clarification into point 2.
 
+### D23 — Highlight hosted VMs from the inspector
+
+Hovering over a VM in a host's expanded VM list highlights its topology badge.
+Keyboard focus provides the same preview. Grouped RS members highlight their
+visible cluster; hosted and abstract placement use the current projection.
+The preview preserves inspector selection and playback, clearing on departure,
+inspector dismissal or replacement.
+
 ## Recording an answer
 
 Record the latest user direction and affected milestones. If it changes previously implemented work, reopen the affected acceptance checks; do not claim the old checks verify new behavior. Distinguish direct user requirements from authorized implementation defaults. Preserve the original TODO while keeping this decision record and the active plan authoritative for later changes.
