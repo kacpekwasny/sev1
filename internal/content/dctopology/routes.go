@@ -86,6 +86,9 @@ type RouteAdvertisement struct {
 }
 
 type ForwardingEntry struct {
+	VRF              string   `json:"vrf,omitempty"`
+	ResolvedRouteID  string   `json:"resolved_route_id,omitempty"`
+	ResolvedNextHop  string   `json:"resolved_next_hop,omitempty"`
 	Protocol         string   `json:"protocol,omitempty"`
 	OwnerID          string   `json:"owner_id"`
 	OwnerType        string   `json:"owner_type"`
@@ -294,7 +297,17 @@ func BuildExpectedRouteState(model Model) RouteState {
 		if border.Kind != NodeBorder {
 			continue
 		}
-		for _, context := range append([]VPCContext{{}}, state.VPCs...) {
+		contexts := append([]VPCContext{}, state.VPCs...)
+		public := false
+		for _, context := range contexts {
+			if context.ID == 0 {
+				public = true
+			}
+		}
+		if !public {
+			contexts = append(contexts, VPCContext{})
+		}
+		for _, context := range contexts {
 			for _, item := range []struct{ family, address string }{{"ipv4", border.IPv4}, {"ipv6", border.IPv6}} {
 				bits := 128
 				if item.family == "ipv4" {
@@ -343,15 +356,6 @@ func BuildExpectedRouteState(model Model) RouteState {
 			})
 		}
 	}
-	hostVPCs := make(map[string]map[uint32]bool)
-	for _, vm := range model.VMs {
-		if vm.Role == VMCustomer {
-			if hostVPCs[vm.HostID] == nil {
-				hostVPCs[vm.HostID] = make(map[uint32]bool)
-			}
-			hostVPCs[vm.HostID][vm.VPCID] = true
-		}
-	}
 	underlay := newUnderlay(model)
 
 	allCandidates := make(map[string][]RouteCandidate)
@@ -373,7 +377,7 @@ func BuildExpectedRouteState(model Model) RouteState {
 		if route.OriginKind == "border" {
 			start = route.OriginID
 		}
-		previous := reachableRouteSpeakers(start, route, peers, entityByID, route.VPCID, vms, hostVPCs, physicalTransit)
+		previous := reachableRouteSpeakers(start, route, peers, entityByID, route.VPCID, vms, physicalTransit)
 		for speakerID, path := range previous {
 			endpoint, known := entityByID[speakerID]
 			if !known {
@@ -474,8 +478,12 @@ func makeRoute(id, prefix, family string, vpcID uint32, originID, originLabel, o
 func buildVPCContexts(vpcs []VPCConfig) []VPCContext {
 	result := make([]VPCContext, 0, len(vpcs))
 	for _, vpc := range vpcs {
+		vni := uint32(10000) + vpc.ID
+		if vpc.ID == 0 {
+			vni = 3
+		}
 		result = append(result, VPCContext{
-			ID: vpc.ID, Name: vpc.Name, RouteTarget: fmt.Sprintf("target:64512:%d", vpc.ID), VNI: 10000 + vpc.ID,
+			ID: vpc.ID, Name: vpc.Name, RouteTarget: fmt.Sprintf("target:64512:%d", vpc.ID), VNI: vni,
 		})
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
@@ -504,7 +512,7 @@ func routeFamilySupported(session BGPSession, route Route) bool {
 	return false
 }
 
-func reachableRouteSpeakers(start string, route Route, peers map[string][]routePeer, entities map[string]SessionEndpoint, vpcID uint32, vms map[string]VM, hostVPCs map[string]map[uint32]bool, physicalTransit bool) map[string][]string {
+func reachableRouteSpeakers(start string, route Route, peers map[string][]routePeer, entities map[string]SessionEndpoint, vpcID uint32, vms map[string]VM, physicalTransit bool) map[string][]string {
 	paths := map[string][]string{start: {start}}
 	queue := []string{start}
 	for len(queue) > 0 {
@@ -532,13 +540,7 @@ func reachableRouteSpeakers(start string, route Route, peers map[string][]routeP
 					continue
 				}
 			}
-			if entity := entities[neighbor]; entity.EntityType == "node" && entity.Kind == "host" {
-				// Retain EVPN in the global RIB. RT/VPC filtering happens when
-				// importing into forwarding, not when receiving the EVPN NLRI.
-				if !physicalTransit && route.RouteType != 5 && !hostVPCs[neighbor][vpcID] {
-					continue
-				}
-			}
+			// Global host RIBs retain every advertised NLRI; VRF import belongs in forwarding.
 			path := append(append([]string(nil), paths[current]...), neighbor)
 			paths[neighbor] = path
 			if physicalTransit || isRouteServerEntity(neighbor) {
@@ -713,24 +715,50 @@ func buildForwarding(model Model, selected map[string][]RouteCandidate, origins 
 			hostVPCs[vm.HostID][vm.VPCID] = true
 		}
 	}
+	hostEntries := map[string][]ForwardingEntry{}
 	for _, node := range model.Nodes {
 		if node.Kind != NodeHost {
 			continue
 		}
-		for _, candidate := range selected[node.ID] {
-			if candidate.AFI == "l2vpn" && candidate.RouteType == 5 && hostVPCs[node.ID][candidate.VPCID] {
-				result = append(result, forwardingEntry(node.ID, "host", node.ID, candidate))
+		for _, overlay := range selected[node.ID] {
+			if overlay.AFI != "l2vpn" || overlay.RouteType != 5 || (overlay.VPCID != 0 && !hostVPCs[node.ID][overlay.VPCID]) {
+				continue
 			}
+			entry := forwardingEntry(node.ID, "host", node.ID, overlay)
+			if overlay.VPCID == 0 {
+				entry.VRF = "default"
+				for _, unicast := range selected[node.ID] {
+					if unicast.OriginKind != "customer" || unicast.VPCID != 0 || unicast.IPFamily != overlay.IPFamily {
+						continue
+					}
+					address, err := netip.ParseAddr(unicast.NextHop)
+					prefix, prefixErr := netip.ParsePrefix(overlay.Prefix)
+					if err != nil || prefixErr != nil || !prefix.Contains(address) {
+						continue
+					}
+					// Unicast stays unicast in table main. Its VM next hop resolves
+					// through an imported Type-5 route to an IPv4 VTEP on VNI 3.
+					entry = forwardingEntry(node.ID, "host", node.ID, unicast)
+					entry.VRF, entry.Protocol = "default", "bgp"
+					entry.ResolvedRouteID, entry.ResolvedNextHop = overlay.ID, overlay.NextHop
+					entry.VNI, entry.RouteTarget = overlay.VNI, overlay.RouteTarget
+					break
+				}
+			}
+			hostEntries[node.ID] = append(hostEntries[node.ID], entry)
+			result = append(result, entry)
 		}
 	}
 	for _, vm := range model.VMs {
 		if vm.Role != VMCustomer {
 			continue
 		}
-		for _, candidate := range selected[vm.HostID] {
-			if candidate.AFI == "l2vpn" && candidate.RouteType == 5 && candidate.VPCID == vm.VPCID {
-				result = append(result, forwardingEntry(vm.ID, "vpc-view", vm.HostID, candidate))
+		for _, entry := range hostEntries[vm.HostID] {
+			if entry.VPCID != vm.VPCID {
+				continue
 			}
+			entry.OwnerID, entry.OwnerType = vm.ID, "vpc-view"
+			result = append(result, entry)
 		}
 	}
 	nodes := map[string]Node{}
@@ -754,6 +782,9 @@ func buildForwarding(model Model, selected map[string][]RouteCandidate, origins 
 			candidate := RouteCandidate{Route: route, UnderlayCost: resolved.Cost, UnderlayNextHops: resolved.NextHops}
 			entry := forwardingEntry(owner, kind, host, candidate)
 			entry.EncapsulateVXLAN = route.VPCID != 0 && host != route.NextHopNodeID
+			if route.VPCID == 0 {
+				entry.VRF = "default"
+			}
 			result = append(result, entry)
 		}
 		if route.VPCID == 0 {
@@ -763,6 +794,8 @@ func buildForwarding(model Model, selected map[string][]RouteCandidate, origins 
 			for _, vm := range model.VMs {
 				if vm.Role != VMCustomer {
 					add(vm.ID, "infra", vm.HostID)
+				} else if vm.VPCID == 0 {
+					add(vm.ID, "vpc-view", vm.HostID)
 				}
 			}
 			continue

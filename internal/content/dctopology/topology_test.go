@@ -308,6 +308,13 @@ func exampleConfig(t *testing.T) Config {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Existing fixtures exercise explicit private VPC isolation. Public defaults
+	// are tested separately against the unmodified shipped configuration.
+	config.VPCs = []VPCConfig{{ID: 1, Name: "private-test"}}
+	config.CustomerVMs.DefaultVPCID = 1
+	for i := range config.RouteOrigins {
+		config.RouteOrigins[i].VPCID = 1
+	}
 	return config
 }
 

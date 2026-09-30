@@ -10,12 +10,12 @@ topology:
   hosts_per_rack: 2
 
 vpcs:
-  - id: 1
-    name: wspolna
+  - id: 0
+    name: default-public
 
 customer_vms:
   count: 3
-  default_vpc_id: 1
+  default_vpc_id: 0
   rs_user_peers: [1, 2, 3]
   overrides:
     - id: 1
@@ -34,7 +34,7 @@ route_servers:
 
 route_origins:
   - id: przyklad-uplink-v4
-    vpc_id: 1
+    vpc_id: 0
     prefix: 198.51.100.0/24
     border_id: 1
 

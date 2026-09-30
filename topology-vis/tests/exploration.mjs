@@ -87,7 +87,7 @@ try {
  assert.equal(await page.locator('#dc-packet-form [name="from"]').inputValue(),'customer-1');
  assert.equal(await page.locator('#dc-packet-form [name="to"]').inputValue(),'customer-3');
  const vni=page.locator('.dc-bit-field[data-field="VNI"]').first();await vni.click();
- assert.match(await page.locator('.dc-bit-info').textContent(),/24 bitów · 10001/);
+ assert.match(await page.locator('.dc-bit-info').textContent(),/24 bitów · 3/);
  await page.locator('.dc-bit-field[data-layer="UDP"][data-field="Destination Port"]').click();
  assert.match(await page.locator('.dc-bit-info').textContent(),/16 bitów · 4789/);
  await page.screenshot({path:`${output}/packet-bits.png`,fullPage:true,animations:'disabled'});
@@ -195,7 +195,7 @@ try {
 
  await choose('packet','customer-1','customer-3','ipv4');
  assert.match(await page.locator('#dc-details').textContent(),/49152 \/ 4789/);
- assert.match(await page.locator('#dc-details').textContent(),/VNI10001/);
+ assert.match(await page.locator('#dc-details').textContent(),/VNI3/);
  assert.match(await page.locator('#dc-details').textContent(),/tap-c1/);
  assert.match(await page.locator('#dc-details').textContent(),/tap-c3/);
  assert((await page.locator('.dc-edge.flow-path').count())>0);
@@ -306,7 +306,7 @@ try {
  await assertPacketVisible();
  await page.screenshot({path:`${output}/mobile-inspect-packet-visible.png`,animations:'disabled'});
  await page.locator('.dc-bit-field[data-field="VNI"]').first().click();
- assert.match(await page.locator('.dc-bit-info').textContent(),/10001/);
+ assert.match(await page.locator('.dc-bit-info').textContent(),/VNI.*3|24 bitów · 3/);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);
  const box=await page.locator('#dc-inspector').boundingBox(), canvas=await page.locator('#dc-graph').boundingBox();
  assert(box.x>=canvas.x&&box.x+box.width<=canvas.x+canvas.width+1);

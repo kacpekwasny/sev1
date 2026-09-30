@@ -22,7 +22,15 @@ It describes 28 physical devices (including eight hosts), 60 cables, 16 RS VMs,
 three customer VMs, and 160 BGP sessions. Go validates configuration and calculates
 an initial expected route/forwarding snapshot. It recalculates on YAML load or
 count rebuild; there is no protocol clock, convergence simulator, or live routing
-collection. The examples include EVPN Type 5, VPC isolation, VXLAN context,
+collection. Default VMs use public/default VRF (ID 0, VNI 3, RT target:64512:0).
+Positive IDs explicitly configure private VPCs with VNI 10000+ID. RS User only
+imports customer advertisements. Original IPv4/IPv6 routes continue through
+User → Ctrl → Bolt → all host neighbors and borders. Hosts retain every NLRI in
+BGP RIBs; private forwarding remains scoped to its VPC. Default-VRF unicast routes
+resolve VM next hops through the imported VM EVPN route and its IPv4 VTEP; they
+are not converted into EVPN at Ctrl. GUI/Linux forwarding and route details show
+that recursive resolution. Default-VRF border egress uses table main without VXLAN.
+The examples include EVPN Type 5, VPC isolation, VXLAN context,
 underlay ECMP, customer IPv4/IPv6 peering, and data/control packet paths.
 
 Click a device, VM, cluster, link, or session to open a popup over the topology.

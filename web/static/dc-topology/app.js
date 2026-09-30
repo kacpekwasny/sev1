@@ -778,7 +778,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   function exampleLabel(route) {
     const family=route.ip_family==="ipv6"?"IPv6":"IPv4";
     const type=route.safi==="evpn"?`EVPN typ ${route.route_type}`:route.origin_kind==="customer"?"Klient → RS User":"Underlay";
-    return displayNames(`${type} · ${family} · ${route.prefix} · ${route.origin_id}${route.vpc_id?` · VPC ${route.vpc_id}`:""}`);
+    return displayNames(`${type} · ${family} · ${route.prefix} · ${route.origin_id}${route.vpc_id?` · VPC ${route.vpc_id}`:(route.origin_kind==="customer"||route.vni===3?" · default/public VRF":"")}`);
   }
 
   function renderFlowExamples() {
@@ -1381,7 +1381,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         const iface = (interfaceByID ?? new Map([...state.model.interfaces, ...(state.model.local_interfaces ?? [])].map((item) => [item.id, item]))).get(id);
         if (!iface) continue;
         const row = document.createElement("p");
-        row.textContent = `${iface.name} ↔ ${iface.peer_node_id}: ${iface.kind === "tap" ? `TAP · ${iface.vpc_id ? `VPC ${iface.vpc_id}` : "infra"} · port lokalny bez adresu L3` : formatAddress(iface)}`;
+        row.textContent = `${iface.name} ↔ ${iface.peer_node_id}: ${iface.kind === "tap" ? `TAP · ${iface.vpc_id ? `VPC ${iface.vpc_id}` : state.model.vms.find(vm=>vm.id===iface.peer_node_id)?.role==="customer"?"default/public VRF · VNI 3":"infra"} · port lokalny bez adresu L3` : formatAddress(iface)}`;
         interfaces.append(row);
       }
       detailsEl.append(list, interfaces);
@@ -1422,6 +1422,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         `ASN: ${vm.asn}`, `IPv4: ${vm.ipv4}`, `IPv6: ${vm.ipv6}`,
       ];
       if (vm.vpc_id) values.push(`VPC: ${vm.vpc_id}`);
+      else if(vm.role==="customer")values.push("VRF: default/public · VNI 3");
       if (vm.served_bolt) values.push(`Obsługiwany bolt: ${vm.served_bolt}`);
       if (vm.cluster_id) values.push(`Klaster: ${vm.cluster_id}, członek ${vm.member}`);
       values.push(`Umieszczenie: ${vm.explicit_placement ? "jawne w YAML" : "deterministyczne"}`);
@@ -1432,14 +1433,14 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       if (attachment) {
         const tap = state.model.local_interfaces.find((item) => item.id === attachment.tap_interface_id);
         const nic = document.createElement("p"); nic.className = "dc-local-interface";
-        nic.textContent = `eth0 ${vm.ipv4}/32 · ${vm.ipv6}/128 ↔ ${tap.name} na ${vm.host_id}${vm.vpc_id ? ` · VPC ${vm.vpc_id}` : " · infra"}`;
+        nic.textContent = `eth0 ${vm.ipv4}/32 · ${vm.ipv6}/128 ↔ ${tap.name} na ${vm.host_id}${vm.vpc_id ? ` · VPC ${vm.vpc_id}` : vm.role==="customer"?" · default/public VRF · VNI 3":" · infra"}`;
         detailsEl.append(nic);
       }
       appendEndpointSessions(detailsEl, state.model, vm.id);
       appendSpeakerTableOrLoading(detailsEl, vm.id);
       if (vm.role === "customer") {
         if (inspectorLoaded.has(`${modelRevision}/speaker/${vm.id}`)) {
-          appendFIB(detailsEl, state.model, vm.id, "Widok forwarding VPC (NVE hosta; nie tabela systemu gościa)", root.querySelector("#dc-rib-view").value, appendRouteRows);
+          appendFIB(detailsEl, state.model, vm.id, "Widok forwarding VRF/VPC (NVE hosta; nie tabela systemu gościa)", root.querySelector("#dc-rib-view").value, appendRouteRows);
         } else {
           appendInspectorLoading(detailsEl, "speaker", vm.id);
         }
@@ -1501,8 +1502,14 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const context = document.createElement("p");
       context.textContent = route.vpc_id
         ? `VPC ${route.vpc_id} · RD ${route.rd} · RT ${route.route_target} · VNI ${route.vni}`
-        : "Underlay · bez kontekstu VPC/VNI";
+        : route.vni===3||route.origin_kind==="customer"?`Default/public VRF · VNI 3${route.rd?` · RD ${route.rd}`:""}`:"Underlay · bez kontekstu VPC/VNI";
       detailsEl.append(identity, context);
+      const recursive=(state.model.route_state.forwarding??[]).find(f=>f.owner_id===paths.owner&&f.route_id===route.id&&f.resolved_route_id);
+      if(recursive) {
+        const resolution=document.createElement("p");resolution.className="dc-recursive-resolution";
+        resolution.textContent=`Default VRF · next hop ${recursive.next_hop} → EVPN ${recursive.resolved_route_id} → VTEP ${recursive.resolved_next_hop} · VNI ${recursive.vni}`;
+        detailsEl.append(resolution);
+      }
       const provenance = document.createElement("div"); provenance.className="dc-route-provenance";
       const learned=document.createElement("p");learned.className="learned";learned.textContent=`Fioletowy · RIB ${paths.owner??""}: ${paths.learned.length>1?paths.learned.join(" → "):"trasa lokalna / brak drogi uczenia"}`;
       const target=document.createElement("p");target.className="points-to";target.textContent=`Żółty · next hop ${paths.nextHop??route.next_hop}: ${paths.pointsTo.join(" → ")||"brak rozwiązanej drogi"}`;
@@ -1849,7 +1856,7 @@ function appendRouteRows(container, entries, simple = false, ownerID = "") {
     identifyRoute(row, route, ownerID);
     row.setAttribute("aria-label", `Wybierz trasę ${route.prefix}`);
     const prefix = route.prefix;
-    const vpc = route.vpc_id ? ` · VPC ${route.vpc_id}` : "";
+    const vpc = route.vpc_id ? ` · VPC ${route.vpc_id}` : (route.vni===3||route.vrf==="default"||route.origin_kind==="customer"?" · default VRF":"");
     const nextHop = route.next_hop ? ` · NH ${route.next_hop}` : "";
     const nextHopInterface = route.next_hop_interface_id ? ` (${route.next_hop_interface_id})` : "";
     const family = route.route_type ? ` · EVPN Type ${route.route_type}` : (route.afi && route.safi ? ` · ${route.afi}/${route.safi}` : "");
@@ -1867,6 +1874,7 @@ function appendRouteRows(container, entries, simple = false, ownerID = "") {
     const label = document.createElement("strong"); label.textContent = `${prefix}${vpc}${family}${route.protocol==="static"?" · statyczna":""}`;
     const info = document.createElement("span"); info.textContent = `${rd}${rt}${vni}${origin}${peer}${direction}${nextHop}${nextHopInterface}${asPath}${policy}${resolution}${path}`.replace(/^ · /, "");
     if (simple) info.textContent = `${nextHop}${peer || (route.received_from === "" ? " · lokalna" : "")}${route.received_from === "" ? "" : asPath}${vni}`.replace(/^ · /, "");
+    if(route.resolved_route_id)info.textContent+=` · rekursja EVPN → ${route.resolved_next_hop} · ${route.resolved_route_id}`;
     row.append(label, info);
     container.append(row);
     if (route.from_id && route.to_id) {

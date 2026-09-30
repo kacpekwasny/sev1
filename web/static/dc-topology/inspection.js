@@ -28,7 +28,7 @@ export const explorerMarkup = `
         <div class="dc-pick-actions"><button type="button" data-pick-endpoint="from" class="dc-button secondary">Kliknij źródło</button><button type="button" data-pick-endpoint="to" class="dc-button secondary">Kliknij cel</button><button type="button" data-pick-endpoint="pair" class="dc-button secondary">Wybierz oba na topologii</button></div>
         <label>Pakiet <select name="family"><option value="ipv4">IPv4 · ICMP</option><option value="ipv6">IPv6 · ICMPv6</option></select></label>
         <button class="dc-button secondary" data-explore-submit type="submit">Pokaż drogę i pakiet</button>
-        <p id="dc-packet-status" class="dc-explore-status" role="status">VM klienta → VM w tej samej VPC lub prefiks border; urządzenia i VM infra → underlay.</p>
+        <p id="dc-packet-status" class="dc-explore-status" role="status">VM klienta → VM w tym samym VRF/VPC lub prefiks border; urządzenia i VM infra → underlay.</p>
       </form>
     </div>
   </details>`;
@@ -55,7 +55,7 @@ export function appendPacketInspection(container, packet, reasonText, highlighte
   if (!packet) { text(container, "Wczytuję drogę pakietu…"); return; }
   if (!packet.reachable) { text(container, `Brak drogi: ${reasonText(packet.reason)}`, "dc-hidden-note"); return; }
   text(container, `${packet.from_id} → ${packet.to_id} · ${packet.physical_link_ids.length} łączy fabric · ${packet.equal_cost_path_count} ścieżek ECMP · wybrano ${packet.selected_path_index + 1}.`);
-  fields(container, [["Pakiet", packet.protocol], ["Wersja / protokół IP", packet.family === "ipv6" ? "6 / 58 (ICMPv6)" : "4 / 1 (ICMP)"], ["IP źródłowy", packet.source], ["IP docelowy", packet.destination], ["TTL / Hop Limit początkowy", packet.ttl], ["ICMP typ / kod", packet.family === "ipv6" ? "128 / 0" : "8 / 0"], ["ICMP identyfikator / sekwencja", "1 / 1"], ["Payload", packet.payload], ["VPC", packet.vpc_id || "underlay"], ["Trasa", packet.route_id || "underlay"]]);
+  fields(container, [["Pakiet", packet.protocol], ["Wersja / protokół IP", packet.family === "ipv6" ? "6 / 58 (ICMPv6)" : "4 / 1 (ICMP)"], ["IP źródłowy", packet.source], ["IP docelowy", packet.destination], ["TTL / Hop Limit początkowy", packet.ttl], ["ICMP typ / kod", packet.family === "ipv6" ? "128 / 0" : "8 / 0"], ["ICMP identyfikator / sekwencja", "1 / 1"], ["Payload", packet.payload], ["VPC", packet.vpc_id || (packet.vni===3?"default/public VRF (VNI 3)":"underlay")], ["Trasa", packet.route_id || "underlay"]]);
   if (packet.vxlan) {
     text(container, "Enkapsulacja: wewnętrzny IP w Ethernet → VXLAN → UDP → zewnętrzny IPv4.");
     fields(container, [["VTEP źródłowy", packet.outer_source], ["VTEP docelowy", packet.outer_destination], ["UDP źródło / cel", `${packet.udp_source_port} / ${packet.udp_destination_port}`], ["VNI", packet.vni]]);

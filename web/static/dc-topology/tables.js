@@ -75,7 +75,7 @@ export function appendRIB(container, model, speakerID, mode, appendRows) {
 }
 
 export function appendFIB(container, model, ownerID, title, mode, appendRows) {
-  const entries = (model.route_state?.forwarding ?? []).filter((item) => item.owner_id === ownerID&&item.vpc_id);
+  const entries = (model.route_state?.forwarding ?? []).filter((item) => item.owner_id === ownerID&&(item.vpc_id||item.vni||item.vrf==="default"));
   const parent = section(container, `${title} · ${entries.length} wpisów`);
   if (mode !== "linux") { appendRows(parent, entries, true, ownerID); return; }
   const table = model.route_state?.tables?.find((item) => item.speaker_id === ownerID);
@@ -105,13 +105,15 @@ export function appendFIB(container, model, ownerID, title, mode, appendRows) {
   }
   for (const vpcID of [...new Set(entries.map((route) => route.vpc_id))]) {
     for (const bits of [4, 6]) {
-      output += `\n$ ip -${bits} route show vrf vpc${vpcID}\n`;
+      output += `\n$ ip -${bits} route show ${vpcID?`vrf vpc${vpcID}`:"table main"}\n`;
       const routes = entries.filter((route) => route.vpc_id === vpcID && route.prefix.includes(":") === (bits === 6));
       for (const route of routes) {
         pre.append(output); output = "";
         const device = ownerID.startsWith("customer-") ? "eth0" : route.encapsulate_vxlan ? `vxlan${route.vni}` : localDevice(route);
-        output += `${route.prefix} dev ${device} proto ${route.protocol||"bgp"} table ${route.vni}\n`;
-        if (route.encapsulate_vxlan) output += `    # VTEP ${route.next_hop}, VNI ${route.vni}, RT ${route.route_target}\n`;
+        output += route.resolved_route_id
+          ? `${route.prefix} via ${route.next_hop} proto bgp table main\n    # rekursja EVPN: ${route.resolved_route_id} → VTEP ${route.resolved_next_hop}, VNI ${route.vni}\n`
+          : `${route.prefix} dev ${device} proto ${route.protocol||"bgp"} table ${vpcID?route.vni:"main"}\n`;
+        if (route.encapsulate_vxlan&&!route.resolved_route_id) output += `    # VTEP ${route.next_hop}, VNI ${route.vni}, RT ${route.route_target}\n`;
         routeLine(pre, route, ownerID, output); output = "";
       }
       if (!routes.length) output += "# Brak wpisów.\n";

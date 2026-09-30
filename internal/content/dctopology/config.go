@@ -156,8 +156,8 @@ func (c Config) Validate() error {
 	vpcNames := make(map[string]bool, len(c.VPCs))
 	for i, vpc := range c.VPCs {
 		path := fmt.Sprintf("vpcs[%d]", i)
-		if vpc.ID == 0 || vpc.ID > 65535 {
-			add(path+".id", "ID musi być dodatnią liczbą 16-bitową")
+		if vpc.ID > 65535 {
+			add(path+".id", "ID musi być liczbą 16-bitową; 0 oznacza default/public VRF")
 		}
 		if _, exists := vpcs[vpc.ID]; exists {
 			add(path+".id", fmt.Sprintf("powtórzone ID VPC %d", vpc.ID))

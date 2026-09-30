@@ -3,6 +3,7 @@ package dctopology
 import (
 	"fmt"
 	"net/netip"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -72,8 +73,8 @@ func TestDefaultRouteStateAndForwarding(t *testing.T) {
 	if countRoutesByVPC(remote.LocallyOriginated, 1) != 2 || countRoutesByVPC(remote.Selected, 1) != 12 {
 		t.Fatalf("remote VPC host route table mismatch: local=%d selected=%d", countRoutesByVPC(remote.LocallyOriginated, 1), countRoutesByVPC(remote.Selected, 1))
 	}
-	if got := countRoutesByVPC(tables["host-b1-h2"].Selected, 1); got != 6 {
-		t.Errorf("host without a VPC should retain six EVPN routes in the RIB: got %d", got)
+	if got := countRoutesByVPC(tables["host-b1-h2"].Selected, 1); got != 12 {
+		t.Errorf("host without a VPC should retain six EVPN and six unicast routes in the RIB: got %d", got)
 	}
 	for _, entry := range state.Forwarding {
 		if entry.OwnerID == "host-b1-h2" && entry.VPCID != 0 {
@@ -639,6 +640,84 @@ func TestRSUserCustomerSessionsOnlyImport(t *testing.T) {
 			if !found {
 				t.Errorf("missing customer propagation hop %s → %s", path[i-1], path[i])
 			}
+		}
+	}
+}
+
+func TestPublicDefaultsFanoutAndRecursiveForwarding(t *testing.T) {
+	data, err := os.ReadFile("../../../content/dc-topology/default.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	config, err := ParseYAML(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	model, err := BuildTopology(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.CustomerVMs.DefaultVPCID != 0 {
+		t.Fatal("default VMs must use public VRF")
+	}
+	if len(model.Routes.VPCs) != 1 || model.Routes.VPCs[0].ID != 0 || model.Routes.VPCs[0].VNI != 3 {
+		t.Fatalf("bad public context: %+v", model.Routes.VPCs)
+	}
+	origins := map[string]Route{}
+	exports := map[string]RouteAdvertisement{}
+	for _, r := range model.Routes.Origins {
+		origins[r.ID] = r
+	}
+	for _, ad := range model.Routes.Advertisements {
+		exports[ad.RouteID+"/"+ad.FromID+"/"+ad.ToID] = ad
+	}
+	for _, origin := range model.Routes.Origins {
+		if origin.OriginKind != "customer" {
+			continue
+		}
+		for _, rs := range model.VMs {
+			if rs.Role != VMBoltRS {
+				continue
+			}
+			for _, host := range model.Nodes {
+				if host.Kind != NodeHost || host.BoltID != rs.ServedBolt {
+					continue
+				}
+				ad, ok := exports[origin.ID+"/"+rs.ID+"/"+host.ID]
+				if !ok || ad.AFI != origin.AFI || ad.SAFI != "unicast" || ad.NextHop != origin.NextHop {
+					t.Fatalf("missing/changed unicast export %s: %s → %s", origin.ID, rs.ID, host.ID)
+				}
+			}
+		}
+	}
+	for _, host := range model.Nodes {
+		if host.Kind != NodeHost {
+			continue
+		}
+		count := 0
+		for _, entry := range model.Routes.Forwarding {
+			if entry.OwnerID != host.ID || entry.ResolvedRouteID == "" {
+				continue
+			}
+			count++
+			recursive, overlay := origins[entry.RouteID], origins[entry.ResolvedRouteID]
+			if entry.VRF != "default" || entry.VNI != 3 || recursive.SAFI != "unicast" || overlay.SAFI != "evpn" || entry.NextHop != recursive.NextHop || entry.ResolvedNextHop != overlay.NextHop || !netip.MustParseAddr(entry.ResolvedNextHop).Is4() {
+				t.Fatalf("invalid recursion: %+v", entry)
+			}
+		}
+		if count != 6 {
+			t.Errorf("%s has %d recursive routes; want all six customer advertisements", host.ID, count)
+		}
+	}
+	for _, flow := range model.Routes.Traffic {
+		if !flow.Reachable || flow.VNI != 3 {
+			t.Fatalf("public traffic not resolved on VNI 3: %+v", flow)
+		}
+		if flow.ID == "miedzy-boltami" && !flow.VXLAN {
+			t.Fatal("remote public VM needs VXLAN")
+		}
+		if flow.ID == "do-uplinku" && flow.VXLAN {
+			t.Fatal("default VRF border egress must stay in main underlay")
 		}
 	}
 }

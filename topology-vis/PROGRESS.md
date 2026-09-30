@@ -337,6 +337,16 @@ Examples illustrate the expected snapshot; they do not simulate convergence.
    unicast advertisements continue via User/Ctrl/Bolt to hosts. Domain tests verify
    directional sessions and the complete hierarchy. Go tests/build pass; Chrome
    checks exclude VM recipients at desktop/narrow widths.
+   Commit: `827691e`.
+2. Global host RIBs receive every compatible customer route from every local
+   RS Bolt; import filtering remains in forwarding. Shipped defaults use VRF 0
+   (public/default), VNI 3 and RT target:64512:0. Explicit positive/private VPCs
+   retain their isolation and mappings. Public unicast keeps its VM next hop and
+   records recursive EVPN route/VTEP resolution in table main, shown in GUI/Linux
+   and route inspection. Public border egress remains direct underlay.
+   Tests retain explicit private fixtures and add shipped-public-default tests:
+   every RS Bolt/host/family export, six recursive routes on every host, IPv4
+   VTEPs, VNI 3 traffic and non-VXLAN border egress. Go tests/build and all existing
+   Chrome walkthroughs pass; focused desktop/narrow fanout/recursion check passes.
    Commit: the commit containing this checkpoint.
-2. All-host fanout plus default/public VRF VNI 3 and recursive forwarding — pending.
 3. Continuous ingress-to-egress packet travel through nodes — pending.

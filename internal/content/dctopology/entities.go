@@ -27,7 +27,7 @@ type VM struct {
 	HostBoltID    int      `json:"host_bolt_id"`
 	HostRackID    int      `json:"host_rack_id"`
 	HostLocalID   int      `json:"host_local_id"`
-	VPCID         uint32   `json:"vpc_id,omitempty"`
+	VPCID         uint32   `json:"vpc_id"`
 	ASN           uint32   `json:"asn"`
 	IPv4          string   `json:"ipv4"`
 	IPv6          string   `json:"ipv6"`
