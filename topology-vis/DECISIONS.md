@@ -325,8 +325,16 @@ the yellow path; show RS slugs (`rs13001`, `rsctrl4`, `rsuser3`).
 
 Underlay visibility hides fabric switches while retaining hosts and VMs. It does
 not mutate the model; playback pauses when its physical path is hidden. Keep
-canonical IDs stable and use labels in presentation. Remaining points are tracked
-in PROGRESS; earlier routing defaults are superseded where D17 requires it.
+canonical IDs stable and use labels in presentation. All twelve points are
+implemented; verification and commits are recorded in PROGRESS.
+
+Borders retain sessions and receive routes but export no BGP NLRI, including
+loopback identities. Existing configured uplink prefixes and IPv4/IPv6 identity
+routes to both borders are static forwarding entries, explicitly labeled in the
+inspector and excluded from BGP propagation. Customer VM unicast exports appear
+in the sequential VM → RS User → RS Ctrl illustration. Packet markers share the
+yellow physical-port/TAP geometry and skip node interiors at transit hops.
+These rules supersede earlier border-origin defaults.
 
 ## Recording an answer
 

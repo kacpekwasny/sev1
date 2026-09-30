@@ -4,7 +4,7 @@ Updated: 2026-09-30
 
 ## Current status
 
-R00–R11 and the revised Steps 00–13 are implemented and verified. The explorer is
+R00–R12 and the revised Steps 00–13 are implemented and verified. The explorer is
 integrated at `/topologie/dc/`, linked from Topologie, and shares its source with
 the standalone harness. Git and parent-site writes are available. D03 remains
 absent; the original `TODO.md` is unchanged.
@@ -208,4 +208,21 @@ repeat completed rework milestones.
     drawing. Transit hops jump between ingress and egress instead of animating
     through node centers. Geometry updates on drag/projection; desktop/narrow
     browser checks place the marker on the drawn yellow track. Go tests pass.
-12. Pending: RS slug labels.
+12. RS names are `rs<bolt><member padded to 3 digits>`, `rsctrl<member>` and
+    `rsuser<member>` in model labels, graph badges, sessions, inspectors and paths.
+    Canonical IDs remain stable. Go checks include the exact requested examples;
+    desktop/narrow browser checks cover model, graph and inspector names.
+
+Steps 1–11 were committed as `62e6e32`, `6a553f5`, `134ac51`, `dd8ed2c`,
+`c3cffbc`, `cfa0c07`, `e8ec4d4`, `333ed7c`, `8de5b53`, `b003f9e`, and
+`88e9cbb`, in that order. Step 12 is the commit containing this checkpoint.
+
+Final D17 verification: `go test ./...`, embedded site build, and `go vet ./...`
+pass. All three Chrome walkthroughs (`browser.mjs`, `exploration.mjs`, and
+`refinements.mjs`) pass at 1280×900 and 390×844 with no page errors. Older
+expectations now check six retained EVPN routes and incoming session UPDATEs,
+since border destinations are static and border exports are empty. Packet-bit
+checks pass. Desktop/narrow screenshots were inspected. The fresh production
+binary was tested with content on disk and embedded assets from outside the repo.
+Latest local default load was 168 ms; maximum rebuild was 2,702 ms (128 devices,
+432 cables, 88 VMs, 1,040 sessions). No shared-state changes required a new race run.

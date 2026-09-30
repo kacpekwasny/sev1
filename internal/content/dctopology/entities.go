@@ -194,26 +194,23 @@ func buildVMs(config Config, nodes []Node) ([]VM, error) {
 }
 
 func newRouteServerVM(role VMRole, servedBolt, member int, host Node, explicit bool) VM {
-	roleLabel, roleCode, entity, asn := "", uint16(0), uint32(member), uint32(0)
+	roleCode, entity, asn := uint16(0), uint32(member), uint32(0)
+	label := ""
 	clusterID := string(role)
 	switch role {
 	case VMBoltRS:
-		roleLabel, roleCode = "RS Bolt", 3
+		label, roleCode = fmt.Sprintf("rs%d%03d", servedBolt, member), 3
 		clusterID = fmt.Sprintf("rs-bolt-b%d", servedBolt)
 		entity = uint32(member)
 		asn = uint32(64640 + (servedBolt-1)*4 + member - 1)
 	case VMCtrlRS:
-		roleLabel, roleCode, asn = "RS Ctrl", 4, uint32(64656+member-1)
+		label, roleCode, asn = fmt.Sprintf("rsctrl%d", member), 4, uint32(64656+member-1)
 		clusterID = "rs-ctrl"
 	case VMUserRS:
-		roleLabel, roleCode, asn = "RS User", 5, uint32(64660+member-1)
+		label, roleCode, asn = fmt.Sprintf("rsuser%d", member), 5, uint32(64660+member-1)
 		clusterID = "rs-user"
 	}
 	id := fmt.Sprintf("%s-m%d", clusterID, member)
-	label := fmt.Sprintf("%s %d", roleLabel, member)
-	if servedBolt != 0 {
-		label = fmt.Sprintf("%s b%d m%d", roleLabel, servedBolt, member)
-	}
 	infraIndex := uint32(0)
 	scope := uint16(0)
 	if role == VMBoltRS {

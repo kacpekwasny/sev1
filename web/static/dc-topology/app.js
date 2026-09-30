@@ -1649,8 +1649,7 @@ function formatAddress(iface) {
 
 function vmShortLabel(vm) {
   if (vm.role === "customer") return `Klient ${vm.id.slice("customer-".length)}`;
-  if (vm.role === "rs_bolt") return `RS Bolt ${vm.served_bolt}/${vm.member}`;
-  return `${vm.role === "rs_ctrl" ? "RS Ctrl" : "RS User"} ${vm.member}`;
+  return vm.label;
 }
 
 function appendSessionRoutes(container, model, session) {
@@ -1697,7 +1696,7 @@ function trafficReasonText(reason) {
     "unresolved-underlay-next-hop": "next hop nie jest osiągalny w underlay",
     "destination-vm-not-found": "VM docelowa nie istnieje",
     "no-expected-advertisement-path": "brak oczekiwanych eksportów tej trasy między wybranymi końcami",
-    "tenant-target-not-supported": "VM klienta wymaga celu w tej samej VPC albo ogłaszanego prefiksu border; nie ma trasy do tego celu w underlay",
+    "tenant-target-not-supported": "VM klienta wymaga celu w tej samej VPC albo statycznej trasy do border; nie ma trasy do tego celu w underlay",
     "endpoint-address-unavailable": "wybrany koniec nie ma adresu w tej rodzinie IP",
   };
   return messages[reason] ?? reason ?? "nieznana przyczyna";

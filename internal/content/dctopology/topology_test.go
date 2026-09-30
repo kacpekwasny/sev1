@@ -384,3 +384,18 @@ func TestRouteServerPlacementPolicies(t *testing.T) {
 		}
 	}
 }
+
+func TestRouteServerSlugLabels(t *testing.T) {
+	for _, sample := range []struct {
+		role         VMRole
+		bolt, member int
+		want         string
+	}{
+		{VMBoltRS, 13, 1, "rs13001"}, {VMCtrlRS, 0, 4, "rsctrl4"}, {VMUserRS, 0, 3, "rsuser3"},
+	} {
+		vm := newRouteServerVM(sample.role, sample.bolt, sample.member, Node{}, false)
+		if vm.Label != sample.want {
+			t.Errorf("route server label=%q, want %q", vm.Label, sample.want)
+		}
+	}
+}

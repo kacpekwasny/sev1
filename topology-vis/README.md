@@ -29,6 +29,9 @@ Click a device, VM, cluster, link, or session to open a popup over the topology.
 Expected BGP/forwarding tables and exports load on demand inside the popup.
 Escape or the close button dismisses it and restores focus. The topology remains
 visible; on narrow screens the popup fills most of the canvas width.
+Every disclosure groups its children with an indented branch. Resize the inspector
+using its bottom-right handle, or focus that handle and use arrow keys; Home
+restores the default size. Hover/focus session rows to preview their connections.
 
 Drag a device to make a small visual adjustment, bounded to a 48-layout-unit radius
 and tighter limits inside compact cells to keep devices and badges contained.
@@ -45,9 +48,14 @@ RS na hostach for tiered RS cards over the fabric: Bolt above its served leaves,
 Ctrl centered, and User at the top right. Expanded cards show all four members;
 Grupuj RS replaces them with one aggregate icon. Rack outlines stay inside their
 bolt, with gaps between neighboring racks and bolts.
+Urządzenia underlay hides fabric switches and their links while retaining hosts
+and VMs. Hidden physical paths pause playback; the configuration stays unchanged.
+Hosts use slugs such as `h2001`; individual RSs use `rs13001`, `rsctrl4`, and
+`rsuser3`-style labels. Canonical configuration/API IDs stay stable.
 
 Przepływ tras is off initially. Enable it with the BGP layer to show a sequence
-of up to 24 different prefix illustrations through valid RS hierarchy sessions.
+of up to 24 different prefix illustrations through valid RS hierarchy sessions,
+including customer VM exports to RS User.
 One UPDATE marker completes its path before the next prefix starts; its tooltip
 identifies the current prefix. A selected UPDATE adds a focused sequence first.
 It does not learn routes or change tables. Reduced-motion settings keep static
@@ -64,9 +72,13 @@ Click a device/VM, choose Wyślij ruch do… beside it, then click the destinati
 The compact action offers IPv4/IPv6; grouped RSs offer a concrete member. Escape
 cancels target selection. The collapsed Zaawansowane controls retain manual
 selectors and UPDATE exploration. Move the popup using its ⠿ handle (also arrow keys; Home resets).
+Pressing outside the compact send-action popup dismisses it.
 
 Packet examples use IPv4 ICMP or IPv6 ICMPv6 Echo Request. Customer VM pairs obey
-VPC forwarding/isolation; choosing a border targets a compatible advertised prefix.
+VPC forwarding/isolation; choosing a border targets a configured static egress
+prefix or its identity address. Borders advertise no BGP routes. Static IPv4/IPv6
+routes to both borders remain available in underlay and tenant contexts; inspect
+them in Trasy do border, separately from expected BGP RIBs.
 Nodes and infra VMs use underlay paths. Unsupported tenant destinations report why
 they cannot be reached. Inspection includes inner/outer headers, UDP/VNI, selected
 ECMP path, and interfaces at each hop. Closing the custom packet popup keeps its
@@ -77,6 +89,8 @@ fields. This also works for fetched preset packets and BGP session transport.
 An explicit Odtwórz pakiet click plays the selected path even when the OS requests
 reduced motion. Decorative route animation still honors that preference. Hiding
 physical links pauses playback, including packets between custom endpoints.
+The packet marker travels on the yellow cable/TAP segments, using device ports
+and jumping from ingress to egress at transit hops.
 TTL, Echo fields, and payload are illustrative; this is not a packet capture.
 
 Pakiet bit po bicie shows the serialized sample in 32-bit rows. Click a field or
@@ -163,6 +177,10 @@ node topology-vis/tests/browser.mjs
 PLAYWRIGHT_MODULE=/absolute/path/to/playwright-core/index.mjs \
 TOPOLOGY_URL=http://127.0.0.1:8081/topologie/dc/ \
 node topology-vis/tests/exploration.mjs
+
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright-core/index.mjs \
+TOPOLOGY_URL=http://127.0.0.1:8081/topologie/dc/ \
+node topology-vis/tests/refinements.mjs
 ```
 
 The walkthrough checks desktop/narrow popup behavior, stale responses, mouse/touch
@@ -173,5 +191,8 @@ The endpoint walkthrough adds decoded UPDATE/packet inspection, TAP/VXLAN paths,
 IPv4/IPv6 selection, packet bits, click-picked endpoints, popup dragging, table
 back navigation, route provenance, delayed queries, and narrow layout. The pure
 packet test verifies wire lengths/checksums and route-path context without Chrome.
+The refinements walkthrough checks underlay hiding, outside dismissal, disclosure
+hierarchy, resizing, session hover, slugs, customer exports, static border routes,
+and packet-marker alignment with its yellow track at both viewport widths.
 Measured timings are local observations, not a performance guarantee; see
 [PROGRESS.md](PROGRESS.md) for the latest verification.

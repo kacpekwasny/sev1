@@ -100,7 +100,8 @@ const hostWithoutVPC = page.locator('.dc-node[data-entity-id="host-b1-h2"]');
 await hostWithoutVPC.locator('.dc-node-label').click();
 await page.locator('summary').filter({hasText:'Oczekiwana tablica BGP'}).waitFor();
 if (!(await page.locator('summary').filter({hasText:'Oczekiwana tablica BGP'}).evaluate((item)=>item.parentElement.open))) await page.locator('summary').filter({hasText:'Oczekiwana tablica BGP'}).click();
-assert.match(await page.locator('[data-family="l2vpn"] > summary').textContent(), /7 wybranych/);
+// Border destinations are static, so they no longer add an EVPN advertisement.
+assert.match(await page.locator('[data-family="l2vpn"] > summary').textContent(), /6 wybranych/);
 await page.locator('summary').filter({hasText:'Interfejsy ('}).click();
 assert.match(await page.locator('#dc-details').textContent(), /tap-b1m1/);
 await page.locator('#dc-rib-view').selectOption('linux');

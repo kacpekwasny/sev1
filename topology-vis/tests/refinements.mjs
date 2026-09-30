@@ -11,6 +11,9 @@ try {
   const api=new URL(await page.locator('#dc-topology-app').getAttribute('data-api-base'),target).href;
   const yaml=await (await page.request.get(`${api}/config.yaml`)).text();
   const model=await (await page.request.get(`${api}/model`)).json();
+  assert.equal(model.vms.find(vm=>vm.id==='rs-bolt-b1-m1').label,'rs1001');
+  assert.equal(model.vms.find(vm=>vm.id==='rs-ctrl-m4').label,'rsctrl4');
+  assert.equal(model.vms.find(vm=>vm.id==='rs-user-m3').label,'rsuser3');
   for(const vm of model.vms.filter(vm=>vm.role==='customer')) {
     const reply=await (await page.request.get(`${api}/explore?kind=update&from=${vm.id}&to=rs-user-m1`)).json();
     assert.equal(reply.update_flow.reachable,true);
@@ -92,6 +95,10 @@ try {
   },start);
   assert.equal(await onYellow(),true);
   await page.locator('#dc-play').click();
+  assert.match(await page.locator('.dc-vm[data-entity-id="rs-ctrl-m4"]').textContent(),/rsctrl4/);
+  await page.locator('.dc-vm[data-entity-id="rs-ctrl-m4"]').click();
+  assert.match(await page.locator('#dc-inspector-heading').textContent(),/rsctrl4/);
+  assert.doesNotMatch(await page.locator('#dc-details').textContent(),/rs-(ctrl|user)-m\d+/);
   assert.equal(await (await page.request.get(`${api}/config.yaml`)).text(),yaml);
   assert.deepEqual(errors,[]);await page.close();
  }

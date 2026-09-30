@@ -256,7 +256,9 @@ try {
  releaseSession();await page.locator('.dc-update-inspect').first().waitFor({state:'attached'});
  await assertPacketVisible();
  await page.unroute('**/inspector?**');
- await page.locator('#dc-details > .dc-interface-details > summary').first().click();
+ // Border exports are empty; open the incoming direction that has actual NLRI.
+ const incoming=page.locator('#dc-details > .dc-interface-details').filter({has:page.locator('.dc-update-inspect')}).first();
+ await incoming.locator(':scope > summary').click();
  await page.locator('.dc-update-inspect:visible').first().click();
  await page.waitForFunction(()=>!document.querySelector('#dc-update-form button[type=submit]').disabled);
  assert.equal(await page.locator('.dc-update-step').count(),1);
