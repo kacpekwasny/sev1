@@ -133,10 +133,12 @@ try {
  await page.locator('#dc-inspector-grip').focus();
  await page.waitForFunction(()=>document.querySelectorAll('.dc-route-learned').length===0);
  assert.equal(hoverRequests,0,'Keyboard preview must also use cached metadata');
- page.off('request',countHover);
  await page.locator(`[data-family="l2vpn"] .dc-route-row[data-route-id="${remote}"]`).first().click();
- // The replacement export list can appear beneath the stationary mouse. Check
- // the pinned route with the pointer away from those independently hoverable rows.
+ assert.equal(hoverRequests,0,'Click inspection must use the RIB candidate rather than fetching all topology exports');
+ page.off('request',countHover);
+ assert.equal(await page.locator('#dc-details .dc-route-row').count(),0);
+ assert.doesNotMatch(await page.locator('#dc-details').textContent(),/oczekiwanych eksportów/);
+ // The pinned route retains the inspected speaker and its actual path.
  await page.locator('#dc-inspector-grip').hover();
  await page.waitForFunction(()=>document.querySelectorAll('.dc-route-learned').length>0);
  assert.equal(await page.locator('.dc-route-learned').last().getAttribute('data-to'),'host-b1-h1');

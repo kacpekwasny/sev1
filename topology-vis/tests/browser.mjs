@@ -133,8 +133,9 @@ assert(popupBox.x >= canvasBox.x && popupBox.y >= canvasBox.y && popupBox.x + po
 await page.locator("summary").filter({ hasText: "Oczekiwana tablica BGP" }).click();
 assert((await page.locator(".dc-route-row").count()) > 0);
 await page.locator(".dc-rib-family .dc-route-row").first().click();
-assert.equal(await page.locator("#dc-inspector-heading").textContent(), "Oczekiwana trasa i eksport");
-await page.locator("#dc-details").getByText(/oczekiwanych eksportów/).waitFor();
+assert.equal(await page.locator("#dc-inspector-heading").textContent(), "Trasa w wybranym RIB");
+assert.equal(await page.locator('#dc-details .dc-route-row').count(),0);
+assert.match(await page.locator('#dc-details').textContent(),/AS_PATH/);
 assert(await page.locator("#dc-play").isDisabled());
 await page.keyboard.press("Escape");
 assert(await page.locator("#dc-inspector").isHidden());

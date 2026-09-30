@@ -4,7 +4,7 @@ Updated: 2026-09-30
 
 ## Current status
 
-R00–R14 and the revised Steps 00–13 are implemented and verified. The explorer is
+R00–R15 and the revised Steps 00–13 are implemented and verified. The explorer is
 integrated at `/topologie/dc/`, linked from Topologie, and shares its source with
 the standalone harness. Git and parent-site writes are available. D03 remains
 absent; the original `TODO.md` is unchanged.
@@ -279,5 +279,20 @@ YAML. Screenshots at both widths were inspected against the fresh embedded previ
    pointer state bounded and cleaned up.
    Desktop/narrow Chrome refinements verify each edge, a corner, anchored opposite
    edges, keyboard reset, and touch cancellation restoring dimensions.
-3. Remove topology-wide route exports from route details — pending. This latest
-   request supersedes the former answer-only constraint.
+3. Route details show only the selected RIB candidate, its attributes, learned
+   propagation and next-hop context. Removed the global export list and the
+   route-inspector fetch it required. Session-specific exports and UPDATE inspection
+   remain available. This supersedes the former answer-only constraint.
+   Chrome checks verify absent export rows, no global route fetch on click,
+   candidate AS_PATH/context, preserved purple/yellow paths and GUI/Linux back
+   navigation. Desktop/narrow browser and endpoint walkthroughs pass.
+
+D20 commits: `10b620c` (directional route propagation), `8d73174` (edge/corner
+resize), and the commit containing this checkpoint (focused route details).
+
+## D21 flow refinements — queued after D20
+
+1. Repair traffic playback stalling and inspection teleport — pending.
+2. Show RS fanout — pending.
+3. Complete BGP illustrations at end devices — pending.
+4. Default advertisement-explanation sequence — pending.

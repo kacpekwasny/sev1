@@ -444,7 +444,6 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       rememberInspector();
       selected = routeSelection(route);
       resetAnimation();
-      loadInspector("route", selected.id);
       renderTrafficList();
       renderGraph();
       renderInspector();
@@ -688,7 +687,6 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   function loadSelectionInspector() {
     if (selected?.type === "node" || selected?.type === "vm") loadInspector("speaker", selected.id);
     else if (selected?.type === "session") loadInspector("session", selected.id);
-    else if (selected?.type === "route") loadInspector("route", selected.id);
     else if (selected?.type === "cluster") {
       for (const vm of state.model?.vms ?? []) if (vm.cluster_id === selected.id) loadInspector("speaker", vm.id);
     }
@@ -1429,7 +1427,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if (selected.type === "route") {
       const route = state.model.route_state?.origins?.find((item) => item.id === selected.id);
       if (!route) { selected = null; return renderInspector(); }
-      appendInspectorTitle(route.protocol==="static"?"Trasa statyczna i droga wyjścia":"Oczekiwana trasa i eksport", `${route.prefix} · ${route.id}`);
+      appendInspectorTitle(route.protocol==="static"?"Trasa statyczna i droga wyjścia":"Trasa w wybranym RIB", `${route.prefix} · ${route.id}`);
       const paths = routePaths(state.model, selected);
       const identity = document.createElement("p");
       identity.textContent = `${route.afi}/${route.safi}${route.route_type ? ` Type ${route.route_type}` : ""} · origin ${route.origin_id} (${route.origin_label}) · next hop ${paths.nextHop??route.next_hop} · AS ${route.origin_asn}`;
@@ -1443,14 +1441,16 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const learned=document.createElement("p");learned.className="learned";learned.textContent=`Fioletowy · RIB ${paths.owner??""}: ${paths.learned.length>1?paths.learned.join(" → "):"trasa lokalna / brak drogi uczenia"}`;
       const target=document.createElement("p");target.className="points-to";target.textContent=`Żółty · next hop ${paths.nextHop??route.next_hop}: ${paths.pointsTo.join(" → ")||"brak rozwiązanej drogi"}`;
       provenance.append(learned,target);detailsEl.append(provenance);
-      const ads = (state.model.route_state?.advertisements ?? []).filter((item) => item.route_id === route.id);
-      const routeLoaded = inspectorLoaded.has(`${modelRevision}/route/${route.id}`);
-      const note = document.createElement("p");
-      note.textContent = routeLoaded ? `${ads.length} oczekiwanych eksportów przez sesje BGP. To obliczony stan konfiguracji.`
-        : inspectorErrors.get(`${modelRevision}/route/${route.id}`) || "Wczytuję oczekiwane eksporty tej trasy…";
-      if(route.protocol==="static")note.textContent="Trasa statyczna — nie jest ogłaszana przez BGP.";
-      detailsEl.append(note);
-      if (routeLoaded) appendRouteRows(detailsEl, ads);
+      if(route.protocol==="static") {
+        const note=document.createElement("p");note.textContent="Trasa statyczna — nie jest ogłaszana przez BGP.";detailsEl.append(note);
+      }
+      const candidate=paths.candidate;
+      if(candidate) {
+        const attributes=document.createElement("p");
+        const received=candidate.received_from??candidate.from_id;
+        attributes.textContent=`RIB ${paths.owner??route.origin_id}${received!==undefined?` · od ${received||"lokalna"}`:""}${candidate.as_path?` · AS_PATH ${candidate.as_path.join(" ")||"pusta"}`:""}${candidate.local_preference!==undefined?` · LP ${candidate.local_preference}`:""}${candidate.med!==undefined?` · MED ${candidate.med}`:""}`;
+        if(route.protocol!=="static")detailsEl.append(attributes);
+      }
       return;
     }
     if (selected.type === "traffic") {

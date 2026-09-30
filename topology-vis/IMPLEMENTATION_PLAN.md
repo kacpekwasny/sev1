@@ -1,6 +1,6 @@
 # DC topology visualizer: implementation plan for GPT-Luna
 
-Status on 2026-09-30: **R00–R14 are implemented, including `/topologie/dc/` integration, D12 layout, and D13–D19 interactive packet/route inspection.** The user committed the baseline as `9c50463`; rework commits and verification are recorded in [PROGRESS.md](PROGRESS.md). The milestones and older steps below remain the implementation/acceptance contract, not a request to repeat completed work. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
+Status on 2026-09-30: **R00–R15 are implemented; R16/D21 is next.** The user committed the baseline as `9c50463`; rework commits and verification are recorded in [PROGRESS.md](PROGRESS.md). The milestones and older steps below remain the implementation/acceptance contract, not a request to repeat completed work. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
 
 ## Current rework contract and execution order
 
@@ -28,6 +28,8 @@ These milestones define the revised scope; consult progress before executing an 
 | R12 — Refine visibility, inspection and routing | Apply D17: underlay hiding, outside dismissal, disclosure children, resize/back alignment, session hover, host/RS slugs, no border exports, customer exports to RS User, static routes to borders, and packet markers on yellow link geometry. | Twelve separate commits in user order. Check GUI/Linux navigation, desktop/narrow popup interaction, packet movement, customer exports, border reachability without BGP advertisements, and stable YAML/API IDs. Consult PROGRESS for completion and checks. |
 | R13 — Compact inspector presentation | Apply D18: smaller destination action popup, whole wrapped-field hover/focus, and shallow child indentation. Answer the host RIB route-detail question without changing its exports view. | Three UI commits. Check desktop/narrow controls and hierarchy, four-row IPv6 fields, other wrapped fields, keyboard focus, and retained click selection. Consult PROGRESS for checks. |
 | R14 — Keep borders in hidden-underlay view | Apply D19: subordinate border-retention toggle, checked by default while hiding underlay. | Verify borders and border–RS Ctrl sessions remain available, hide/restore behavior, independent BGP layer, desktop/narrow controls and unchanged YAML. |
+| R15 — Focus route inspection | Apply D20: directed learned-path animation on hover/click, edge/corner inspector resizing, and remove topology-wide exports from route details. | Three commits. Check candidate context, direction/movement/reduced motion, GUI/Linux navigation, mouse/touch/keyboard resizing and cancellation at both widths. |
+| R16 — Repair and explain flow | Apply D21: repair traffic playback/inspection teleport, show RS fanout, complete at end devices, and cycle advertisement examples by default. | Four commits after R15. Reproduce real playback failure and verify position continuity; use expected exports for branching and end-device delivery without simulating BGP convergence. |
 
 The 48-layout-unit drag bound, ephemeral offsets, popup behavior, and illustrative-flow defaults are specified in the guide and D11. These are authorized defaults that may be refined during usability checks. The latest user explicitly resumed implementation; the earlier instructions-only limit no longer applies.
 

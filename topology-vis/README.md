@@ -127,6 +127,9 @@ or changing the current selection. Leaving restores the selected path. Previewin
 uses cached metadata and does not query/recalculate route tables.
 A single purple arrow travels along the learned path on hover or route inspection,
 even with Przepływ tras off. Reduced motion keeps a stationary direction arrow.
+Click inspection keeps the selected RIB candidate and its attributes in context;
+it does not list topology-wide exports of that prefix. Exports remain inspectable
+within an individual BGP session.
 EVPN Type-5 next hops use IPv4; BGP transport remains IPv6. Each RS prepends its
 ASN, so a host → RS Bolt → RS Ctrl → RS Bolt → host UPDATE carries all four
 sending ASNs, closest first; locally originated RIB paths are empty. RS Bolt members stay
