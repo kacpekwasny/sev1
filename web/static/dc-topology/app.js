@@ -114,6 +114,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
 
   function closeInspector() {
     inspectorEl.hidden = true;
+    clearRoutePreview();
     inspectorHistory.length = 0;
     deviceMenu = null; positionDeviceMenu();
     if (!["packet", "update"].includes(selected?.type)) {
@@ -157,11 +158,25 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   let inspectorSelectionKey = "";
   const inspectorHistory = [];
   let popupPosition = null, popupDrag = null, endpointPick = null, deviceMenu = null;
+  let routeHover = null, previewFrame = 0;
   const exploration = { update: null, packet: null };
   const exploreRequests = { update: 0, packet: 0 };
   const exploreErrors = { update: "", packet: "" };
   const animation = { playing: false, elapsed: 0, startedAt: 0, frame: 0 };
 
+  function routeSelection(element) {
+    return {type:"route",id:element.dataset.routeId,ownerID:element.dataset.routeOwner,candidate:JSON.parse(element.dataset.routeCandidate||"null")};
+  }
+  function previewRoute(element) {
+    if(!element&&!routeHover)return;
+    routeHover=element?routeSelection(element):null;
+    if(!previewFrame)previewFrame=requestAnimationFrame(()=>{previewFrame=0;if(!destroyed)renderGraph();});
+  }
+  function clearRoutePreview() {
+    routeHover=null;
+    if(previewFrame)cancelAnimationFrame(previewFrame);
+    previewFrame=0;
+  }
   function rememberInspector() {
     if (!selected || inspectorEl.hidden) return;
     inspectorHistory.push({selection:selected, mode:root.querySelector("#dc-rib-view").value,
@@ -257,6 +272,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     renderGraph();
   };
   const onGraphClick = (event) => {
+    clearRoutePreview();
     if (event.detail > 0 && performance.now() < suppressClickUntil) { suppressClickUntil = 0; return; }
     const entity = event.target.closest("[data-entity-type]");
     if (!entity || !graphEl.contains(entity)) return;
@@ -345,6 +361,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if (!dragFrame) dragFrame = requestAnimationFrame(() => { dragFrame = 0; renderGraph(); });
   };
   const onInspectorClick = (event) => {
+    clearRoutePreview();
     deviceMenu=null;positionDeviceMenu();
     const update = event.target.closest("[data-update-id]");
     if (update) {
@@ -359,7 +376,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const route = event.target.closest("[data-route-id]");
     if (route && detailsEl.contains(route)) {
       rememberInspector();
-      selected = { type: "route", id: route.dataset.routeId, ownerID: route.dataset.routeOwner, candidate: JSON.parse(route.dataset.routeCandidate || "null") };
+      selected = routeSelection(route);
       resetAnimation();
       loadInspector("route", selected.id);
       renderTrafficList();
@@ -424,6 +441,17 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   });
   listen(root.querySelector("#dc-fit"), "click", fitGraph);
   listen(detailsEl, "click", onInspectorClick);
+  const onRouteEnter=(event)=>{
+    if(event.type==="pointerover"&&event.pointerType!=="mouse"&&event.pointerType!=="pen")return;
+    const route=event.target.closest("[data-route-id]");
+    if(route&&detailsEl.contains(route)&&event.relatedTarget?.closest?.("[data-route-id]")!==route)previewRoute(route);
+  };
+  const onRouteLeave=(event)=>{
+    const route=event.target.closest("[data-route-id]");
+    if(route&&event.relatedTarget?.closest?.("[data-route-id]")!==route)previewRoute(null);
+  };
+  listen(detailsEl,"pointerover",onRouteEnter);listen(detailsEl,"pointerout",onRouteLeave);
+  listen(detailsEl,"focusin",onRouteEnter);listen(detailsEl,"focusout",onRouteLeave);
   listen(root.querySelector("#dc-inspector-back"),"click",goBack);
   const grip=root.querySelector("#dc-inspector-grip");
   listen(grip,"pointerdown",(event)=>{
@@ -618,7 +646,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function syncIllustration() {
-    const active = showRouteFlow.checked && showSessions.checked && illustration.sequence.length > 0;
+    const active = !routeHover && showRouteFlow.checked && showSessions.checked && illustration.sequence.length > 0;
     flowNote.textContent = !showRouteFlow.checked ? "Adresy i tablice są obliczanym przykładem."
       : !showSessions.checked ? "Przepływ poglądowy — włącz warstwę Sesje BGP."
       : !illustration.sequence.length ? "Brak zgodnego przykładu przepływu tras w tej konfiguracji."
@@ -671,7 +699,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   function updateAnimationMarker(now = performance.now()) {
     const marker = graphEl.querySelector("#dc-packet-marker");
     const path = selectedPath();
-    if (!marker || path.length < 2 || !state.model || !showLinks.checked) {
+    if (routeHover || !marker || path.length < 2 || !state.model || !showLinks.checked) {
       if (marker) marker.setAttribute("visibility", "hidden");
       return;
     }
@@ -762,6 +790,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   function setState(next) {
     if (destroyed) return;
     if (next.model && next.model !== state.model) {
+      clearRoutePreview();
       modelRevision++;
       inspectorLoaded.clear();
       inspectorPending.clear();
@@ -897,8 +926,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     currentPositions = positions;
     const nodeByID = new Map(model.nodes.map((node) => [node.id, node]));
     const interfaceByID = new Map(model.interfaces.map((iface) => [iface.id, iface]));
-    const inspectedPaths = routePaths(model, selected);
-    root.querySelector("#dc-route-legend").hidden = selected?.type !== "route";
+    const inspectedPaths = routePaths(model, routeHover??selected);
+    root.querySelector("#dc-route-legend").hidden = !routeHover && selected?.type !== "route";
     illustration.streams = showRouteFlow.checked ? routeFlowStreams(model, exploration.update) : [];
     illustration.sequence = illustration.streams.flatMap(stream=>stream.steps);
     const illustrationIDs = new Set(illustration.sequence.map((step) => step.sessionID));
@@ -936,12 +965,12 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         const b = positions.nodes.get(link.b_node_id);
         if (!a || !b) continue;
         let selectedClass = selected?.type === "link" && selected.id === link.id ? " selected" : "";
-        if (selected?.type === "traffic") {
+        if (!routeHover && selected?.type === "traffic") {
           const flow = model.route_state?.traffic?.find((item) => item.id === selected.id);
           if (flow?.physical_link_ids.includes(link.id)) selectedClass += " flow-path";
         }
-        if (selected?.type === "packet" && exploration.packet?.physical_link_ids.includes(link.id)) selectedClass += " flow-path";
-        if (selected?.type === "session") {
+        if (!routeHover && selected?.type === "packet" && exploration.packet?.physical_link_ids.includes(link.id)) selectedClass += " flow-path";
+        if (!routeHover && selected?.type === "session") {
           const path = model.route_state?.control_paths?.find((item) => item.session_id === selected.id);
           if (path?.physical_link_ids.includes(link.id)) selectedClass += " flow-path";
         }
@@ -1018,7 +1047,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     }
     svg.append(nodeLayer);
 
-    if (selected?.type === "packet" && exploration.packet?.reachable && showLinks.checked) {
+    if (!routeHover && selected?.type === "packet" && exploration.packet?.reachable && showLinks.checked) {
       const localLayer = svgElement("g", { class: "dc-local-paths", "aria-hidden": "true" });
       for (const link of model.local_links ?? []) {
         if (![exploration.packet.from_id, exploration.packet.to_id].includes(link.vm_id)) continue;
@@ -1060,6 +1089,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function renderInspector(nodeByID, interfaceByID) {
+    if(routeHover) {clearRoutePreview();renderGraph();}
     root.querySelector("#dc-inspector-back").disabled = !inspectorHistory.length;
     const key = selected ? `${selected.type}/${selected.id}/${selected.ownerID??""}` : "";
     const keep = key === inspectorSelectionKey;
@@ -1308,6 +1338,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     setState,
     destroy() {
       destroyed = true;
+      clearRoutePreview();
       endDrag(null, true);
       if (dragFrame) cancelAnimationFrame(dragFrame);
       events.abort();

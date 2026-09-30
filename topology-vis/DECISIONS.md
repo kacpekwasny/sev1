@@ -282,7 +282,7 @@ User direction: animate many routes; these RSs append their ASN; move traffic
 sending to a compact action beside the clicked device; expose routes each device
 originates; preview learned/packet paths on route hover. Commit after each point.
 
-Points 1–4 are implemented and separately verified: a bounded multi-prefix stream
+All five points are implemented and separately verified: a bounded multi-prefix stream
 uses actual hierarchy sessions; every exporting eBGP speaker, including RSs,
 prepends its ASN. A locally originated RIB path is empty; received AS_PATH contains
 all sending hops, nearest first. EVPN NEXT_HOP remains the original IPv4 VTEP.
@@ -290,8 +290,11 @@ This follows the eBGP AS_SEQUENCE ordering in
 [RFC 4271 §5.1.2](https://www.rfc-editor.org/rfc/rfc4271.html#section-5.1.2).
 Device clicks expose an anchored send action and packet-family choice; target
 click completes sending. Manual forms start closed. Every node/VM has a separate originated-route section
-with canonical ownership and explicit empty states. Hover previews follow as a
-separate increment; consult PROGRESS for their completion and validation.
+with canonical ownership and explicit empty states. Route hover/focus previews
+both the learned path and next-hop packet direction from cached metadata, without
+changing selection or tables; leaving restores the selected view. Unrelated packet
+markers and the decorative stream are suppressed during preview. Consult PROGRESS
+for the five separate commits and validation.
 
 ## Recording an answer
 

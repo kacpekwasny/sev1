@@ -1,6 +1,6 @@
 # DC topology visualizer: implementation plan for GPT-Luna
 
-Status on 2026-09-30: **R00–R09 are implemented and verified, including `/topologie/dc/` integration, D12 layout, and D13/D14 interactive packet/route inspection.** The user committed the baseline as `9c50463`; rework commits and browser checks are recorded in [PROGRESS.md](PROGRESS.md). The milestones and older steps below remain the implementation/acceptance contract, not a request to repeat completed work. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
+Status on 2026-09-30: **R00–R10 are implemented and verified, including `/topologie/dc/` integration, D12 layout, and D13/D14 interactive packet/route inspection.** The user committed the baseline as `9c50463`; rework commits and browser checks are recorded in [PROGRESS.md](PROGRESS.md). The milestones and older steps below remain the implementation/acceptance contract, not a request to repeat completed work. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
 
 ## Current rework contract and execution order
 
@@ -21,6 +21,8 @@ These milestones define the revised scope; consult progress before executing an 
 | R08 — Inspect endpoint flows and tables | Apply D13: select physical/VM endpoints for expected UPDATE propagation and packet travel; decode message attributes and packet headers/hops; model local TAP/vNIC attachments; retain host EVPN RIBs separately from tenant FIB import; provide GUI and Linux/FRR table formats. | Validate actual directional exports, IPv4/IPv6, local/VXLAN/border paths, tenant isolation, physical cable invariants, table formats, stale response handling, desktop/narrow popups, and Go/race checks. `feat(topology): inspect endpoint updates, packets, and host RIBs` |
 
 | R09 — Refine interactive inspection | Apply D14: constrain RS Bolt placement, spread RS Ctrl, use IPv4 EVPN next hops/VTEPs, pick packet endpoints by click, drag popups, decode packet bits, restore table navigation and hierarchy, and highlight route provenance/next hop in both table modes. | Placement/validation and EVPN tests, wire lengths/checksums, purple/yellow path context, click picking/cancellation, mouse/touch/keyboard popup dragging, back navigation, desktop/narrow and embedded browser checks. `feat(topology): refine placement and interactive packet inspection` |
+
+| R10 — Device-first flows and provenance | Apply D15: many route streams, RS ASN prepending, compact device-adjacent traffic sending, per-device originated routes, and hover/focus path previews. | Commit after each of the five points. Check stream multiplicity/invariants, all intermediate AS sequences, device target selection, canonical origin ownership, GUI/Linux hover without navigation/network reads, and restore/teardown behavior at desktop/narrow widths. |
 
 The 48-layout-unit drag bound, ephemeral offsets, popup behavior, and illustrative-flow defaults are specified in the guide and D11. These are authorized defaults that may be refined during usability checks. The latest user explicitly resumed implementation; the earlier instructions-only limit no longer applies.
 

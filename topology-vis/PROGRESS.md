@@ -4,7 +4,7 @@ Updated: 2026-09-30
 
 ## Current status
 
-R00–R09 and the revised Steps 00–13 are implemented and verified. The explorer is
+R00–R10 and the revised Steps 00–13 are implemented and verified. The explorer is
 integrated at `/topologie/dc/`, linked from Topologie, and shares its source with
 the standalone harness. Git and parent-site writes are available. D03 remains
 absent; the original `TODO.md` is unchanged.
@@ -35,8 +35,8 @@ preserve containment while host movement carries its badges. The interaction hin
 sits below the canvas so it cannot obscure host labels.
 
 Go calculates expected route/forwarding snapshots on initial load and configuration
-rebuild. Route flow is an independent, initially disabled illustrative switch using
-valid RS hierarchy sessions; hidden layers and reduced motion stop its clock.
+rebuild. Route flow is an independent, initially disabled stream of prefix illustrations
+using valid RS hierarchy sessions; hidden layers and reduced motion stop its clock.
 YAML export and route tables are unaffected by dragging, clustering, or animation.
 Packet examples remain separate. Browser edits use isolated, bounded in-memory
 workspaces; expired workspaces report errors instead of mismatched tables.
@@ -52,7 +52,7 @@ Late responses cannot overwrite new selections. Cross-VPC traffic stays blocked.
 Host TAPs and VM eth0 interfaces are separate local attachments. All hosts retain
 EVPN in their global RIB; forwarding still imports only attached tenant contexts.
 Host underlay reception no longer depends on VPC attachment, and unrelated hosts
-cannot be fabric transit. Underlay AS_PATH ordering is corrected. Host inspection
+cannot be fabric transit. Every eBGP export, including RS hops, prepends its ASN in nearest-first order. Host inspection
 opens EVPN separately and offers concise GUI cards or Linux/FRR-style text for
 the same expected tables. Packet headers and CLI output are educational views.
 
@@ -105,8 +105,8 @@ Run `go run . -dev` and open `/topologie/dc/`, or `go run ./cmd/dc-topology` on 
   IPv6 and UDP lengths/checksums agree with the bytes, UTF-8 Echo payloads encode
   correctly, VXLAN VNI fields match, and next-hop highlights cannot use unrelated
   hosts as transit.
-- Latest local measurement: default page load 231 ms; capped scenario load and
-  initial calculation 2,612 ms. Capped model: 128 devices, 432 cables, 88 VMs,
+- Latest local measurement: default page load 215 ms; capped scenario load and
+  initial calculation 2,785 ms. Capped model: 128 devices, 432 cables, 88 VMs,
   1,040 sessions. These are local observations, not an SLA.
 - Embedded production page checked from `/tmp` with an absolute `-content` path;
   standalone harness checked with shared assets at desktop/narrow widths.
@@ -131,8 +131,16 @@ repeat completed rework milestones.
    a small anchored send action with IPv4/IPv6 choice; the next device click sends
    the sample. A collapsed RS offers concrete member selection. Advanced manual
    forms start closed. Desktop/narrow/touch walkthroughs and Go tests passed.
-4. Originated-route sections: implemented for every physical node and VM, in GUI
+4. Originated-route sections: implemented in `c544a80` for every physical node and VM, in GUI
    and Linux modes. Entries use canonical origin ownership; an RS with no local
    NLRI explicitly states that its service prefixes are originated by its host.
    Browser checks cover host, customer and empty RS sections; Go tests/build pass.
-5. Route/packet path previews on hover: pending.
+5. Route/packet path previews on hover: implemented in this checkpoint's commit, in GUI, Linux and originated
+   route rows. Purple learned and yellow forwarding paths preview without fetching
+   route details or changing inspector selection/tables/history; leaving restores
+   the selected view. Keyboard focus also previews; touch continues to use clicks.
+   Previews suppress unrelated packet markers and stop the decorative stream while
+   hovered. Redundant preview clearing does not redraw away restored device focus
+   after closing the inspector. GUI/Linux hover and keyboard-focus checks, desktop/
+   narrow/touch walkthroughs against embedded production assets, Go tests/build,
+   vet, and packet-bit checks pass.
