@@ -24,6 +24,20 @@ try {
    await page.locator(`#dc-${kind}-form button[type=submit]`).click();
    await page.waitForFunction((kind)=>!document.querySelector(`#dc-${kind}-form button[type=submit]`).disabled,kind);
  };
+ const assertPacketVisible=async()=>{
+   const view=await page.evaluate(()=>{
+     const wire=document.querySelector('#dc-details .dc-wire'),heading=wire.querySelector('h4');
+     const firstField=wire.querySelector('.dc-bit-field').getBoundingClientRect();
+     const topbar=document.querySelector('.topbar')?.getBoundingClientRect().bottom??0;
+     const details=document.querySelector('#dc-details').getBoundingClientRect();
+     const headingBox=heading.getBoundingClientRect();
+     return {focused:document.activeElement===heading,scrolled:document.querySelector('#dc-details').scrollTop>0,
+       visible:headingBox.top>=Math.max(topbar,details.top)&&firstField.bottom<=Math.min(innerHeight,details.bottom)};
+   });
+   assert.equal(view.focused,true,'Inspect packet must focus the packet heading');
+   assert.equal(view.scrolled,true,'Inspect packet must scroll the popup body to packet fields');
+   assert.equal(view.visible,true,'Packet heading and first fields must be on screen below sticky navigation');
+ };
  // Primary traffic UI is beside a clicked device; advanced forms start closed.
  assert.equal(await page.locator('#dc-explorer').evaluate(d=>d.open),false);
  await page.locator('.dc-vm[data-entity-id="customer-1"]').click();
@@ -114,6 +128,9 @@ try {
  assert.equal(hoverRequests,0,'Keyboard preview must also use cached metadata');
  page.off('request',countHover);
  await page.locator(`[data-family="l2vpn"] .dc-route-row[data-route-id="${remote}"]`).first().click();
+ // The replacement export list can appear beneath the stationary mouse. Check
+ // the pinned route with the pointer away from those independently hoverable rows.
+ await page.locator('#dc-inspector-grip').hover();
  await page.waitForFunction(()=>document.querySelectorAll('.dc-route-learned').length>0);
  assert.equal(await page.locator('.dc-route-learned').last().getAttribute('data-to'),'host-b1-h1');
  assert.equal(await page.locator('.dc-route-points-to').last().getAttribute('data-to'),'customer-3');
@@ -170,11 +187,26 @@ try {
  await page.keyboard.press('Escape'); await page.locator('#dc-play').click();
  await page.waitForFunction(()=>document.querySelector('#dc-packet-marker').getAttribute('visibility')==='visible');
  await page.locator('#dc-inspect-packet').click(); assert.match(await page.locator('#dc-inspector-heading').textContent(),/Pakiet/);
+ await assertPacketVisible();
+ await page.locator('#dc-details').evaluate(d=>d.scrollTop=d.scrollHeight);
+ await page.locator('#dc-inspect-packet').click();await assertPacketVisible();
  await page.keyboard.press('Escape');
  await page.locator('.dc-node[data-entity-id="border-1"]').click();
  await page.locator('#dc-inspect-packet').click();
  assert.match(await page.locator('#dc-details').textContent(),/49152 \/ 4789/);
+ await assertPacketVisible();
  await page.keyboard.press('Escape');
+ // Inspecting a preset fetches a new packet; reveal waits for that response.
+ let releasePacket;
+ const packetGate=new Promise(resolve=>{releasePacket=resolve;});
+ await page.route('**/explore?**',async route=>{await packetGate;await route.continue();});
+ await page.locator('[data-traffic-id="miedzy-boltami"]').click();
+ await page.locator('#dc-inspect-packet').click();
+ assert.match(await page.locator('#dc-details').textContent(),/Wczytuję drogę pakietu/);
+ releasePacket();
+ await page.waitForFunction(()=>document.activeElement?.matches('#dc-details .dc-wire h4'));
+ await assertPacketVisible();
+ await page.unroute('**/explore?**');await page.keyboard.press('Escape');
  await choose('packet','customer-1','customer-2','ipv4');
  assert.equal(await page.locator('.dc-local-path').count(),2);
  assert.equal(await page.locator('.dc-packet-hop').count(),3);
@@ -210,11 +242,20 @@ try {
  // A session export opens its exact directed UPDATE, not only the origin route.
  await page.locator('.dc-node[data-entity-id="border-1"]').click();
  await page.locator('#dc-details summary').filter({hasText:'Sesje BGP ('}).click();
+ let releaseSession;
+ const sessionGate=new Promise(resolve=>{releaseSession=resolve;});
+ await page.route('**/inspector?**',async route=>{
+   if(new URL(route.request().url()).searchParams.get('kind')==='session')await sessionGate;
+   await route.continue();
+ });
  await page.locator('#dc-details [data-session-id]').first().click();
- await page.locator('.dc-update-inspect').first().waitFor({state:'attached'});
  await page.locator('#dc-inspect-packet').click();
  assert.equal(await page.locator('#dc-inspector-heading').textContent(),'Sesja BGP');
  assert.match(await page.locator('#dc-details').textContent(),/TCP 49152 → 179/);
+ await assertPacketVisible();
+ releaseSession();await page.locator('.dc-update-inspect').first().waitFor({state:'attached'});
+ await assertPacketVisible();
+ await page.unroute('**/inspector?**');
  await page.locator('#dc-details > .dc-interface-details > summary').first().click();
  await page.locator('.dc-update-inspect:visible').first().click();
  await page.waitForFunction(()=>!document.querySelector('#dc-update-form button[type=submit]').disabled);
@@ -223,6 +264,9 @@ try {
 
  await page.setViewportSize({width:390,height:844});
  await choose('packet','customer-1','customer-3','ipv6');
+ await page.keyboard.press('Escape');await page.locator('#dc-inspect-packet').click();
+ await assertPacketVisible();
+ await page.screenshot({path:`${output}/mobile-inspect-packet-visible.png`,animations:'disabled'});
  await page.locator('.dc-bit-field[data-field="VNI"]').first().click();
  assert.match(await page.locator('.dc-bit-info').textContent(),/10001/);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);

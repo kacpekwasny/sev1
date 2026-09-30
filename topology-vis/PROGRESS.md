@@ -4,7 +4,7 @@ Updated: 2026-09-30
 
 ## Current status
 
-R00–R10 and the revised Steps 00–13 are implemented and verified. The explorer is
+R00–R11 and the revised Steps 00–13 are implemented and verified. The explorer is
 integrated at `/topologie/dc/`, linked from Topologie, and shares its source with
 the standalone harness. Git and parent-site writes are available. D03 remains
 absent; the original `TODO.md` is unchanged.
@@ -105,8 +105,8 @@ Run `go run . -dev` and open `/topologie/dc/`, or `go run ./cmd/dc-topology` on 
   IPv6 and UDP lengths/checksums agree with the bytes, UTF-8 Echo payloads encode
   correctly, VXLAN VNI fields match, and next-hop highlights cannot use unrelated
   hosts as transit.
-- Latest local measurement: default page load 215 ms; capped scenario load and
-  initial calculation 2,785 ms. Capped model: 128 devices, 432 cables, 88 VMs,
+- Latest local measurement: default page load 227 ms; capped scenario load and
+  initial calculation 2,563 ms. Capped model: 128 devices, 432 cables, 88 VMs,
   1,040 sessions. These are local observations, not an SLA.
 - Embedded production page checked from `/tmp` with an absolute `-content` path;
   standalone harness checked with shared assets at desktop/narrow widths.
@@ -135,7 +135,7 @@ repeat completed rework milestones.
    and Linux modes. Entries use canonical origin ownership; an RS with no local
    NLRI explicitly states that its service prefixes are originated by its host.
    Browser checks cover host, customer and empty RS sections; Go tests/build pass.
-5. Route/packet path previews on hover: implemented in this checkpoint's commit, in GUI, Linux and originated
+5. Route/packet path previews on hover: implemented in `b23d100`, in GUI, Linux and originated
    route rows. Purple learned and yellow forwarding paths preview without fetching
    route details or changing inspector selection/tables/history; leaving restores
    the selected view. Keyboard focus also previews; touch continues to use clicks.
@@ -147,15 +147,23 @@ repeat completed rework milestones.
 
 ## Playback refinements — separately committed points
 
-1. Custom-endpoint packet playback: implemented in `0ad13df`.
+1. Custom-endpoint packet playback: implemented in `4b5c1f7`.
    Reproduced a blocked Play click under reduced motion; an explicit click now
-   starts the packet without enabling decorative motion. Physical-layer hiding
+   starts the packet without enabling decorative motion. Delayed media-query
+   events cannot cancel a Play click that already opted into reduced-motion playback. Physical-layer hiding
    also pauses custom packets. Chrome checks verify position changes, pause,
    rewind, and layer hiding; desktop/narrow/touch walkthrough and Go tests pass.
-2. Sequential route-flow illustration: implemented in this checkpoint's commit.
+2. Sequential route-flow illustration: implemented in `ea5ea52`.
    A single UPDATE marker completes one route's hierarchy path before the next
    prefix starts. Current route metadata and focused UPDATE step follow that
    marker. Chrome checks verify one marker, movement, prefix succession, all RS
    projections, hidden layers, reduced motion, unchanged tables/YAML and teardown;
    desktop/narrow walkthroughs and Go tests pass.
-3. Inspect-packet scrolling and viewport visibility: pending.
+3. Inspect-packet scrolling and viewport visibility: implemented in this
+   checkpoint's commit. Opens containing sections, brings the overlay below
+   navigation, scrolls its body to packet fields and focuses their heading.
+   Selection-scoped deferred reveal handles fetched packets and late session
+   exports without reopening a dismissed popup. Chrome checks cover cached/
+   fetched packets, repeated clicks from a scrolled body, BGP fields before/after
+   a delayed response, and fields actually visible on desktop/narrow screens.
+   Go tests, embedded build, vet and packet-bit checks pass.

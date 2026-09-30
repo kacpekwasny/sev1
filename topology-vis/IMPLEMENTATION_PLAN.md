@@ -1,6 +1,6 @@
 # DC topology visualizer: implementation plan for GPT-Luna
 
-Status on 2026-09-30: **R00–R10 are implemented and verified, including `/topologie/dc/` integration, D12 layout, and D13/D14 interactive packet/route inspection.** The user committed the baseline as `9c50463`; rework commits and browser checks are recorded in [PROGRESS.md](PROGRESS.md). The milestones and older steps below remain the implementation/acceptance contract, not a request to repeat completed work. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
+Status on 2026-09-30: **R00–R11 are implemented and verified, including `/topologie/dc/` integration, D12 layout, and D13–D16 interactive packet/route inspection.** The user committed the baseline as `9c50463`; rework commits and browser checks are recorded in [PROGRESS.md](PROGRESS.md). The milestones and older steps below remain the implementation/acceptance contract, not a request to repeat completed work. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
 
 ## Current rework contract and execution order
 

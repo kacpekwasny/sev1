@@ -71,6 +71,9 @@ Nodes and infra VMs use underlay paths. Unsupported tenant destinations report w
 they cannot be reached. Inspection includes inner/outer headers, UDP/VNI, selected
 ECMP path, and interfaces at each hop. Closing the custom packet popup keeps its
 path for playback; Inspektuj pakiet reopens it. Highlighted steps follow playback.
+Inspektuj pakiet opens containing sections, brings the popup into view below the
+navigation, and scrolls its body to the focused Pakiet bit po bicie heading and
+fields. This also works for fetched preset packets and BGP session transport.
 An explicit Odtwórz pakiet click plays the selected path even when the OS requests
 reduced motion. Decorative route animation still honors that preference. Hiding
 physical links pauses playback, including packets between custom endpoints.

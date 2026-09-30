@@ -116,7 +116,7 @@ export function appendBGPBits(container,session) {
 }
 function appendWireLayers(container,layers,note) {
   const section=document.createElement("section");section.className="dc-wire";
-  const title=document.createElement("h4");title.textContent="Pakiet bit po bicie";
+  const title=document.createElement("h4");title.textContent="Pakiet bit po bicie";title.tabIndex=-1;
   const intro=document.createElement("p");intro.textContent=`${note} Kliknij pole lub jego bity. Kolejność sieciowa: najbardziej znaczący bit pierwszy. MAC są przykładowe; bez preambuły i FCS.`;
   const info=document.createElement("div");info.className="dc-bit-info";info.setAttribute("role","status");info.setAttribute("aria-live","polite");info.textContent="Wybierz pole, aby poznać jego znaczenie i wartość.";
   section.append(title,intro,info);container.append(section);

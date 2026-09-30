@@ -114,6 +114,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
 
   function closeInspector() {
     inspectorEl.hidden = true;
+    packetReveal = null;
     clearRoutePreview();
     inspectorHistory.length = 0;
     deviceMenu = null; positionDeviceMenu();
@@ -159,6 +160,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   const inspectorHistory = [];
   let popupPosition = null, popupDrag = null, endpointPick = null, deviceMenu = null;
   let routeHover = null, previewFrame = 0;
+  let packetReveal = null;
   const exploration = { update: null, packet: null };
   const exploreRequests = { update: 0, packet: 0 };
   const exploreErrors = { update: "", packet: "" };
@@ -176,6 +178,28 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     routeHover=null;
     if(previewFrame)cancelAnimationFrame(previewFrame);
     previewFrame=0;
+  }
+  function requestPacketReveal() {
+    packetReveal = `${selected.type}/${selected.id}`;
+    revealPacketSection();
+  }
+  function revealPacketSection() {
+    if (!packetReveal || inspectorEl.hidden) return;
+    if (packetReveal !== `${selected?.type}/${selected?.id}`) { packetReveal = null; return; }
+    const section = detailsEl.querySelector(".dc-wire");
+    if (!section) {
+      if (exploreErrors.packet || exploration.packet?.reachable === false) packetReveal = null;
+      return;
+    }
+    for (let parent = section.parentElement; parent && parent !== detailsEl; parent = parent.parentElement) {
+      if (parent.tagName === "DETAILS") parent.open = true;
+    }
+    inspectorEl.scrollIntoView({block:"start", behavior:"instant"});
+    detailsEl.scrollTop += section.getBoundingClientRect().top - detailsEl.getBoundingClientRect().top - 8;
+    section.querySelector("h4").focus({preventScroll:true});
+    // Session exports may still arrive above the packet; reveal again after that
+    // response settles so inserted content cannot push the fields out of view.
+    if (!inspectorPending.has(`${modelRevision}/session/${selected.id}`)) packetReveal = null;
   }
   function rememberInspector() {
     if (!selected || inspectorEl.hidden) return;
@@ -520,14 +544,12 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   listen(root.querySelector("#dc-inspect-packet"), "click", () => {
     if (selected?.type === "session") {
       renderInspector(); openInspector();
-      const summary = [...detailsEl.querySelectorAll("summary")].find((item) => item.textContent === "Fizyczna droga pakietu BGP");
-      if (summary) summary.parentElement.open = true;
-      inspectorEl.scrollIntoView({ block: "start" });
+      requestPacketReveal();
       return;
     }
     if (selected?.type !== "traffic" && exploration.packet) {
       selected = { type: "packet", id: String(exploreRequests.packet) };
-      renderGraph(); renderInspector(); openInspector(); inspectorEl.scrollIntoView({ block: "start" });
+      renderGraph(); renderInspector(); openInspector(); requestPacketReveal();
       return;
     }
     const flow = state.model.route_state?.traffic?.find((item) => item.id === selected?.id);
@@ -537,6 +559,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if (from && to) {
       const form = root.querySelector("#dc-packet-form"); form.elements.from.value = from; form.elements.to.value = to;
       form.elements.family.value = session ? "ipv6" : "ipv4"; beginExploration("packet");
+      requestPacketReveal();
     }
   });
   listen(trafficList, "click", onTrafficClick);
@@ -800,6 +823,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if (destroyed) return;
     if (next.model && next.model !== state.model) {
       clearRoutePreview();
+      packetReveal = null;
       modelRevision++;
       inspectorLoaded.clear();
       inspectorPending.clear();
@@ -1112,6 +1136,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     detailsEl.scrollTop = scroll;
     clampPopup();
     inspectorSelectionKey = key;
+    revealPacketSection();
   }
 
   function fitGraph() {
@@ -1343,6 +1368,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     setState,
     destroy() {
       destroyed = true;
+      packetReveal = null;
       clearRoutePreview();
       endDrag(null, true);
       if (dragFrame) cancelAnimationFrame(dragFrame);

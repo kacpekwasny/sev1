@@ -308,7 +308,11 @@ reduced-motion preference or hiding physical links pauses a running packet.
 Point 2 is implemented: keep a bounded list of prefixes but advance one UPDATE
 marker through each entire path before starting the next. Step highlights and
 marker metadata follow the active prefix; static session context remains visible.
-Point 3 remains pending; consult PROGRESS for verification and separate commits.
+Point 3 is implemented: Inspect packet opens containing sections, brings the popup
+below navigation, scrolls its body to packet fields and focuses their heading.
+Deferred reveal is tied to the selected packet/session and cancelled on dismissal
+or selection changes. Late session exports trigger a second reveal so inserted
+content cannot push fields away. Consult PROGRESS for verification and commits.
 
 ## Recording an answer
 
