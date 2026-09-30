@@ -62,11 +62,33 @@ try {
   const handle=page.locator('#dc-inspector-resize');await handle.scrollIntoViewIfNeeded();
   const before=await page.locator('#dc-inspector').boundingBox(),grip=await handle.boundingBox();
   await page.mouse.move(grip.x+grip.width/2,grip.y+grip.height/2);await page.mouse.down();
-  await page.mouse.move(grip.x+grip.width/2+(viewport.width>500?80:-30),grip.y+grip.height/2-70,{steps:5});await page.mouse.up();
+  await page.mouse.move(grip.x+grip.width/2+(viewport.width>500?-50:-30),grip.y+grip.height/2-70,{steps:5});await page.mouse.up();
   const resized=await page.locator('#dc-inspector').boundingBox();
   assert(Math.abs(resized.width-before.width)>20);assert(resized.height<before.height-40);
   await handle.press('Home');
   assert(Math.abs((await page.locator('#dc-inspector').boundingBox()).width-before.width)<2);
+  for(const [edge,dx,dy] of [['e',-24,0],['w',24,0],['n',0,24],['s',0,-24],['nw',24,24]]) {
+    const edgeHandle=page.locator(`.dc-popup-edge[data-resize="${edge}"]`);await edgeHandle.scrollIntoViewIfNeeded();
+    const start=await page.locator('#dc-inspector').boundingBox(),border=await edgeHandle.boundingBox();
+    await page.mouse.move(border.x+border.width/2,border.y+border.height/2);await page.mouse.down();
+    await page.mouse.move(border.x+border.width/2+dx,border.y+border.height/2+dy,{steps:4});await page.mouse.up();
+    const end=await page.locator('#dc-inspector').boundingBox();
+    assert(Math.abs(start.width-end.width-(dx?24:0))<2);
+    assert(Math.abs(start.height-end.height-(dy?24:0))<2,JSON.stringify({viewport,edge,start,end}));
+    if(edge.includes('w'))assert(Math.abs(start.x+start.width-end.x-end.width)<2,'West resizing keeps the east edge anchored');
+    if(edge.includes('n'))assert(Math.abs(start.y+start.height-end.y-end.height)<2,'North resizing keeps the south edge anchored');
+    await handle.press('Home');
+  }
+  const touch=await page.context().newCDPSession(page);
+  await touch.send('Emulation.setTouchEmulationEnabled',{enabled:true});
+  const touchStart=await page.locator('#dc-inspector').boundingBox(),west=await page.locator('.dc-popup-edge[data-resize="w"]').boundingBox();
+  const point={x:west.x+west.width/2,y:west.y+west.height/2};
+  await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});
+  await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:point.x+24,y:point.y}]});
+  assert(Math.abs((await page.locator('#dc-inspector').boundingBox()).width-touchStart.width)>20);
+  await touch.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
+  assert(Math.abs((await page.locator('#dc-inspector').boundingBox()).width-touchStart.width)<2,'Cancelled touch resize restores the original dimensions');
+  await touch.send('Emulation.setTouchEmulationEnabled',{enabled:false});await touch.detach();
   await page.locator('#dc-details summary').filter({hasText:'Sesje BGP ('}).click();
   const session=page.locator('#dc-details [data-session-id]').first();
   const sessionID=await session.getAttribute('data-session-id'),title=await page.locator('#dc-inspector-heading').textContent();

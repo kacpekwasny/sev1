@@ -364,6 +364,16 @@ direction marker, independent of the general Przepływ tras toggle. Reduce motio
 to a stationary direction arrow when requested by the OS; keep yellow next-hop
 context. Pause the general illustrative stream during route inspection/preview.
 
+### D21 — Playback repair and complete advertisement illustrations
+
+Queued after finishing D20: repair stalled traffic playback and inspection's
+teleport to the destination; show UPDATE fanout when an RS receives it; continue
+illustrations through the RS hierarchy to end devices; make the default BGP flow
+a sequence explaining how each advertisement propagates. Commit each point.
+Keep expected route snapshots authoritative and preserve explicit packet inspection.
+This supersedes the single linear UPDATE-marker illustration where branching is
+needed to explain an advertisement's spread.
+
 ## Recording an answer
 
 Record the latest user direction and affected milestones. If it changes previously implemented work, reopen the affected acceptance checks; do not claim the old checks verify new behavior. Distinguish direct user requirements from authorized implementation defaults. Preserve the original TODO while keeping this decision record and the active plan authoritative for later changes.

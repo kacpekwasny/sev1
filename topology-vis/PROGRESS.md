@@ -273,6 +273,11 @@ YAML. Screenshots at both widths were inspected against the fresh embedded previ
    stationary direction arrow. The marker renders above nodes and VM badges.
    Chrome verifies hover movement/direction, click retention, leaving/back, cached
    metadata, and reduced motion; desktop/narrow endpoint walkthrough and Go tests pass.
-2. Inspector border resizing — pending.
+2. Inspector resizes from four edges and four corners. North/west resizing keeps
+   the opposite edge anchored; responsive limits match the CSS popup dimensions.
+   Mouse/keyboard/touch input, cancellation, dismissal, rebuild and teardown keep
+   pointer state bounded and cleaned up.
+   Desktop/narrow Chrome refinements verify each edge, a corner, anchored opposite
+   edges, keyboard reset, and touch cancellation restoring dimensions.
 3. Remove topology-wide route exports from route details — pending. This latest
    request supersedes the former answer-only constraint.

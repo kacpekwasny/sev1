@@ -52,6 +52,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
             <label class="dc-rib-control">Tablice <select id="dc-rib-view"><option value="gui">GUI</option><option value="linux">Linux / FRR</option></select></label>
             <button id="dc-inspector-close" class="dc-icon-button" type="button" aria-label="Zamknij inspektor">×</button></div>
           <div id="dc-details" class="dc-details"></div>
+          ${["n","e","s","w","ne","se","sw","nw"].map(edge=>`<div class="dc-popup-edge" data-resize="${edge}" aria-hidden="true"></div>`).join("")}
           <button id="dc-inspector-resize" class="dc-popup-resize" type="button" aria-label="Zmień rozmiar inspektora; strzałki zmieniają wymiary, Home przywraca">◢</button>
         </aside>
       </div>
@@ -120,6 +121,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function closeInspector() {
+    cancelResize();
     inspectorEl.hidden = true;
     packetReveal = null;
     clearRoutePreview();
@@ -132,6 +134,15 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     renderGraph();
     renderTrafficList();
     focusEntity(returnFocus);
+  }
+
+  function cancelResize() {
+    if(popupResize) {
+      popupSize=popupResize.previousSize;popupPosition=popupResize.previousPosition;
+      const {target,id}=popupResize;popupResize=null;
+      if(target.hasPointerCapture(id))target.releasePointerCapture(id);
+      clampPopup();
+    }
   }
 
   const graphEl = root.querySelector("#dc-graph");
@@ -233,11 +244,15 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     [...detailsEl.querySelectorAll("details")].forEach((item,index)=>{if(previous.sections[index]!==undefined)item.open=previous.sections[index];});
     detailsEl.scrollTop=previous.scroll;
   }
+  function popupHeightLimit() {
+    return inspectorEl.parentElement.clientHeight-parseFloat(getComputedStyle(inspectorEl).getPropertyValue("--dc-inspector-gap"));
+  }
   function clampPopup() {
     if(popupSize) {
       const workspace=inspectorEl.parentElement;
       popupSize.width=Math.max(Math.min(300,workspace.clientWidth-16),Math.min(popupSize.width,workspace.clientWidth-16));
-      popupSize.height=Math.max(Math.min(220,workspace.clientHeight-16),Math.min(popupSize.height,workspace.clientHeight-16));
+      const maxHeight=popupHeightLimit();
+      popupSize.height=Math.max(Math.min(220,maxHeight),Math.min(popupSize.height,maxHeight));
       inspectorEl.style.width=`${popupSize.width}px`;inspectorEl.style.height=`${popupSize.height}px`;
     } else {inspectorEl.style.removeProperty("width");inspectorEl.style.removeProperty("height");}
     if(!popupPosition) {for(const prop of ["left","top","right"])inspectorEl.style.removeProperty(prop);return;}
@@ -540,24 +555,37 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   });
   listen(window,"resize",()=>{clampPopup();positionDeviceMenu();});
   const resizeHandle=root.querySelector("#dc-inspector-resize");
-  listen(resizeHandle,"pointerdown",event=>{
+  const beginResize=event=>{
     if(!event.isPrimary||event.button!==0)return;
     const box=inspectorEl.getBoundingClientRect(),parent=inspectorEl.parentElement.getBoundingClientRect();
     popupResize={id:event.pointerId,x:event.clientX,y:event.clientY,width:box.width,height:box.height,
+      start:{x:box.x-parent.x,y:box.y-parent.y},direction:event.currentTarget.dataset.resize??"se",target:event.currentTarget,
       previousSize:popupSize&&{...popupSize},previousPosition:popupPosition&&{...popupPosition}};
     popupPosition={x:box.x-parent.x,y:box.y-parent.y};
-    resizeHandle.setPointerCapture(event.pointerId);event.preventDefault();
-  });
-  listen(resizeHandle,"pointermove",event=>{
+    event.currentTarget.setPointerCapture(event.pointerId);event.preventDefault();
+  };
+  const moveResize=event=>{
     if(!popupResize||popupResize.id!==event.pointerId)return;
-    popupSize={width:popupResize.width+event.clientX-popupResize.x,height:popupResize.height+event.clientY-popupResize.y};clampPopup();
-  });
+    const {start,width,height,direction}=popupResize,workspace=inspectorEl.parentElement;
+    const dx=event.clientX-popupResize.x,dy=event.clientY-popupResize.y;
+    const west=direction.includes("w"),east=direction.includes("e"),north=direction.includes("n"),south=direction.includes("s");
+    const limit=(value,minimum,maximum)=>Math.max(minimum,Math.min(value,maximum));
+    popupSize={width,height};
+    if(west||east)popupSize.width=limit(width+(west?-dx:dx),Math.min(300,workspace.clientWidth-16),Math.min(workspace.clientWidth-16,west?start.x+width-4:workspace.clientWidth-start.x-4));
+    const maxHeight=popupHeightLimit();
+    if(north||south)popupSize.height=limit(height+(north?-dy:dy),Math.min(220,maxHeight),Math.min(maxHeight,north?start.y+height-4:workspace.clientHeight-start.y-4));
+    popupPosition={x:west?start.x+width-popupSize.width:start.x,y:north?start.y+height-popupSize.height:start.y};
+    clampPopup();
+  };
   const finishResize=event=>{
     if(!popupResize||popupResize.id!==event.pointerId)return;
     if(event.type==="pointercancel") {popupSize=popupResize.previousSize;popupPosition=popupResize.previousPosition;clampPopup();}
-    popupResize=null;if(resizeHandle.hasPointerCapture(event.pointerId))resizeHandle.releasePointerCapture(event.pointerId);
+    const target=popupResize.target;popupResize=null;if(target.hasPointerCapture(event.pointerId))target.releasePointerCapture(event.pointerId);
   };
-  for(const type of ["pointerup","pointercancel","lostpointercapture"])listen(resizeHandle,type,finishResize);
+  for(const target of [resizeHandle,...root.querySelectorAll(".dc-popup-edge")]) {
+    listen(target,"pointerdown",beginResize);listen(target,"pointermove",moveResize);
+    for(const type of ["pointerup","pointercancel","lostpointercapture"])listen(target,type,finishResize);
+  }
   listen(resizeHandle,"keydown",event=>{
     if(!["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home"].includes(event.key))return;
     event.preventDefault();
@@ -899,6 +927,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       inspectorPending.clear();
       inspectorErrors.clear();
       endDrag(null, true);
+      cancelResize();
       viewOffsets.clear();
       inspectorEl.hidden = true;
       selected = null;
@@ -1477,6 +1506,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       destroyed = true;
       packetReveal = null;
       clearRoutePreview();
+      cancelResize();
       endDrag(null, true);
       if (dragFrame) cancelAnimationFrame(dragFrame);
       events.abort();
