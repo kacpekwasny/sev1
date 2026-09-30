@@ -1,0 +1,50 @@
+schema_version: 1
+
+topology:
+  borders: 2
+  stems: 2
+  spines: 4
+  bolts: 2
+  leaves_per_bolt: 2
+  racks_per_bolt: 2
+  hosts_per_rack: 2
+
+vpcs:
+  - id: 1
+    name: wspolna
+
+customer_vms:
+  count: 3
+  default_vpc_id: 1
+  rs_user_peers: [1, 2, 3]
+  overrides:
+    - id: 1
+      host: {bolt_id: 1, host_id: 1}
+    - id: 2
+      host: {bolt_id: 1, host_id: 1}
+    - id: 3
+      host: {bolt_id: 2, host_id: 1}
+
+route_servers:
+  placements:
+    - role: bolt
+      served_bolt: 1
+      member: 1
+      host: {bolt_id: 2, host_id: 2}
+
+route_origins:
+  - id: przyklad-uplink-v4
+    vpc_id: 1
+    prefix: 198.51.100.0/24
+    border_id: 1
+
+traffic:
+  - id: lokalny-host
+    source_vm_id: 1
+    destination_vm_id: 2
+  - id: miedzy-boltami
+    source_vm_id: 1
+    destination_vm_id: 3
+  - id: do-uplinku
+    source_vm_id: 1
+    destination_prefix: 198.51.100.0/24

@@ -1,27 +1,41 @@
 # Visualizer progress
 
-Updated: 2026-09-29
+Updated: 2026-09-30
 
 ## Status
 
-- Completed: Step 01 — isolated shell, development command, mount contract, and checks.
-- Pending: Step 00 (remaining routing/session/scope decisions), Steps 02–13.
-- D03 was removed by the user in the working tree; that user-authored edit is not part of this increment's commit. D02 route policy and initialization, D05 ASNs/session families, D08 inspector and traffic scope, and D10 site entry point remain open in `DECISIONS.md`.
+- Step 00 decisions are resolved under the user's approval/delegation. D03 is absent as requested; `TODO.md` remains unchanged.
+- Step 01 shell and mount contract are in parent commit `682a7df`.
+- Steps 02–11 have implementation in the isolated harness: strict YAML validation, physical topology and VM generation, BGP sessions, route/forwarding computation, traffic/control paths, layer/cluster controls, count rebuilds, YAML export, inspector details, and playback.
+- Earlier automated verification passed for the existing baseline. It does not verify the newly requested frontend rework. Browser acceptance has not run.
+- D11 reopens frontend layout, inspection, dragging, route-calculation simplification, and illustrative flow. Rework milestones R00–R06 are planned, not implemented. The latest task is an instructions/plan update only.
+- Step 12 site-route/navigation integration and Step 13 browser/performance acceptance remain open. The current workspace permits writes only inside `topology-vis/`; parent `internal/`, `web/`, `cmd/`, and Git metadata are read-only.
+- Branch: `visualization`. No implementation commit could be created because the parent Git index is outside the writable root. All new source remains in the requested subdirectory.
 
-## Current increment
+## Latest planning update
 
-The independent harness runs at `/` from `cmd/dc-topology` and serves the local site assets. The shell shows a clear empty state. Go owns canonical configuration and simulation state; the browser module owns presentation and sends commands through `mountTopologyApp(root, { onCommand })`. Its `setState` and `destroy` methods let the site adapter update and clean up the mounted view. No YAML parsing or simulation behavior is included yet.
+Updated `LUNA_GUIDE.md`, `IMPLEMENTATION_PLAN.md`, and `DECISIONS.md` for the user’s 2026-09-30 direction: dynamic JavaScript instead of htmx, topology-first layout, popup inspection over the graph, initial expected tables, optional illustrative route-flow switch, and bounded view-only dragging. Retained confirmed network/configuration rules and the authorization to make reasonable assumptions.
 
-Files: `cmd/dc-topology/main.go`, `web/static/dc-topology/{dev.html,app.css,app.js,dev.js}`, `topology-vis/README.md`, and `topology-vis/IMPLEMENTATION_PLAN.md`.
+Baseline commit was attempted by staging only our implementation paths. Git rejected staging with `fatal: Unable to create '/Users/kkwasny/code/sev1/.git/index.lock': Operation not permitted`. No commit was created; no nested repository or permission workaround was used. Planning updates were checked by documentation/diff/link review; application source was not changed in this task.
 
-## Validation
+## Existing implementation baseline
 
-- Baseline before implementation: `go test ./...` passed.
-- Final checks: `go test ./...`, `go build .`, `go build -o /tmp/dc-topology ./cmd/dc-topology`, `go vet ./...`, `node --input-type=module --check < web/static/dc-topology/app.js`, and the equivalent `dev.js` syntax check passed.
-- HTTP smoke: `GET /`, `GET /static/dc-topology/app.css`, and `GET /static/dc-topology/dev.js` returned successfully from `go run ./cmd/dc-topology -addr 127.0.0.1:8090`.
-- Browser: the in-app browser runtime was unavailable, so local Chrome was used as a fallback. At 1280×900 and 390×844, the shell and empty state rendered, document width matched viewport width, and no console errors or runtime exceptions were captured.
-- Mount contract check: command dispatch reached `onCommand`; `setState` showed and cleared the ready state; `destroy` removed the mounted view.
+The cached server model includes underlay unicast routes for device and RS service identities, eBGP AS paths over physical sessions, VPC-scoped EVPN Type-5 and selected customer unicast routes, transparent route-server advertisements, NVE forwarding views, deterministic ECMP packet paths, and physical BGP control paths. The browser supports per-speaker/session/route inspectors and on-demand route detail loading, independent topology layers, visual RS clustering, count rebuilds, YAML export, route-announcement playback, and data/control packet playback.
+
+Large route tables and per-peer advertisements are served on demand through `/api/inspector`; `/api/model` returns the compact topology and scenario data. The capped compact model response measured 1,650,277 JSON bytes for 128 physical devices, 432 cables, 88 VMs, and 1,040 sessions. This is a serialized-size measurement, not browser timing.
+
+## Earlier baseline validation
+
+- `GOCACHE=/tmp/topology-vis-go-cache go test ./...` — passed.
+- `GOCACHE=/tmp/topology-vis-go-cache go vet ./...` — passed.
+- `GOCACHE=/tmp/topology-vis-go-cache go build -o /tmp/sev1-topology-vis-site .` — passed.
+- `GOCACHE=/tmp/topology-vis-go-cache go build -o /tmp/dc-topology ./topology-vis/cmd/dc-topology` — passed.
+- `GOCACHE=/tmp/topology-vis-go-cache go test -race ./topology-vis/internal/dctopology` — passed.
+- `GOCACHE=/tmp/topology-vis-go-cache go test -race ./internal/live ./internal/web` — passed.
+- Node syntax checks for `app.js` and `dev.js` — passed.
+- `git diff --check` — passed. The whitespace scan found only two pre-existing trailing spaces in the unchanged `TODO.md`.
+- Browser rendering/interactions remain unverified: no browser automation runtime is available in this session, and the local server bind was denied by the sandbox.
 
 ## Next action
 
-Resolve the D02 and D05 routing/session choices that govern the YAML contract before implementing Step 02. D08 remains a dependency for route-table and traffic behavior; D10 is required before site integration in Step 12.
+When asked to execute, follow R00–R06 in the revised plan: commit the existing baseline if Git metadata is writable, then redesign the JavaScript workspace, move inspectors into popups, add bounded dragging, simplify expected-table computation, and replace announcement playback with the optional illustrative switch. Verify and commit each working increment. Integrate `/topologie/dc/` when parent source paths are writable and run desktop/narrow browser acceptance when a browser is available. Do not treat the earlier simulation/playback UI as the requested final design.

@@ -1,43 +1,64 @@
 # DC topology visualizer
 
-The visualizer is being developed independently inside the `sev1` repository.
-Its development entry point serves the same browser assets that the site will
-embed after integration.
+The descriptions below cover the current implementation baseline. The requested
+2026-09-30 redesign is planned in [LUNA_GUIDE.md](LUNA_GUIDE.md),
+[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md), and [DECISIONS.md](DECISIONS.md):
+a topology-first JavaScript workspace, popup inspection, small device drag
+adjustments, initial expected route tables, and optional illustrative route flow.
+That rework has not been implemented by this documentation update.
 
-From the `sev1` repository root:
+The visualizer is an independent development harness for the `sev1` site. From
+the repository root, start it with:
 
 ```sh
-go run ./cmd/dc-topology             # http://localhost:8082
-go run ./cmd/dc-topology -addr :8083 # alternate port
-go test ./...
-go build -o /tmp/dc-topology ./cmd/dc-topology
-go vet ./...
-node --input-type=module --check < web/static/dc-topology/app.js
-node --input-type=module --check < web/static/dc-topology/dev.js
+go run ./topology-vis/cmd/dc-topology
 ```
 
-Code layout: `cmd/dc-topology/` is the isolated harness; the planned Go model,
-YAML validator, and simulator live in `internal/dctopology/` with tests beside
-them; YAML examples and fixtures live in `topology-vis/examples/`; and the
-reusable browser modules live in `web/static/dc-topology/`. Site route and
-template wiring stays in `internal/web/` and `web/templates/` for Step 12.
-The project uses Go 1.22.3 and its existing `gopkg.in/yaml.v3` dependency;
-the browser side has no package manager or added runtime dependency.
+It listens on `http://127.0.0.1:8084`. Use `-addr 127.0.0.1:8085` to choose
+another address. The harness loads `topology-vis/examples/default.yaml` and
+serves the browser modules from `topology-vis/web/static/dc-topology/`.
 
-The Go domain layer will own YAML loading, the canonical network, deterministic
-simulation state, and route/traffic results. Browser modules under
-`web/static/dc-topology/` render that state and keep presentation choices such
-as selection, collapsed clusters, and visible layers. The ES module exports
-`mountTopologyApp(root, { onCommand })`; it returns `send`, `setState`, and
-`destroy` methods. The site adapter will connect commands and state to Go and
-call `destroy` when its page or htmx fragment is removed.
+The Go package in `topology-vis/internal/dctopology/` validates schema v1 YAML
+and builds the canonical topology, VM placements, BGP sessions, route state,
+forwarding entries, and deterministic traffic paths. The browser module exports
+`mountTopologyApp(root, { onCommand })`, returns `send`, `setState`, and
+`destroy`, and keeps display choices out of the model. There is no added
+frontend package manager or runtime dependency.
 
-The current shell has no YAML loader or simulation endpoint yet. Step 02 will
-define those contracts after the remaining route-policy and session-family
-decisions are resolved.
+The default fixture has 28 physical devices, eight hosts, 60 cables, 16 route
+server VMs, three customer VMs, and 160 BGP sessions. The simulator models
+physical underlay BGP, EVPN Type 5, VXLAN, isolated VPC route targets, selected
+customer IPv4/IPv6 unicast peering, underlay ECMP, data flows, and physical
+paths for BGP control traffic. Route advertisements and packet movement have
+separate playback. Count controls rebuild the model; YAML export preserves the
+active configuration. Reducing the customer VM count removes overrides, peer
+selections, and traffic examples that refer to deleted VMs. Fabric links and BGP sessions can be shown independently,
+and collapsing route-server clusters changes only their drawing.
 
-The browser syntax commands above do not exercise rendering. For a browser
-smoke check, run the harness, open `http://localhost:8082/`, and inspect the
-empty state at a desktop and narrow viewport. Check that the page has no
-horizontal overflow or console errors. Go tests and builds do not validate
-browser behavior.
+Use these commands for checks:
+
+```sh
+GOCACHE=/tmp/topology-vis-go-cache go test ./topology-vis/...
+GOCACHE=/tmp/topology-vis-go-cache go test ./...
+GOCACHE=/tmp/topology-vis-go-cache go vet ./...
+GOCACHE=/tmp/topology-vis-go-cache go build -o /tmp/dc-topology ./topology-vis/cmd/dc-topology
+node --input-type=module --check < topology-vis/web/static/dc-topology/app.js
+node --input-type=module --check < topology-vis/web/static/dc-topology/dev.js
+```
+
+The capped model's compact `/api/model` response measured 1,650,277 JSON bytes
+on 2026-09-30 (128 physical devices, 432 cables, 88 VMs, and 1,040 sessions).
+Detailed speaker tables, forwarding entries, session announcements, and a
+selected route's propagation are loaded through `/api/inspector` when needed.
+This is a serialized-size check, not a browser responsiveness measurement.
+
+The browser module is ready for a site adapter. Step 12 still needs to mount it
+at `/topologie/dc/` and add navigation while preserving the existing topology
+pages. The current workspace grants write access only under `topology-vis/`, so
+the reusable implementation remains nested here until the parent `internal/`,
+`web/`, and `cmd/` paths are writable. The site integration has not been
+verified.
+
+Automated syntax checks do not exercise browser rendering. A browser smoke test
+at desktop and narrow widths, including selection, layer toggles, route and
+packet playback, count rebuilds, and export/reload, remains outstanding.

@@ -1,18 +1,36 @@
 # DC topology visualizer: implementation plan for GPT-Luna
 
-Status: **Step 01 implemented and verified; remaining steps are pending with explicit decision dependencies**. Read [DECISIONS.md](DECISIONS.md) before choosing behavior and follow the repeated development/verification/commit loop in [LUNA_GUIDE.md](LUNA_GUIDE.md).
+Status on 2026-09-30: **The existing isolated implementation is a baseline, not completion of the new design. The user requested a substantial frontend rework, popup inspection, bounded device dragging, initial expected-table calculation, and optional illustrative route flow. This revision updates instructions and plans only; the rework has not been implemented.** Earlier automated checks passed; browser acceptance and parent-site integration remain open. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
+
+## Current rework contract and execution order
+
+The latest user request supersedes prior BGP simulation/event-playback requirements and the htmx convention for this feature. Build an engaging JavaScript topology workspace, inspect entities in a popup over that workspace, compute expected route tables on initial load/rebuild, and make route flow a decorative, independently switched illustration. Devices support small visual position adjustments by dragging. Keep confirmed network semantics and YAML configuration intact. The user authorizes reasonable assumptions and autonomous execution; no framework or new build system is required by “dynamic JS”.
+
+Execute these milestones before treating the older steps below as complete under the revised scope:
+
+| Milestone | Work | Acceptance and suggested commit |
+| --- | --- | --- |
+| R00 — Preserve baseline | Inspect status and staged changes; commit the existing implementation before redesign. If Git metadata is read-only, record the exact blocker and continue writable work. | Scoped staged diff; actual commit hash recorded. `feat(topology): add configured DC visualizer baseline` |
+| R01 — JavaScript workspace | Recompose the UI around a dominant topology canvas, compact toolbar, role-based visual hierarchy, and a configuration drawer/dialog. Keep local assets, Polish copy, loading/error states, and responsive layout. No htmx visualizer interactions. | Inspect 1280×900 and 390×844; exercise controls and check console errors. `feat(topology): redesign JavaScript topology workspace` |
+| R02 — Popup inspection | Move device/host/VM/link/session/cluster and route details into one overlay on the topology. Preserve on-demand data loading, tables, and selection highlights. Include close/Escape, focus restoration, and narrow-screen sheet behavior. | Topology stays visible; rapid selection never shows stale details; popup loading/errors and keyboard dismissal work. `feat(topology): inspect entities over the topology` |
+| R03 — Bounded dragging | Add pointer dragging with a threshold that distinguishes clicks, bounded view offsets, edge tracking, touch/cancel handling, reset layout, and keyboard equivalents. | Drag then inspect; move connected endpoints; verify model and export are unchanged; check zoom, clustering, hidden layers, rebuild cleanup, and teardown. `feat(topology): add bounded device dragging` |
+| R04 — Expected tables | Audit and simplify route computation/API/UI to initial expected snapshots. Reuse correct static calculations; remove convergence/event machinery and UI controls whose only purpose is simulated learning. Calculate on load/rebuild, serve cached expected data during inspection. | Hand-authored route fixtures, deterministic repeated loads, VPC isolation, and atomic invalid-config rejection pass. No animation changes tables. `refactor(topology): calculate expected route snapshots` |
+| R05 — Optional illustrative flow | Replace route-announcement playback with a dedicated switch, off initially. A fixed sequence projected onto valid current sessions is sufficient; mark it illustrative and respect reduced motion. Retain useful data/control traffic examples without building a protocol simulator. | Toggle off stops/clears animation; only actual connections are used; missing endpoints are handled; drag/collapse/layer changes update or suppress paths; tables never change. `feat(topology): add optional illustrative route flow` |
+| R06 — Verify and integrate | Finish browser acceptance, docs, and `/topologie/dc/` integration when parent paths are writable. Preserve existing site routes and behavior. | Required Go/JS checks and desktop/narrow walkthrough; record actual scale measurements and outstanding blockers. `feat(topology): integrate redesigned DC explorer` |
+
+The 48-layout-unit drag bound, ephemeral offsets, popup behavior, and illustrative-flow defaults are specified in the guide and D11. These are authorized defaults that may be refined during usability checks. Do not implement the redesign during an instructions-only task.
 
 ## Intended outcome and evidence
 
-The user wants a browser-based, dynamic, clickable view of a DC's physical network, hosts, customer and infrastructure VMs, BGP peerings, advertised routes, route tables, and traffic. YAML must describe/configure the model. Work must proceed in steps with a working commit after each verified increment. On 2026-09-29 the user confirmed independent development followed by integration into `sev1`, and a deterministic simulation configured in YAML.
+The user wants a browser-based, dynamic, clickable view of a DC's physical network, hosts, customer and infrastructure VMs, BGP peerings, advertised routes, route tables, and traffic. YAML must describe/configure the model. Work must proceed in steps with a working commit after each verified increment. Independent development followed by integration into `sev1` remains approved. The latest request replaces protocol simulation with deterministic initial expected-table calculation from YAML.
 
 The user's smaller default scenario supersedes the TODO's original four-border/four-stem/four-leaf/eight-spine example. The defaults and delegated modest limits are listed below. Two ToRs per rack and four members per RS cluster remain: four RS User VMs per DC, four RS Ctrl VMs per DC, and four RS Bolt VMs per bolt. Spine, bolt, rack, host, and VM controls are requested. Use distinct configuration names such as `spine_count` and `hosts_per_rack` instead of the repeated `S` labels in TODO.
 
-The [original TODO](TODO.md) remains unchanged. Later answers establish single cables and full mesh between adjacent fabric tiers (leaf–ToR stays within its bolt), dual-ToR host attachment, and the full-member RS hierarchy. YAML-selected customer VMs peer with all four RS User members and exchange IPv4/IPv6 routes. Every border peers with all four RS Ctrl members and exchanges IPv4/IPv6/EVPN routes. Each fabric-switch adjacency carries eBGP. These route families are separate from session transport. The user delegated a fictional address scheme to the agent to avoid exposing production addressing. Other omissions remain questions in `DECISIONS.md`.
+The [original TODO](TODO.md) remains unchanged. Later answers establish single cables and full mesh between adjacent fabric tiers (leaf–ToR stays within its bolt), dual-ToR host attachment, and the full-member RS hierarchy. YAML-selected customer VMs peer with all four RS User members and exchange IPv4/IPv6 routes. Every border peers with all four RS Ctrl members and exchanges IPv4/IPv6/EVPN Type-5 routes. Each fabric-switch adjacency carries eBGP. These route families are separate from session transport. D02/D05 are approved; D04/D06/D08/D10 defaults are documented as agent-selected under the user's authorization in `DECISIONS.md`.
 
-Confirmed simulation scope is **EVPN Type 5, VXLAN, VPCs, and underlay ECMP**. Withdrawals are deferred. Both customer and RS VM placements may be explicit in YAML; omitted placements use deterministic round-robin across hosts, spreading members of each RS cluster across different hosts where possible. V counts customer VMs only.
+Expected-table and forwarding context includes **EVPN Type 5, VXLAN, VPCs, and underlay ECMP**. BGP convergence, timed updates, and withdrawals are outside the revised scope. Both customer and RS VM placements may be explicit in YAML; omitted placements use deterministic round-robin across hosts, spreading members of each RS cluster across different hosts where possible. V counts customer VMs only.
 
-Count controls rebuild the simulated topology, and the result must be exportable as YAML. RS cluster collapse is visual only: show one aggregate icon without changing the underlying network. BGP-session and physical-link visibility are independent switches. When clustering and “show infra VMs on actual hosts” are both enabled, place the aggregate icon on the first member's host.
+Count controls rebuild the configured topology and expected tables, and the result must be exportable as YAML. RS cluster collapse is visual only: show one aggregate icon without changing the underlying network. BGP-session and physical-link visibility are independent switches. When clustering and “show infra VMs on actual hosts” are both enabled, place the aggregate icon on the first member's host.
 
 ## Default scenario and initial limits
 
@@ -38,7 +56,7 @@ Host IDs are unique within each bolt and labels use the existing three-digit suf
 
 ## Relevant existing code
 
-At planning time, `topology-vis/` has no application code. It is a subdirectory of the Go lecture-site repository. Develop the new feature in isolation while keeping this eventual integration map:
+The first plan preceded application code; the current baseline now lives in `topology-vis/cmd/`, `topology-vis/internal/dctopology/`, and `topology-vis/web/static/dc-topology/`. It is a subdirectory of the Go lecture-site repository. Develop the new feature in isolation while keeping this eventual integration map:
 
 | Responsibility | Existing location relative to the Git root | Implication |
 | --- | --- | --- |
@@ -51,7 +69,7 @@ At planning time, `topology-vis/` has no application code. It is a subdirectory 
 
 The current model allocates IPv4 /31 physical links and finds only direct/two-hop sample paths. It does not supply IPv6 DC addressing, VM placement, an RS hierarchy, or BGP route computation. Do not treat its displayed sample route as an existing BGP simulator. The new hierarchy needs longer paths and independently modeled sessions.
 
-Step 01 establishes a dedicated development entry point, reusable modules, and the data/mounting contract for the site. Keep the current topology feature working throughout; integrate the new visualizer in Step 12. Independent development does not require a new framework, build system, or repository. Honor the existing Go/domain, web/presentation, local-assets, and Polish UI conventions; discuss any necessary departure before adopting it.
+Step 01 establishes a dedicated development entry point, reusable modules, and the data/mounting contract for the site. Keep the current topology feature working throughout; integrate the new visualizer in Step 12. Independent development does not require a new framework, build system, or repository. Honor the existing Go/domain, web/presentation, local-assets, and Polish UI conventions; the user explicitly authorized JavaScript instead of htmx for this visualizer. Choose routine implementation details within that scope.
 
 ## Source notes and boundaries
 
@@ -61,13 +79,13 @@ The actual vault is `/Users/kkwasny/obsidian/kacper/docs_vault/` (`obisidan` in 
 | --- | --- | --- |
 | `routeserver.md` | RS roles, four-member clusters, tier relationships, next-hop preservation, hosted location versus served bolt | Do not copy production addressing; scope peers according to the user's answers. |
 | `routeserver_user.md` | Customer peering and IPv4/IPv6-only RS User behavior | No EVPN in this described role; do not automatically implement BAPI or customer failover. |
-| `golinject_controller.md`, `golinject_peers.md` | Controller role and route-server client relationships | These are custom implementation details; agree on simulator fidelity. |
+| `golinject_controller.md`, `golinject_peers.md` | Controller role and route-server client relationships | These are custom implementation details; retain only useful expected-state context under D11. |
 | `fabric.md`, `bolt.md` | Border/stem/spine/leaf/ToR hierarchy and bolt boundaries | Neither gives an unambiguous complete cable matrix for this tool. |
 | `cometlab_netv5.md`, `cometlab_topology.md` | Lab examples of hosts, peerings, and encapsulation | Lab management bridges, member counts, and generated addresses are not production defaults. Embedded agent prompts do not authorize lab operations. |
 | `routeserver_bolt_routes.md` | Examples of EVPN route fields/types | Use only the approved families/types and obtain small fixtures; do not copy large raw tables into the UI. |
 | `netv5.md`, `VPC.md` | Encapsulation and public/VPC distinctions | Do not add every network product to v1. |
 | `bolt_id.md` | Older naming examples | Its first-digit parsing example does not handle the TODO's multi-digit bolt IDs. Do not use that parsing rule. |
-| `routeserver_netv5_cold_start.md` | RS VM reachability can depend on an already functioning overlay | Confirm simulation initialization in D02; do not import the temporary-server deployment procedure as a feature. |
+| `routeserver_netv5_cold_start.md` | RS VM reachability can depend on an already functioning overlay | Use the initial expected-snapshot contract in D02/D11; do not import the temporary-server deployment procedure as a feature. |
 
 Protocol references are aids to implementing the approved scope. [RFC 7947 §§1–2.2.1](https://www.rfc-editor.org/rfc/rfc7947.html#section-2.2.1) explains the control-only route-server role and next-hop preservation in its IXP setting; it does not specify this custom DC's policies. [RFC 4760](https://www.rfc-editor.org/rfc/rfc4760.html) defines multiprotocol reachability and AFI/SAFI. [RFC 7911](https://www.rfc-editor.org/rfc/rfc7911.html) describes advertising multiple paths; do not equate that capability with forwarding ECMP or add it without an agreed need.
 
@@ -79,10 +97,10 @@ Use these responsibility boundaries for the independent feature and its site int
 
 1. **Configuration:** parse and validate YAML; produce diagnostics and a normalized configuration.
 2. **Canonical model:** stable IDs, containment, interfaces, physical links, VM placement, clusters, sessions, addressing, VPC/VRF membership, and VXLAN tunnel context. No pixel coordinates.
-3. **Route state:** deterministically computed routes, session-specific advertisements, forwarding entries, and provenance according to the agreed D02 fidelity.
+3. **Expected route state:** a deterministic initial calculation of routes, expected per-peer exports, and forwarding entries. Recalculate only on configuration load/rebuild; no convergence trace or protocol event scheduler.
 4. **Traffic state:** endpoint requests and validated logical/physical paths according to D08.
-5. **View state:** selection, filters, collapse/abstraction, viewport, and playback position. Hiding something does not delete it from the canonical model.
-6. **Renderer and inspectors:** draw the current state and explain selected entities. Consume domain results; do not invent route decisions.
+5. **View state:** selection, inspector overlay, filters, collapse/abstraction, viewport, bounded drag offsets, and illustrative-flow switch/clock. View interactions do not change canonical model or expected tables.
+6. **Renderer and popup inspectors:** draw the current state, keep edges attached to adjusted endpoints, and explain selected entities over the topology. Decorative flow may use a curated sequence of actual connections; it does not decide routes.
 
 Suggested YAML areas are `schema_version`, topology counts/rules, addressing rules or explicit addresses, VM/RS placement and fallback rules, VPC/VRF definitions and VM attachments, VXLAN endpoints/VNIs, BGP sessions/capabilities/policies, route/scenario data, and initial view settings. Define RD/RT data according to the selected Type 5 import/export model. Select actual key names and required fields in Step 02. Do not turn unresolved values into a supposedly runnable example. Do not require YAML to enumerate values that are deterministically derived from its declared rules.
 
@@ -110,9 +128,9 @@ Unnumbered sessions use modeled link-local endpoints plus explicit interface IDs
 
 ## Step 00 — Resolve the contract
 
-**Dependencies:** user answers. D01 and D02's data mode are answered. Resolve D02's fidelity and D04–D10 before their dependent steps. No application behavior that depends on an unanswered question is authorized.
+**Dependencies:** user answers or expressly authorized agent-selected defaults. D01/D02/D05 and D04/D06/D07/D08/D09/D10/D11 are now answered or resolved as documented in `DECISIONS.md`; no unresolved decision blocks Steps 02–11.
 
-**Develop:** write the agreed application boundary, data mode, initial scenarios, address/peering/cabling rules, control semantics, default/maximum scale, and delivery requirements into `DECISIONS.md`. Mark each remaining subquestion pending. Produce a small hand-checkable topology specification with the user-approved rules and expected counts/relationships. Record an explicit v1 scope and exclusions only after the user defines them.
+**Develop:** write the agreed application boundary, data mode, initial scenarios, address/peering/cabling rules, control semantics, default/maximum scale, and delivery requirements into `DECISIONS.md`. Mark each remaining subquestion pending. Produce a small hand-checkable topology specification with the user-approved rules and expected counts/relationships. Use the latest D11 scope and record routine defaults under the user’s authorization.
 
 **Verify/fix:** compare the contract against every TODO requirement and each conflicting vault note. Ensure each behavioral choice is answered or visibly blocked. A diagram without exact edge membership is insufficient to resolve D04/D05. Do not require answers about excluded features.
 
@@ -120,9 +138,9 @@ Unnumbered sessions use modeled link-local endpoints plus explicit interface IDs
 
 ## Step 01 — Establish a runnable shell and checks
 
-**Dependencies:** confirmed D01; an implementation approach consistent with the existing project conventions. D10's final public route can remain pending during isolated development.
+**Dependencies:** confirmed D01; an implementation approach consistent with the existing project conventions. D10's `/topologie/dc/` route is selected for eventual integration.
 
-**Develop:** create the smallest isolated development page/entry point, a clear empty state, and documented run/build/test commands. Define the reusable module's initialization, configuration loading, event/control boundary, and cleanup so it can mount in `sev1` without a rewrite. Go owns canonical configuration and simulation state; browser ES modules render state and send commands through an adapter. Keep the source and tests under the existing Go repository and browser assets under `web/static/dc-topology/`; do not add a Node build stack. The harness is `go run ./cmd/dc-topology`, and the eventual site adapter mounts `mountTopologyApp(root, { onCommand })`, delivers state with `setState`, and calls `destroy` when removed. Preserve the existing lecture entry page and topology examples.
+**Develop:** create the smallest isolated development page/entry point, a clear empty state, and documented run/build/test commands. Define the reusable module's initialization, configuration loading, event/control boundary, and cleanup so it can mount in `sev1` without a rewrite. Go owns canonical configuration and expected route state; browser ES modules render state and send commands through an adapter. Keep the source and tests under the existing Go repository and browser assets under `web/static/dc-topology/`; do not add a Node build stack. From the Git root, the current harness is `go run ./topology-vis/cmd/dc-topology`, and the eventual site adapter mounts `mountTopologyApp(root, { onCommand })`, delivers state with `setState`, and calls `destroy` when removed. Preserve the existing lecture entry page and topology examples.
 
 **Verify/fix:** run the app from documented commands; open it in a browser at desktop and narrow widths; check console errors and build output. Run existing integration tests if parent application code/templates change. Establish a meaningful smoke check for loading the application.
 
@@ -142,7 +160,7 @@ Unnumbered sessions use modeled link-local endpoints plus explicit interface IDs
 
 **Dependencies:** Step 02; D04/D06 confirmed.
 
-**Develop:** create borders, stems, spines, bolts, leaves, racks, ToRs, hosts, interfaces, and physical links from the approved rules. Generate addresses and host labels with the agreed numeric encoding. Draw a first readable tiered physical view with pan/zoom or an equivalent navigation method appropriate to the chosen renderer. Keep bolts/racks as groups, not fictitious forwarding devices.
+**Develop:** create borders, stems, spines, bolts, leaves, racks, ToRs, hosts, interfaces, and physical links from the approved rules. Generate addresses and host labels with the agreed numeric encoding. Draw a polished topology-first JavaScript view with readable tiers, compact controls, and pan/zoom or an equivalent navigation method. Add bounded visual dragging per R03; keep edges attached during movement. Keep bolts/racks as groups, not fictitious forwarding devices.
 
 **Verify/fix:** check `leaf_count = leaves_per_bolt × bolts`, `rack_count = bolts × racks_per_bolt`, `tor_count = 2 × rack_count`, and `host_count = rack_count × hosts_per_rack`. With N borders, M stems, P spines, B bolts, L leaves per bolt, R racks per bolt, and H hosts per rack, the cable counts are border–stem `NM`, stem–spine `MP`, spine–leaf `PBL`, leaf–ToR `2BLR`, and ToR–host `2BRH`, totaling `NM + MP + PBL + 2BLR + 2BRH`. Check 60 cables for the default and 432 for all maximums. Independently check actual edge memberships, not only totals. Check endpoint/port existence, ID/address uniqueness, and label functions for bolt 2/host 3, bolt 13/host 45, and bolt 20/host 999. The latter are unit cases, not whole-DC size requirements. Test invalid/overflow input and a path longer than two physical hops. Inspect the actual drawing at two viewport widths.
 
@@ -162,7 +180,7 @@ Unnumbered sessions use modeled link-local endpoints plus explicit interface IDs
 
 **Dependencies:** Step 04; D05 plus ASN/transport/address rules confirmed.
 
-**Develop:** generate sessions independently of physical cables. Include endpoint identities/interfaces, transport addresses or interface-scoped unnumbered endpoints, local/remote ASNs, negotiated AFI/SAFI, and the agreed session state. Distinguish configured peers from established sessions; do not report operational reachability that Step 07 has not computed or initialized under the agreed simulation contract. Draw BGP sessions as an independently toggleable layer. Add basic host, VM, physical-link, and session inspectors; display pending route sections accurately until Step 07 provides data.
+**Develop:** generate sessions independently of physical cables. Include endpoint identities/interfaces, transport addresses or interface-scoped unnumbered endpoints, local/remote ASNs, negotiated AFI/SAFI, and the agreed session state. Distinguish configured peers from established sessions; do not report operational reachability that Step 07 has not computed or initialized under the expected-snapshot contract. Draw BGP sessions as an independently toggleable layer. Add host, VM, physical-link, and session inspectors as a popup over the topology per R02; display pending route sections accurately until Step 07 provides data. Do not place an inspector above the graph.
 
 **Verify/fix:** compare the exact session set with a manually specified expected matrix. The confirmed full-member matrix requires `4 × hosts` host–RS Bolt sessions, `16 × bolts` RS Bolt–RS Ctrl sessions, 16 RS Ctrl–RS User sessions, and `4 × borders` border–RS Ctrl sessions; count each bidirectional session once. Dual-ToR attachment requires `2 × hosts` host–ToR sessions. C YAML-selected customer VMs produce `4C` customer–RS User sessions; unselected VMs produce none. Fabric-switch sessions total `NM + MP + PBL + 2BLR` under the Step 03 notation. The default has `148 + 4C` total sessions; all maximums with 64 selected customer VMs have 1,040. Check there are no accidental intra-cluster sessions, no EVPN on RS User in the approved role, and no assumption that IPv6 transport limits advertised families to IPv6. Click both physical and logical edges where they overlap.
 
@@ -178,29 +196,27 @@ Unnumbered sessions use modeled link-local endpoints plus explicit interface IDs
 
 **Commit:** `feat(topology): add layer filters and route-server view modes`.
 
-## Step 07 — Supply route state and complete table inspectors
+## Step 07 — Calculate expected route tables and complete popup inspectors
 
-**Dependencies:** Step 05; D02/D05/D08 confirmed. Step 06 is not required for engine work.
+**Dependencies:** Step 05; D02 as revised by D11, D05/D08. Maps to R04 and R02.
 
-**Develop:** implement only the agreed route origination, acceptance, selection, next-hop handling, import/export, and forwarding-table rules. Keep separate route candidates, selected routes, per-peer advertised routes, and installed forwarding entries where the contract needs them. Define deterministic event ordering and a convergence/loop guard. Transparent RS relaying must not be implemented as a generic shortest-path algorithm or rely on an invented AS-path prepend to stop loops. Honor the agreed initialization and session-reachability model so overlay routes are not used to silently justify their own prerequisite RS connectivity. Store a repeatable event trace and use the same engine for inspection and playback.
+**Develop:** calculate a deterministic expected snapshot when loading/rebuilding valid YAML. Use topology, origins, VPC policy, next-hop resolution, and the documented route-selection profile to produce useful expected speaker tables, expected peer exports, and forwarding views. Reuse existing static calculations where correct; do not build a BGP state machine, update queue, convergence guard, timed learning sequence, or event trace for playback. Keep large details on demand and cache the initial result rather than recomputing on clicks or animation frames.
 
-Model EVPN Type 5 prefix advertisements with their route identity, import/export context, and selected next-hop/VXLAN resolution data. Keep each VPC's forwarding state separate; the same prefix in different VPCs must not overwrite or leak into another routing context. Preserve eligible underlay ECMP next-hop sets. Do not implement route withdrawals in v1; scenario rebuilds must reconstruct valid state without pretending to emit withdrawal events.
+Keep EVPN Type-5 identity and VPC import context distinct, retain underlay ECMP information, and preserve transparent RS next hops/AS paths. Label tables as expected state. Complete table filters and empty states in the inspector overlay; do not claim to display live router or guest OS tables.
 
-Complete the host/VM route-table inspectors and session advertised/received route views with the agreed fields, filters, and empty states. Expose the VPC/VRF context, Type 5 route information, VXLAN endpoint/VNI, and underlay ECMP next hops where relevant. A prefix string alone is not a sufficient key for EVPN route identity. Do not assume a guest VM's forwarding table is identical to its host's BGP table.
+**Verify/fix:** compare against small independent expected tables and exports, including origin, family, recipient, next hop, VPC, and selected/installed status where relevant. Test VPC isolation with overlapping prefixes, family filtering, unreachable next hops, redundant RS paths, and deterministic repeated load/rebuild. Verify a view toggle, drag, inspector selection, or decorative animation cannot alter the snapshot. Protocol convergence and repeated update-event tests are not acceptance requirements.
 
-**Verify/fix:** use small, independently authored expected tables and advertisements, including origin, receiving peer, family, next hop, selected/installed status, and policy outcome as applicable. Test duplicate receipt via redundant members, forbidden family export, unreachable next hop, and repeated identical updates. Test Type 5 route propagation, VPC import isolation with overlapping prefixes, and multiple eligible underlay next hops. Ensure RS propagation preserves the agreed original forwarding next hop. Repeated runs with the same configuration and actions must produce the same route state and event trace. Assert bounded convergence and explicit diagnostics if the guard is reached. Withdrawal/reconvergence tests are not required for this version.
+**Commit:** `refactor(topology): calculate expected route snapshots`.
 
-**Commit:** `feat(topology): provide route state and host VM session tables`. Split the engine and inspector into separate verified commits if needed.
+## Step 08 — Optional illustrative route flow
 
-## Step 08 — Visualize route advertisements
+**Dependencies:** Steps 05–07; maps to R05.
 
-**Dependencies:** Steps 06–07.
+**Develop:** add a dedicated route-flow switch, disabled initially. Use a small fixed, illustrative sequence that follows actual BGP relationships and can project onto current entity/session IDs. It may be hardcoded as presentation logic; do not require a simulator trace or per-peer event engine. Selecting a route may highlight a relevant illustrative path where supported. Describe the visual in Polish as illustrative, not measured convergence or actual route learning. Remove obsolete convergence play/pause/step/speed controls.
 
-**Develop:** connect simulator advertisement events to directional animation on the correct BGP sessions. Selecting a route should explain its origin and its propagation to each recipient. Add play, pause, single-step, speed, and reset controls for the deterministic event trace. Mark route advertisements differently from data packets using labels/line treatment as well as color.
+**Verify/fix:** switch on/off repeatedly; off stops animation and removes markers. Validate endpoint/session existence and family compatibility for each active example; skip incompatible scenarios. Verify drag/zoom/cluster projection, hidden BGP layer behavior, model rebuild, reduced motion, and teardown. Tables remain unchanged and fully usable with route flow disabled.
 
-**Verify/fix:** compare each visible propagation step with the source event and inspector state. No event may travel over a nonexistent session or unsupported family. Check branching propagation, pause/resume/reset, repeated playback, selected-route filtering, and cluster presentation. A paused or reduced-motion display must still communicate direction and event meaning. Do not present playback speed as measured network convergence time.
-
-**Commit:** `feat(topology): animate and explain route advertisements`.
+**Commit:** `feat(topology): add optional illustrative route flow`.
 
 ## Step 09 — Determine traffic paths
 
@@ -212,23 +228,23 @@ Complete the host/VM route-table inspectors and session advertised/received rout
 
 **Commit:** `feat(topology): resolve VM and control-traffic paths`.
 
-## Step 10 — Animate data and control traffic
+## Step 10 — Retain lightweight data/control traffic illustration
 
-**Dependencies:** Steps 06, 08, and 09.
+**Dependencies:** Steps 06 and 09. Route-flow animation in Step 08 is independently optional.
 
-**Develop:** animate flows along the resolved links/session paths using a shared clock and bounded rendering work. Show source/destination, direction, traffic kind, and the selected underlay/overlay relationship. Keep packet movement distinct from route learning. Allow the agreed playback/flow selection while preserving inspector and viewport state.
+**Develop:** retain useful VM and control-traffic examples from the baseline, using the resolved physical paths. Keep route-flow graphics visually distinct from packet paths. Reuse a bounded animation clock where needed; the latest user request does not require a general playback engine, convergence controls, or additional traffic scenarios. Preserve popup usability and view offsets during illustration.
 
-**Verify/fix:** compare animated hops with the textual path and event sequence. Check both directions, pause/resume, speed changes, restart, toggling layers during playback, and local delivery with no fabric transit. Show the VXLAN inner/outer path relationship and the selected underlay ECMP path without animating one flow as if it were duplicated onto every alternative. Hidden links must not cause packets to jump onto unrelated visible links. Check that route and traffic animations can coexist without hiding their meaning. Respect reduced-motion preferences and check for leaked animation loops after reload/reset.
+**Verify/fix:** visible hops match valid links and textual paths; local delivery does not invent fabric transit. Check hiding layers, moving endpoints, rebuilding the configuration, reduced motion, and cleanup. Traffic addressed to an RS is valid, but customer data never uses an RS as transit. Decorative animation must not mutate expected tables.
 
-**Commit:** `feat(topology): animate VM and BGP control traffic`.
+**Commit:** `refactor(topology): simplify traffic illustration controls` if a separate increment is needed.
 
 ## Step 11 — Rebuild from count controls and export YAML
 
 **Dependencies:** Steps 02–10; D06/D07/D09 confirmed.
 
-**Develop:** expose separate controls for spines, bolts, racks per bolt, hosts per rack, and the agreed VM count. Each accepted count change rebuilds the topology and consistently recomputes simulation state. Apply the new model as one coherent update, clear stale events/references, and retain only compatible view selections. Do not emit unsupported withdrawal events. Provide YAML export of the effective configuration so loading it reproduces the current model, explicit placements, fallback behavior, VPCs, sessions, and policies. Keep RS collapse as a separate visual operation; exporting while collapsed must preserve every actual member and session. Additional upload or in-browser editing features are outside this increment unless separately requested.
+**Develop:** expose separate controls for spines, bolts, racks per bolt, hosts per rack, and the agreed VM count. Each accepted count change rebuilds the topology and consistently recomputes expected route and forwarding state. Apply the new model as one coherent update, clear stale flow markers, drag offsets, and selection references, and retain only compatible view selections. Do not emit unsupported withdrawal events. Provide YAML export of the effective configuration so loading it reproduces the current model, explicit placements, fallback behavior, VPCs, sessions, and policies. Keep RS collapse as a separate visual operation; exporting while collapsed must preserve every actual member and session. Additional upload or in-browser editing features are outside this increment unless separately requested.
 
-**Verify/fix:** change each control individually, then in combination. Check resulting node/link/session/VM counts, placement, VPC state, route state, and stale selection/event cleanup. Test minimum/maximum and rejected values; ensure rejection preserves valid state. Export then reload and compare normalized semantics and deterministic simulation results, not just text formatting. Test export in expanded and collapsed RS modes; the actual network must be identical. Confirm a count change rebuilds the model, while a cluster-visibility toggle does not.
+**Verify/fix:** change each control individually, then in combination. Check resulting node/link/session/VM counts, placement, VPC state, route state, and stale selection/illustration cleanup. Test minimum/maximum and rejected values; ensure rejection preserves valid state. Export then reload and compare normalized semantics and deterministic expected-table results, not just text formatting. Test export in expanded and collapsed RS modes; the actual network must be identical. Confirm a count change rebuilds the model, while a cluster-visibility toggle does not.
 
 **Commit:** `feat(topology): rebuild topology from controls and export YAML`.
 
@@ -236,15 +252,15 @@ Complete the host/VM route-table inspectors and session advertised/received rout
 
 **Dependencies:** Steps 01–11; D10 entry point/delivery answered.
 
-**Develop:** mount the existing feature modules in the agreed site route/template, connect YAML loading and initial state, and add the agreed navigation. Reuse the tested engine and renderer. Apply site typography, colors, and Polish copy without rewriting the model. Package browser assets under embedded `web/`; account for disk-based content and the `-content` path. Preserve existing topology pages and lecture behavior unless the user explicitly requested a replacement.
+**Develop:** mount the existing feature modules in the agreed site route/template, connect YAML loading and initial state, and add the agreed navigation. Reuse the tested initial calculator and JavaScript renderer; do not add htmx interactions to this feature. Apply site typography, colors, and Polish copy without rewriting the model. Package browser assets under embedded `web/`; account for disk-based content and the `-content` path. Preserve existing topology pages and lecture behavior unless the user explicitly requested a replacement.
 
-**Verify/fix:** repeat the same small scenario through the independent harness and site entry point, checking equivalent model/state/paths. Test development mode and a production build with its content directory; check asset paths and direct navigation/reload. Run the parent repository's required tests/build and inspect the integrated page at desktop and narrow widths. Verify component cleanup/remounting if htmx can replace its containing fragment. Check existing topology pages for regressions.
+**Verify/fix:** repeat the same small scenario through the independent harness and site entry point, checking equivalent model/state/paths. Test development mode and a production build with its content directory; check asset paths and direct navigation/reload. Run the parent repository's required tests/build and inspect the integrated page at desktop and narrow widths. Verify component cleanup/remounting through the mount contract. Parent-site htmx must not own topology interactions. Check existing topology pages for regressions.
 
 **Commit:** `feat(topology): integrate the DC visualizer into sev1`.
 
 ## Step 13 — Verify scale, polish, and deliver
 
-**Dependencies:** all required previous steps; D06 default/capped sizes and D10 delivery target. Agree on the target browser/device and responsiveness criteria before claiming performance acceptance.
+**Dependencies:** all required previous steps; D06 default/capped sizes and D10 delivery target. Use the authorized desktop/narrow viewports and available browser; report actual responsiveness measurements without inventing an SLA or waiting for a new approval.
 
 **Develop:** address measured bottlenecks at the agreed maximum. Use appropriate detail reduction, table virtualization, edge aggregation, or rendering changes only where measurements justify them. Keep all canonical objects available for accurate inspection even when the drawing is simplified. Finish labels, legends, loading/errors, keyboard access, focus behavior, narrow layout, and user documentation.
 
@@ -254,39 +270,30 @@ Complete the host/VM route-table inspectors and session advertised/received rout
 
 ## Final acceptance walkthrough
 
-1. Load an agreed YAML scenario and confirm physical counts, cabling, addressing, and VM placements.
-2. Inspect a physical link, a host, a customer VM, and an RS VM; check their details against the fixture.
-3. Inspect one session of each approved kind, including AFI/SAFI, endpoint addresses/interfaces, and advertised/received routes.
-4. Toggle physical links and BGP sessions independently; collapse/expand RS clusters; switch infrastructure VMs between actual-host and abstract display. A cluster shown on actual hosts anchors to its first member's host. The actual network remains the same, and clustering does not change either link-visibility switch.
-5. Select a route and follow its advertisements from origin to recipients. Confirm host/VM tables reflect the deterministic simulation state.
-6. Run the approved VM traffic and BGP control traffic scenarios. Follow Type 5-derived VXLAN forwarding, the selected underlay ECMP path, and the correct VPC context without using RSs as customer-traffic transit. Verify the negative cross-VPC case.
-7. Use playback controls and change views while animations run; inspect state without losing selection unexpectedly.
-8. Change every topology count control and verify the model rebuilds. Export YAML and reload it to reproduce the same model/simulation, including all RS members when exported from collapsed mode. Invalid input produces useful errors and preserves valid state.
-9. Repeat the important interactions at the agreed maximum scale and at narrow width; record actual results against the agreed targets.
-10. Verify clean build/tests, review the final diff for unrelated edits, and ensure each completed increment has a local commit and a concise progress record. Report any remaining blocker without declaring unfinished work complete.
+1. Load the default YAML; confirm physical counts, cables, addresses, VM placements, and initial expected tables.
+2. Inspect a device, host, customer VM, RS VM/cluster, physical link, session, and route. Each opens details in a popup over the visible topology. Verify close, Escape, focus return, scroll, loading/error states, and rapid-selection response ordering.
+3. Drag devices within the allowed small offset. Lines and illustrative markers follow; a click still inspects. Check pointer cancel, touch, zoom, keyboard movement, and reset layout. Verify canonical topology, placement, sessions, routes, and YAML export are unchanged.
+4. Toggle physical links and BGP sessions independently; test expanded/collapsed RS and actual-host/abstract placement combinations. The first-member host anchor rule remains intact.
+5. Verify expected tables are available immediately after load/rebuild and remain identical while inspecting, dragging, toggling layers, or animating. Check Type-5/VPC/next-hop information and VPC isolation against fixtures.
+6. Confirm route flow is off initially. Enable the illustrative switch; show direction along valid modeled relationships. Disable it and confirm markers and clock stop. Check hidden layers, moved/clustered endpoints, unsupported examples, and reduced motion.
+7. Check retained VM/control-traffic examples against resolved paths without RS customer-transit hops; verify the negative cross-VPC case.
+8. Change count controls, verify atomic rebuild of topology/expected state and stale-view cleanup, then export/reload YAML. Export while collapsed or dragged retains actual members and placements. Invalid input preserves valid state.
+9. Repeat key interactions at 1280×900 and 390×844 and at capped scale; record actual performance and console/network errors. Test mount/destroy for leaked listeners/animation loops.
+10. Verify required automated checks and integration when writable. Review unrelated edits and actual commits; report unavailable checks and blocked Git/site writes honestly.
 
 ## Requirement coverage
 
-| TODO requirement | Steps |
+| Current requirement | Steps / rework milestones |
 | --- | --- |
-| YAML config describes the network and behavior | 00, 02, 11 |
-| Physical topology; partial underlay/overlay views | 03, 06, 09 |
-| Customer VMs and infrastructure VMs | 04 |
-| BGP peerings, including route-server hierarchy | 05 |
-| Link and BGP-session inspection, AFIs/IPs/routes | 05, 07 |
-| Host and VM route tables | 07 |
-| Route origins, destinations, and advertisement flow | 07–08 |
-| Traffic between VMs and devices/control traffic | 09–10 |
-| Flow animation on session/link lines | 08, 10 |
-| One RS icon per cluster; actual-host/abstract display; first-member host anchor | 06 |
-| Physical-link and BGP visibility switches | 05–06 |
-| Spine/bolt/rack/host/VM controls rebuild the topology | 11 |
-| Export effective configuration as YAML and reload it | 11 |
-| Independent development followed by sev1 integration | 01, 12 |
-| Deterministic YAML-configured simulation | 02, 07–11 |
-| Explicit VM/RS placement with generated fallback | 02, 04 |
-| EVPN Type 5, VXLAN, and VPC isolation | 02, 04, 07–10 |
-| Underlay ECMP | 07, 09–10 |
-| Withdrawals deferred | 07, 11; no withdrawal-dependent acceptance gate |
-| Scale, usability, and final delivery | 13 |
-| Verify, fix, commit, repeat | Every step; `LUNA_GUIDE.md` |
+| Engaging dynamic JS frontend; topology-first layout | 01, 03, 06, 13 / R01 |
+| Popup inspection over the topology | 05, 07 / R02 |
+| Small bounded device dragging; model-independent view offsets | 03, 06, 11 / R03 |
+| Initial expected route tables, no BGP convergence simulator | 02, 07, 09, 11 / R04 |
+| Optional hardcoded illustrative route flow, switched off initially | 08 / R05 |
+| YAML load/export and rebuilding count controls | 02, 11 |
+| Confirmed physical fabric, customers/RS VMs, peering matrix | 03–05 |
+| Independent link layers, RS collapse, first-member actual-host anchor | 06 |
+| Type 5, VXLAN/VPC context, underlay ECMP, useful traffic examples | 07, 09–10 |
+| Independent development and eventual sev1 integration | 01, 12 / R06 |
+| Desktop/narrow verification, cleanup, scale and delivery | 13 / R06 |
+| Commit baseline, then each working increment | R00 and every milestone; `LUNA_GUIDE.md` |
