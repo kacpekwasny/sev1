@@ -329,3 +329,14 @@ Implemented: `addressing.ipv6` configures each role's /48 and the 32-bit suffix;
 Global unicast/ULA prefixes are allowed. Validate aligned, distinct pools and
 preserve YAML through count rebuild/export/load. Omitted settings retain legacy
 identities; physical link-local addressing and IPv4 VTEPs stay independent.
+
+## R23–R26 — Host routing inspection (D26)
+
+- R23: complete cached originated-prefix redistribution preview, independent of
+  decorative switches; preserve learned-route previews and inspector context.
+- R24: combined Zebra routing RIB for hosts with EVPN import/VXLAN resolution,
+  alongside AFI-separated BGP tables and the kernel FIB.
+- R25: local VM static TAP prefixes feed BGP/EVPN; remove fabricated static
+  per-host border routes and use learned routing with private VRF isolation.
+- R26: address hover/focus explains owner and role, preserving interface/VRF
+  scope and acknowledging shared/external addresses. Commit each point.

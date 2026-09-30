@@ -421,3 +421,15 @@ Commit: the commit containing this checkpoint.
    Commit: the commit containing this checkpoint.
 
 No pending D25 work. Preview: http://127.0.0.1:8099/topologie/dc/.
+
+## D26 — in progress
+
+1. Every inspected speaker caches complete redistribution for all own prefixes.
+   Originated-route hover/focus and click reuse those waves, including RS fanout,
+   even with the decorative/session layers off. Leaving restores prior selection
+   and switches. No hover network request or topology-wide export list is added.
+   Go tests/build pass; Chrome verifies GUI/Linux and both widths.
+   Commit: the commit containing this checkpoint.
+2. Combined host routing RIB with explicit imported VXLAN routes: pending.
+3. Replace fabricated remote static egress with learned routing: pending.
+4. Address purpose/ownership hover: pending.

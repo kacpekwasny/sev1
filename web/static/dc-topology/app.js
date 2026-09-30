@@ -1,6 +1,6 @@
 const NS = "http://www.w3.org/2000/svg";
 import { appendRIB, appendFIB, identifyRoute, appendOriginatedRoutes, appendBorderRoutes } from "./tables.js";
-import { routeFlowStreams } from "./route-flow.js";
+import { routeFlowStreams, originatedRouteFlow } from "./route-flow.js";
 import { displayNames } from "./labels.js";
 import { physicalPoints, tapPoints, packetSegments, packetTraversal, packetPosition } from "./packet-path.js";
 import { routePaths } from "./route-paths.js";
@@ -825,13 +825,14 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function syncIllustration() {
-    const active = !routeHover && selected?.type !== "route" && showRouteFlow.checked && showSessions.checked && illustration.sequence.length > 0;
+    const preview = originatedRouteFlow(state.model, routeHover??selected);
+    const active = (preview || (!routeHover && selected?.type !== "route" && showRouteFlow.checked)) && (showSessions.checked || preview) && illustration.sequence.length > 0;
     flowNote.textContent = !showRouteFlow.checked ? "Adresy i tablice są obliczanym przykładem."
       : !showSessions.checked ? "Przepływ poglądowy — włącz warstwę Sesje BGP."
       : !illustration.sequence.length ? "Brak zgodnego przykładu przepływu tras w tej konfiguracji."
       : exploration.update ? `UPDATE: ${exploration.update.from_id} → ${exploration.update.to_id} · ${exploration.update.route.prefix}. Rozgałęzienia pokazują dostarczenie tego prefiksu do urządzeń końcowych.`
       : `Poglądowo: ${illustration.streams.length} ogłoszeń płynie kolejno przez RS, jeden prefiks naraz, z rozgałęzieniami na RS. Tablice pozostają stałe.`;
-    if(routeHover||selected?.type==="route")flowNote.textContent="Fioletowa strzałka wskazuje kierunek propagacji oglądanej trasy do tego RIB.";
+    if(routeHover||selected?.type==="route")flowNote.textContent=preview?"Redystrybucja lokalnego prefiksu: ogłoszenie i rozgałęzienia do urządzeń końcowych.":"Fioletowa strzałka wskazuje kierunek propagacji oglądanej trasy do tego RIB.";
     flowNote.textContent=displayNames(flowNote.textContent);
     if (!active || reducedMotion.matches) {
       if (illustration.frame) cancelAnimationFrame(illustration.frame);
@@ -855,7 +856,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function updateIllustrationMarker(now) {
-    if (!showRouteFlow.checked || !showSessions.checked || reducedMotion.matches || !illustration.sequence.length) return;
+    if ((!showRouteFlow.checked && !originatedRouteFlow(state.model,routeHover??selected)) || (!showSessions.checked && !originatedRouteFlow(state.model,routeHover??selected)) || reducedMotion.matches || !illustration.sequence.length) return;
     const scaled = (Math.max(0, now - illustration.startedAt) % (illustration.sequence.length * 1100)) / 1100;
     let waveIndex=Math.floor(scaled),streamIndex=0;
     while(waveIndex>=illustration.streams[streamIndex].waves.length)waveIndex-=illustration.streams[streamIndex++].waves.length;
@@ -1024,6 +1025,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         inspectorLoaded.add(key);
         const routeState = { ...state.model.route_state };
         if (payload.kind === "speaker" && payload.speaker_table) {
+          routeState.originated_flows = [...(routeState.originated_flows??[]).filter(flow=>flow.route.origin_id!==payload.id), ...(payload.originated_flows??[])];
           routeState.tables = [...(routeState.tables ?? []).filter((item) => item.speaker_id !== payload.id), payload.speaker_table];
           routeState.forwarding = [...(routeState.forwarding ?? []).filter((item) => item.owner_id !== payload.id), ...(payload.forwarding ?? [])];
         } else if (payload.kind === "session") {
@@ -1129,9 +1131,11 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const interfaceByID = new Map(model.interfaces.map((iface) => [iface.id, iface]));
     const inspectedPaths = routePaths(model, routeHover??selected);
     root.querySelector("#dc-route-legend").hidden = !routeHover && selected?.type !== "route";
-    illustration.streams = showRouteFlow.checked && !routeHover && selected?.type !== "route" ? routeFlowStreams(model, selected?.type==="update"&&!inspectorEl.hidden?exploration.update:null)
-      .filter(stream=>!flowExampleSelect.value||stream.route.id===flowExampleSelect.value)
-      .filter(stream=>stream.steps.every(step=>positions.entityPoints.has(step.fromID)&&positions.entityPoints.has(step.toID))) : [];
+    const originatedFlow=originatedRouteFlow(model,routeHover??selected);
+    illustration.streams = originatedFlow ? routeFlowStreams(model,originatedFlow)
+      : showRouteFlow.checked && !routeHover && selected?.type !== "route" ? routeFlowStreams(model, selected?.type==="update"&&!inspectorEl.hidden?exploration.update:null)
+        .filter(stream=>!flowExampleSelect.value||stream.route.id===flowExampleSelect.value) : [];
+    illustration.streams=illustration.streams.filter(stream=>stream.steps.every(step=>positions.entityPoints.has(step.fromID)&&positions.entityPoints.has(step.toID)));
     root.querySelector("#dc-flow-examples").hidden=!showRouteFlow.checked;
     illustration.phaseKey=null;
     const playlistKey=illustration.streams.map(stream=>`${stream.route.id}/${stream.focused}/${stream.waves.length}`).join("|");
@@ -1196,10 +1200,10 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     }
     svg.append(edgeLayer);
 
-    if (showSessions.checked || sessionHover) {
+    if (showSessions.checked || sessionHover || originatedFlow) {
       const sessionLayer = svgElement("g", { class: "dc-sessions" });
       for (const session of model.bgp_sessions) {
-        if(!showSessions.checked&&session.id!==sessionHover)continue;
+        if(!showSessions.checked&&session.id!==sessionHover&&!illustrationIDs.has(session.id))continue;
         const step = illustration.sequence.flat().find((item) => item.sessionID === session.id);
         const a = positions.entityPoints.get(step?.fromID ?? session.a.entity_id);
         const b = positions.entityPoints.get(step?.toID ?? session.b.entity_id);

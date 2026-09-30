@@ -445,6 +445,24 @@ or overlapping role pools, including inherited ones; rejected YAML preserves the
 last valid snapshot. This extends D06's formerly fixed documentation schema.
 Commit the two requirements separately.
 
+### D26 — Host redistribution, routing RIB and address explanations
+
+Hover/focus on a host's originated prefix previews its complete redistribution,
+including RS fanout reaching all expected end devices. Clicking retains that
+flow while inspecting the prefix. Use cached snapshot metadata for every own
+prefix, including prefixes absent from the representative default playlist.
+Preview works independently of decorative-flow/session switches; departure
+restores the prior selection and switches. Never list all exports in route detail.
+
+Add the combined host routing RIB alongside the BGP AFI tables, exposing imported
+EVPN VM routes with VXLAN resolution. Local customer delivery starts with static
+TAP host routes redistributed into BGP/EVPN; remote reachability is learned BGP.
+Remove fabricated per-host static border routes. Preserve loopback underlay,
+IPv6 infrastructure reachability, customer recursion and private VRF isolation.
+Address hover should explain purpose and ownership with VRF/interface scope;
+ambiguous/shared and external addresses must be described honestly. Commit each
+of the four points independently.
+
 ## Recording an answer
 
 Record the latest user direction and affected milestones. If it changes previously implemented work, reopen the affected acceptance checks; do not claim the old checks verify new behavior. Distinguish direct user requirements from authorized implementation defaults. Preserve the original TODO while keeping this decision record and the active plan authoritative for later changes.

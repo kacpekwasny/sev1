@@ -188,12 +188,13 @@ func (s *configStore) model(w http.ResponseWriter, _ *http.Request) {
 }
 
 type inspectorResponse struct {
-	OK             bool                 `json:"ok"`
-	SpeakerTable   *BGPSpeakerTable     `json:"speaker_table,omitempty"`
-	Forwarding     []ForwardingEntry    `json:"forwarding,omitempty"`
-	Advertisements []RouteAdvertisement `json:"advertisements,omitempty"`
-	Route          *Route               `json:"route,omitempty"`
-	Message        string               `json:"message,omitempty"`
+	OriginatedFlows []FlowExample        `json:"originated_flows,omitempty"`
+	OK              bool                 `json:"ok"`
+	SpeakerTable    *BGPSpeakerTable     `json:"speaker_table,omitempty"`
+	Forwarding      []ForwardingEntry    `json:"forwarding,omitempty"`
+	Advertisements  []RouteAdvertisement `json:"advertisements,omitempty"`
+	Route           *Route               `json:"route,omitempty"`
+	Message         string               `json:"message,omitempty"`
 }
 
 func (s *configStore) inspector(w http.ResponseWriter, r *http.Request) {
@@ -211,6 +212,7 @@ func (s *configStore) inspector(w http.ResponseWriter, r *http.Request) {
 	result := inspectorResponse{OK: true}
 	switch kind {
 	case "speaker":
+		result.OriginatedFlows = originatedFlowExamples(s.snapshot.Routes, id)
 		for index := range s.snapshot.Routes.Tables {
 			if s.snapshot.Routes.Tables[index].SpeakerID == id {
 				result.SpeakerTable = &s.snapshot.Routes.Tables[index]

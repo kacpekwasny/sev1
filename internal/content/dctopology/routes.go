@@ -154,6 +154,7 @@ type ResolvedControlPath struct {
 }
 
 type RouteState struct {
+	OriginatedFlows     []FlowExample         `json:"originated_flows,omitempty"`
 	FlowExamples        []FlowExample         `json:"flow_examples"`
 	VPCs                []VPCContext          `json:"vpcs"`
 	Origins             []Route               `json:"origins"`

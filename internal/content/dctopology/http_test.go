@@ -36,6 +36,48 @@ func TestSummaryDefaultCounts(t *testing.T) {
 	}
 }
 
+func TestSpeakerIncludesEveryOriginatedRouteFlow(t *testing.T) {
+	initial, err := os.ReadFile("../../../content/dc-topology/default.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, err := NewAPIHandler(initial)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/inspector?kind=speaker&id=host-b2-h1", nil))
+	var result inspectorResponse
+	if response.Code != http.StatusOK || json.Unmarshal(response.Body.Bytes(), &result) != nil {
+		t.Fatal(response.Body.String())
+	}
+	flows := map[string]FlowExample{}
+	for _, flow := range result.OriginatedFlows {
+		if flow.Route.OriginID != "host-b2-h1" {
+			t.Fatal("another speaker's redistribution leaked into preview")
+		}
+		flows[flow.Route.ID] = flow
+	}
+	for _, local := range result.SpeakerTable.LocallyOriginated {
+		if _, ok := flows[local.ID]; !ok {
+			t.Fatalf("missing redistribution for %s", local.ID)
+		}
+	}
+	flow, ok := flows["vm/customer-3/ipv4/10.64.0.3"]
+	if !ok || len(flow.Steps) == 0 {
+		t.Fatal("non-playlist EVPN prefix has no cached redistribution")
+	}
+	hosts := map[string]bool{}
+	for _, step := range flow.Steps {
+		if strings.HasPrefix(step.ToID, "host-") {
+			hosts[step.ToID] = true
+		}
+	}
+	if len(hosts) != 7 || !hosts["host-b1-h1"] || !hosts["host-b2-h4"] {
+		t.Fatalf("incomplete local/remote bolt redistribution: %v", hosts)
+	}
+}
+
 func TestInvalidConfigDoesNotReplaceActiveConfig(t *testing.T) {
 	initial, err := os.ReadFile("../../../content/dc-topology/default.yaml")
 	if err != nil {

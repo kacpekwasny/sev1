@@ -20,6 +20,29 @@ type FlowStep struct {
 	Wave      int    `json:"wave"`
 }
 
+// Fetch all originated prefixes for an inspected speaker, not just the default
+// playlist's representative prefix for each role/family.
+func originatedFlowExamples(state RouteState, speakerID string) []FlowExample {
+	byRoute := map[string][]RouteAdvertisement{}
+	for _, route := range state.Origins {
+		if route.OriginID == speakerID && route.Protocol != "static" {
+			byRoute[route.ID] = nil
+		}
+	}
+	for _, export := range state.Advertisements {
+		if _, ok := byRoute[export.RouteID]; ok {
+			byRoute[export.RouteID] = append(byRoute[export.RouteID], export)
+		}
+	}
+	var result []FlowExample
+	for _, route := range state.Origins {
+		if exports, ok := byRoute[route.ID]; ok {
+			result = append(result, completeFlowExample(route, exports))
+		}
+	}
+	return result
+}
+
 func buildFlowExamples(model Model, state RouteState) []FlowExample {
 	byRoute := map[string][]RouteAdvertisement{}
 	for _, export := range state.Advertisements {

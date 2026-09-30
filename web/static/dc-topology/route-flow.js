@@ -1,5 +1,11 @@
 // One NLRI at a time, branching along expected exports at each propagation wave.
 // No route tables or convergence state are changed by this view.
+export function originatedRouteFlow(model, selection) {
+  if(selection?.type!=="route")return null;
+  const example=(model.route_state?.originated_flows??[]).find(flow=>flow.route.id===selection.id&&flow.route.origin_id===selection.ownerID);
+  if(!example?.steps.length || (selection.candidate?.path??selection.candidate?.propagation_path??[]).length>1)return null;
+  return {reachable:true,route:example.route,example};
+}
 export function routeFlowStreams(model, focused = null) {
   if (!model) return [];
   const streams=(model.route_state?.flow_examples??[]).map(example=>({route:example.route,focused:false,
