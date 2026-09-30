@@ -2,6 +2,7 @@ package dctopology
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -19,18 +20,22 @@ type FlowStep struct {
 	Wave      int    `json:"wave"`
 }
 
-func buildFlowExamples(state RouteState) []FlowExample {
+func buildFlowExamples(model Model, state RouteState) []FlowExample {
 	byRoute := map[string][]RouteAdvertisement{}
 	for _, export := range state.Advertisements {
 		byRoute[export.RouteID] = append(byRoute[export.RouteID], export)
 	}
+	kinds := map[string]string{}
+	for _, node := range model.Nodes {
+		kinds[node.ID] = string(node.Kind)
+	}
 	seen := map[string]bool{}
 	var result []FlowExample
 	for _, route := range state.Origins {
-		if route.OriginKind != "customer" && route.SAFI != "evpn" {
+		if route.Protocol == "static" {
 			continue
 		}
-		key := fmt.Sprintf("%s/%s/%s/%d/%s", route.OriginKind, route.AFI, route.SAFI, route.RouteType, route.IPFamily)
+		key := fmt.Sprintf("%s/%s/%s/%s/%d/%s/%d", route.OriginKind, kinds[route.OriginID], route.AFI, route.SAFI, route.RouteType, route.IPFamily, route.VPCID)
 		if seen[key] || len(byRoute[route.ID]) == 0 {
 			continue
 		}
@@ -40,6 +45,18 @@ func buildFlowExamples(state RouteState) []FlowExample {
 			result = append(result, example)
 		}
 	}
+	sort.SliceStable(result, func(i, j int) bool {
+		category := func(route Route) int {
+			if route.SAFI == "evpn" {
+				return 0
+			}
+			if route.OriginKind == "customer" {
+				return 1
+			}
+			return 2
+		}
+		return category(result[i].Route) < category(result[j].Route)
+	})
 	return result
 }
 
@@ -62,6 +79,7 @@ func completeFlowExample(route Route, exports []RouteAdvertisement) FlowExample 
 				ToID: export.ToID, Wave: len(export.PropagationPath) - 2})
 		}
 	}
+	sort.SliceStable(example.Steps, func(i, j int) bool { return example.Steps[i].Wave < example.Steps[j].Wave })
 	return example
 }
 

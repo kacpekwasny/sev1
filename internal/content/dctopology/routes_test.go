@@ -509,8 +509,8 @@ func TestFlowExamplesUseExpectedExportWaves(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(model.Routes.FlowExamples) != 4 {
-		t.Fatalf("want IPv4/IPv6 customer and EVPN examples, got %d", len(model.Routes.FlowExamples))
+	if len(model.Routes.FlowExamples) < 6 {
+		t.Fatalf("want customer, EVPN and underlay IPv4/IPv6 examples, got %d", len(model.Routes.FlowExamples))
 	}
 	exports := map[string]RouteAdvertisement{}
 	for _, ad := range model.Routes.Advertisements {
@@ -518,6 +518,9 @@ func TestFlowExamplesUseExpectedExportWaves(t *testing.T) {
 	}
 	fanout := false
 	for _, example := range model.Routes.FlowExamples {
+		if example.Steps[0].Wave != 0 || example.Steps[0].FromID != example.Route.OriginID {
+			t.Errorf("example does not begin at its origin: %+v", example.Route)
+		}
 		recipients := map[string]map[string]bool{}
 		for _, step := range example.Steps {
 			ad, ok := exports[example.Route.ID+"/"+step.SessionID+"/"+step.FromID]

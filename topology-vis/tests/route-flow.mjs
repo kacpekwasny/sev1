@@ -8,7 +8,12 @@ try {
   await page.goto(target);await page.locator('.dc-node').first().waitFor();
   const api=new URL(await page.locator('#dc-topology-app').getAttribute('data-api-base'),target).href;
   const model=await (await page.request.get(`${api}/model`)).json();
-  assert(model.route_state.flow_examples.length>=4);
+  assert(model.route_state.flow_examples.length>=6);
+  assert.equal(await page.locator('#dc-show-sessions').isChecked(),true);
+  assert.equal(await page.locator('#dc-show-route-flow').isChecked(),true);
+  assert.equal(await page.locator('#dc-flow-examples').isVisible(),true);
+  for(const afi of ['ipv4','ipv6'])assert(model.route_state.flow_examples.some(e=>e.route.origin_kind==='underlay'&&e.route.afi===afi));
+  await page.locator('#dc-flow-example').selectOption(model.route_state.flow_examples.find(e=>e.route.safi==='evpn').route.id);
   const isEnd=id=>/^(host-|customer-|border-)/.test(id);
   for(const example of model.route_state.flow_examples) {
    for(const s of example.steps)if(!isEnd(s.to_id))assert(example.steps.some(n=>n.from_id===s.to_id&&n.wave===s.wave+1),'RS branches must continue');
@@ -30,21 +35,31 @@ try {
   await page.waitForFunction(({prefix,last})=>{const ms=Array.from(document.querySelectorAll('.dc-route-marker[visibility=visible]'));return ms.length&&ms.every(m=>m.dataset.routeId===prefix&&+m.dataset.wave===last)}, {prefix,last}, {timeout:20000});
   const terminals=await page.locator('.dc-route-marker[visibility=visible]').evaluateAll(ms=>ms.map(m=>m.dataset.to));assert(terminals.every(isEnd));
   // A custom inspection targeting an RS also continues to end-device deliveries.
+  for(const example of model.route_state.flow_examples) {
+   await page.locator('#dc-flow-example').selectOption(example.route.id);
+   await page.waitForFunction(id=>{const ms=Array.from(document.querySelectorAll('.dc-route-marker[visibility=visible]'));return ms.length&&ms.every(m=>m.dataset.routeId===id&&+m.dataset.wave===0)},example.route.id);
+   assert.match(await page.locator('#dc-current-advertisement').textContent(),new RegExp(example.route.prefix.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+   assert(await page.locator('.dc-session.is-flow-current').count()>0);
+  }
+  // Inspection overrides the previous repeat choice.
   await page.locator('#dc-explorer > summary').click();
   await page.locator('#dc-update-form [name="from"]').selectOption('host-b1-h1');
   await page.locator('#dc-update-form [name="to"]').selectOption('rs-ctrl-m1');
   const response=page.waitForResponse(r=>r.url().includes('/explore?kind=update'));
   await page.locator('#dc-update-form button[type=submit]').click();
   const flow=(await (await response).json()).update_flow;assert(flow.reachable);
+  assert.equal(await page.locator("#dc-flow-example").inputValue(),"");
   const final=Math.max(...flow.example.steps.map(s=>s.wave));
   await page.waitForFunction(({prefix,last})=>{const ms=Array.from(document.querySelectorAll('.dc-route-marker[visibility=visible]'));return ms.length&&ms.every(m=>m.dataset.routeId===prefix&&+m.dataset.wave===last)}, {prefix:flow.route.id,last:final}, {timeout:20000});
   assert((await page.locator('.dc-route-marker[visibility=visible]').evaluateAll(ms=>ms.map(m=>m.dataset.to))).every(isEnd));
   await page.keyboard.press('Escape');
+  await page.waitForFunction(id=>document.querySelector('#dc-route-marker').dataset.routeId===id,model.route_state.flow_examples[0].route.id);
   await page.emulateMedia({reducedMotion:'reduce'});
   await page.waitForFunction(()=>!document.querySelector('.dc-route-marker[visibility=visible]'));
   assert(await page.locator('.dc-session.illustrative').count()>0);
   await page.emulateMedia({reducedMotion:'no-preference'});await page.locator('#dc-show-route-flow').uncheck();
   assert.equal(await page.locator('.dc-route-marker[visibility=visible]').count(),0);
+  assert.equal(await page.locator('#dc-flow-examples').isHidden(),true);
   assert.deepEqual(errors,[]);await page.close();
  }
  console.log('Expected-export fanout, single-prefix waves, grouped/expanded RS, reduced motion and both widths: passed');

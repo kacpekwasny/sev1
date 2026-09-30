@@ -57,16 +57,17 @@ playback; the configuration stays unchanged.
 Hosts use slugs such as `h2001`; individual RSs use `rs13001`, `rsctrl4`, and
 `rsuser3`-style labels. Canonical configuration/API IDs stay stable.
 
-Przepływ tras is off initially. Enable it with the BGP layer to show a sequence
-of expected-export illustrations through valid RS hierarchy sessions, including
-customer VM exports to RS User and EVPN. Each prefix branches into simultaneous
-UPDATEs at route servers; only one prefix is illustrated at a time. Marker tooltips
-identify the prefix and sender/recipient. A selected UPDATE adds its complete prefix fanout first. Each illustrated branch
+Przepływ tras and Sesje BGP start enabled. The sequence cycles representative
+examples for every available family, origin role and VPC: EVPN first, then
+customer unicast and fabric IPv4/IPv6. Ogłoszenie repeats one chosen example.
+Its label shows the prefix, origin, family/VPC and propagation wave. One prefix
+runs at a time, branching into UPDATEs at RSs along expected exports. Each branch
 continues to a host, customer VM or border; redundant RS-only ends are omitted.
-Inspection retains the chosen endpoint path and decoded steps while the animation
-shows onward delivery.
-It does not learn routes or change tables. Reduced-motion settings keep static
-direction arrows. Packet examples use their calculated physical paths separately.
+Marker tooltips identify the prefix and sender/recipient. While an UPDATE is
+inspected, its complete prefix fanout repeats; the inspector retains the chosen
+endpoint path and decoded steps. Closing it resumes the examples.
+Flow does not learn routes or change tables. Reduced motion keeps static directions.
+Packet examples separately follow their calculated physical paths.
 
 Sprawdź przepływ między urządzeniami adds two endpoint selectors for each flow.
 Choose nodes or individual VMs, then show an UPDATE or packet in the canvas popup.

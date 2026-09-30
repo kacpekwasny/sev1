@@ -288,9 +288,9 @@ YAML. Screenshots at both widths were inspected against the fresh embedded previ
    navigation. Desktop/narrow browser and endpoint walkthroughs pass.
 
 D20 commits: `10b620c` (directional route propagation), `8d73174` (edge/corner
-resize), and the commit containing this checkpoint (focused route details).
+resize), and `451aa76` (focused route details).
 
-## D21 flow refinements — in progress
+## D21 flow refinements — complete
 
 1. Repaired traffic playback: clamp the first rAF clock to avoid a negative segment
    index; sending traffic and preset clicks play once ready. Presets decode their
@@ -312,5 +312,19 @@ resize), and the commit containing this checkpoint (focused route details).
    Changing the prefix playlist restarts its clock at the source. Domain tests
    verify onward hops and terminal waves; desktop/narrow Chrome observes end-device
    arrival for default and RS-targeted custom flows. Existing walkthroughs, Go
-   tests and build pass. Commit: the commit containing this checkpoint.
-4. Default advertisement-explanation sequence — pending.
+   tests and build pass. Commit: `8757f2c`.
+4. BGP sessions and flow start enabled. A compact selector cycles representative
+   advertisements by family, origin role and VPC, or repeats one. The default
+   configuration has 14 examples: EVPN first, customer unicast next, then fabric
+   IPv4/IPv6. Prefix/origin/VPC/wave labels and current-wave emphasis distinguish
+   each explanation; inspected UPDATEs override a prior example choice and repeat
+   their prefix until the popup closes. Reduced motion uses static directions.
+   Chrome 148 at 1280×900 and 390×844 verifies all examples, grouped/expanded
+   fanout, real marker movement, end-device delivery and custom inspection.
+   All five browser walkthroughs pass against embedded production assets, run
+   from /tmp; packet bit checks, go test ./..., build and vet pass. The final
+   route-flow check also verifies closing custom inspection resumes the samples.
+   Commit: the commit containing this checkpoint.
+
+Next: no pending D20/D21 work. Preview: http://127.0.0.1:8099/topologie/dc/.
+Examples illustrate the expected snapshot; they do not simulate convergence.

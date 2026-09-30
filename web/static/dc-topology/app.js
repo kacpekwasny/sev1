@@ -27,17 +27,21 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     <section class="dc-graph-card" aria-labelledby="dc-graph-title">
       <div class="dc-toolbar"><div class="dc-layer-title"><span class="dc-status-dot" aria-hidden="true"></span><h2 id="dc-graph-title">Eksplorator</h2></div>
         <label><input id="dc-show-links" type="checkbox" checked> Łącza</label>
-        <label><input id="dc-show-sessions" type="checkbox"> Sesje BGP</label>
+        <label><input id="dc-show-sessions" type="checkbox" checked> Sesje BGP</label>
         <label><input id="dc-show-infra-hosts" type="checkbox" checked> RS na hostach</label>
         <label><input id="dc-collapse-rs" type="checkbox"> Grupuj RS</label>
         <div class="dc-underlay-options">
           <label><input id="dc-show-underlay" type="checkbox" checked> Urządzenia underlay</label>
           <label id="dc-border-option" class="dc-underlay-suboption" hidden><input id="dc-keep-borders" type="checkbox" checked> Zostaw border</label>
         </div>
-        <label title="Ilustracja po sesjach BGP; tablice tras pozostają bez zmian."><input id="dc-show-route-flow" type="checkbox"> Przepływ tras</label>
+        <label title="Ilustracja po sesjach BGP; tablice tras pozostają bez zmian."><input id="dc-show-route-flow" type="checkbox" checked> Przepływ tras</label>
         <button id="dc-layout-reset" class="dc-tool-button" type="button">Reset układu</button>
         <button id="dc-fit" class="dc-tool-button" type="button">Dopasuj</button>
         <label class="dc-zoom"><span class="dc-sr-only">Powiększenie</span><input id="dc-zoom" type="range" min="50" max="150" value="85" step="5"><output id="dc-zoom-value">85%</output></label>
+      </div>
+      <div id="dc-flow-examples" class="dc-flow-examples">
+        <label>Ogłoszenie <select id="dc-flow-example"><option value="">Kolejno wszystkie przykłady</option></select></label>
+        <span id="dc-current-advertisement"></span>
       </div>
       <div class="dc-workspace">
         <div id="dc-graph" class="dc-graph-scroll"><p class="dc-empty">Buduję widok topologii…</p></div>
@@ -155,6 +159,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   const showSessions = root.querySelector("#dc-show-sessions");
   const showRouteFlow = root.querySelector("#dc-show-route-flow");
   const flowNote = root.querySelector("#dc-flow-note");
+  const flowExampleSelect = root.querySelector("#dc-flow-example");
+  const currentAdvertisement = root.querySelector("#dc-current-advertisement");
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const illustration = { frame: 0, startedAt: 0, sequence: [], streams: [] };
   const showInfraOnHosts = root.querySelector("#dc-show-infra-hosts");
@@ -486,6 +492,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   listen(showLinks, "change", onLayerChange);
   listen(showSessions, "change", onLayerChange);
   listen(showRouteFlow, "change", onLayerChange);
+  listen(flowExampleSelect, "change", () => renderGraph());
   listen(reducedMotion, "change", onLayerChange);
   listen(showInfraOnHosts, "change", onLayerChange);
   listen(collapseRouteServers, "change", onLayerChange);
@@ -746,7 +753,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     resetAnimation();
     form.querySelector("button[type=submit]").disabled = true;
     root.querySelector(`#dc-${kind}-status`).textContent = "Sprawdzam wybrane końce…";
-    if (kind === "update") { showSessions.checked = true; showRouteFlow.checked = true; }
+    if (kind === "update") { showSessions.checked = true; showRouteFlow.checked = true; flowExampleSelect.value=""; }
     else showLinks.checked = true;
     renderGraph(); renderInspector(); openInspector();
     inspectorEl.scrollIntoView({ block: "start" });
@@ -768,6 +775,41 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     return [];
   }
 
+  function exampleLabel(route) {
+    const family=route.ip_family==="ipv6"?"IPv6":"IPv4";
+    const type=route.safi==="evpn"?`EVPN typ ${route.route_type}`:route.origin_kind==="customer"?"Klient → RS User":"Underlay";
+    return displayNames(`${type} · ${family} · ${route.prefix} · ${route.origin_id}${route.vpc_id?` · VPC ${route.vpc_id}`:""}`);
+  }
+
+  function renderFlowExamples() {
+    const examples=state.model?.route_state?.flow_examples??[];
+    const key=examples.map(e=>e.route.id).join("|");
+    if(flowExampleSelect.dataset.key===key)return;
+    const previous=flowExampleSelect.value;
+    flowExampleSelect.replaceChildren(new Option("Kolejno wszystkie przykłady",""),...examples.map(e=>new Option(exampleLabel(e.route),e.route.id)));
+    flowExampleSelect.value=examples.some(e=>e.route.id===previous)?previous:"";
+    flowExampleSelect.dataset.key=key;
+  }
+
+  function applyIllustrationPhase(stream,waveIndex) {
+    const key=`${stream.route.id}/${waveIndex}`;
+    if(illustration.phaseKey!==key) {
+      illustration.phaseKey=key;
+      const edges=new Map(stream.steps.map(s=>[s.sessionID,s]));
+      const active=new Set(stream.waves[waveIndex].map(s=>s.sessionID));
+      for(const group of graphEl.querySelectorAll(".dc-session")) {
+        const step=edges.get(group.dataset.entityId);
+        group.classList.toggle("illustrative",Boolean(step));
+        group.classList.toggle("is-flow-current",active.has(group.dataset.entityId));
+        if(!step)continue;
+        const from=currentPositions.entityPoints.get(step.fromID),to=currentPositions.entityPoints.get(step.toID);
+        for(const line of group.querySelectorAll("line"))for(const [name,value] of Object.entries({x1:from.x,y1:from.y,x2:to.x,y2:to.y}))line.setAttribute(name,String(value));
+      }
+    }
+    const label=`${exampleLabel(stream.route)} · fala ${waveIndex+1}/${stream.waves.length}${reducedMotion.matches?" · widok bez animacji":""}`;
+    if(currentAdvertisement.textContent!==label)currentAdvertisement.textContent=label;
+  }
+
   function syncIllustration() {
     const active = !routeHover && selected?.type !== "route" && showRouteFlow.checked && showSessions.checked && illustration.sequence.length > 0;
     flowNote.textContent = !showRouteFlow.checked ? "Adresy i tablice są obliczanym przykładem."
@@ -781,6 +823,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       if (illustration.frame) cancelAnimationFrame(illustration.frame);
       illustration.frame = 0;
       for (const marker of graphEl.querySelectorAll(".dc-route-marker")) marker.setAttribute("visibility", "hidden");
+      if(active&&reducedMotion.matches)applyIllustrationPhase(illustration.streams[0],0);
+      else currentAdvertisement.textContent="";
       return;
     }
     const now = performance.now();
@@ -802,6 +846,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     let waveIndex=Math.floor(scaled),streamIndex=0;
     while(waveIndex>=illustration.streams[streamIndex].waves.length)waveIndex-=illustration.streams[streamIndex++].waves.length;
     const stream=illustration.streams[streamIndex],wave=stream.waves[waveIndex];
+    applyIllustrationPhase(stream,waveIndex);
     const markers=graphEl.querySelectorAll(".dc-route-marker"),displayed=new Set();
     let index=0;
     for(const step of wave) {
@@ -989,6 +1034,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       configMessage.classList.toggle("error", Boolean(next.error));
     }
     if (next.summary !== undefined) renderSummary();
+    renderFlowExamples();
     renderTrafficList();
     renderGraph();
     renderInspector();
@@ -1073,8 +1119,11 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const interfaceByID = new Map(model.interfaces.map((iface) => [iface.id, iface]));
     const inspectedPaths = routePaths(model, routeHover??selected);
     root.querySelector("#dc-route-legend").hidden = !routeHover && selected?.type !== "route";
-    illustration.streams = showRouteFlow.checked && !routeHover && selected?.type !== "route" ? routeFlowStreams(model, exploration.update)
+    illustration.streams = showRouteFlow.checked && !routeHover && selected?.type !== "route" ? routeFlowStreams(model, selected?.type==="update"&&!inspectorEl.hidden?exploration.update:null)
+      .filter(stream=>!flowExampleSelect.value||stream.route.id===flowExampleSelect.value)
       .filter(stream=>stream.steps.every(step=>positions.entityPoints.has(step.fromID)&&positions.entityPoints.has(step.toID))) : [];
+    root.querySelector("#dc-flow-examples").hidden=!showRouteFlow.checked;
+    illustration.phaseKey=null;
     const playlistKey=illustration.streams.map(stream=>`${stream.route.id}/${stream.focused}/${stream.waves.length}`).join("|");
     if(playlistKey!==illustration.key) {illustration.key=playlistKey;illustration.startedAt=performance.now();}
     illustration.sequence = illustration.streams.flatMap(stream=>stream.waves);

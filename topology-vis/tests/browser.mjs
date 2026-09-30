@@ -91,7 +91,7 @@ const checkLayout = async (model = null) => {
 assert.equal(await page.locator(".dc-node").count(), 28);
 assert(await page.locator("#dc-inspector").isHidden());
 assert.equal(await page.locator('script[src*="htmx"]').count(), 0);
-assert.equal(await page.locator("#dc-show-route-flow").isChecked(), false);
+assert.equal(await page.locator("#dc-show-route-flow").isChecked(), true);
 await checkLayout();
 await page.screenshot({ path: `${output}/desktop.png`, fullPage: true, animations: "disabled" });
 
@@ -179,7 +179,7 @@ assert((await page.locator(".dc-route-marker[visibility=visible]").count()) >= 1
 const firstPrefix = await page.locator("#dc-route-marker").getAttribute("data-route-id");
 const cy = await page.locator("#dc-route-marker").getAttribute("cy");
 await page.waitForFunction((previous) => document.querySelector("#dc-route-marker").getAttribute("cy") !== previous, cy);
-await page.waitForFunction((previous) => document.querySelector("#dc-route-marker").dataset.routeId !== previous, firstPrefix, {timeout:7000});
+await page.waitForFunction((previous) => document.querySelector("#dc-route-marker").dataset.routeId !== previous, firstPrefix, {timeout:12000});
 assert((await page.locator(".dc-route-marker[visibility=visible]").count()) >= 1);
 for (const collapsed of [true, false]) {
   await page.locator("#dc-collapse-rs").setChecked(collapsed);

@@ -1,6 +1,6 @@
 # DC topology visualizer: implementation plan for GPT-Luna
 
-Status on 2026-09-30: **R00–R15 are implemented; R16/D21 is next.** The user committed the baseline as `9c50463`; rework commits and verification are recorded in [PROGRESS.md](PROGRESS.md). The milestones and older steps below remain the implementation/acceptance contract, not a request to repeat completed work. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
+Status on 2026-09-30: **R00–R16 are implemented.** The user committed the baseline as `9c50463`; rework commits and verification are recorded in [PROGRESS.md](PROGRESS.md). The milestones and older steps below remain the implementation/acceptance contract, not a request to repeat completed work. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
 
 ## Current rework contract and execution order
 
@@ -225,7 +225,7 @@ Keep EVPN Type-5 identity and VPC import context distinct, retain underlay ECMP 
 
 **Dependencies:** Steps 05–07; maps to R05.
 
-**Develop:** add a dedicated route-flow switch, disabled initially. Use a small fixed, illustrative sequence that follows actual BGP relationships and can project onto current entity/session IDs. It may be hardcoded as presentation logic; do not require a simulator trace or per-peer event engine. Selecting a route may highlight a relevant illustrative path where supported. Describe the visual in Polish as illustrative, not measured convergence or actual route learning. Remove obsolete convergence play/pause/step/speed controls.
+**Develop:** add a dedicated route-flow switch; D21 supersedes the earlier off-by-default rule with labeled default examples. Use a small fixed, illustrative sequence that follows actual BGP relationships and can project onto current entity/session IDs. It may be hardcoded as presentation logic; do not require a simulator trace or per-peer event engine. Selecting a route may highlight a relevant illustrative path where supported. Describe the visual in Polish as illustrative, not measured convergence or actual route learning. Remove obsolete convergence play/pause/step/speed controls.
 
 **Verify/fix:** switch on/off repeatedly; off stops animation and removes markers. Validate endpoint/session existence and family compatibility for each active example; skip incompatible scenarios. Verify drag/zoom/cluster projection, hidden BGP layer behavior, model rebuild, reduced motion, and teardown. Tables remain unchanged and fully usable with route flow disabled.
 
@@ -288,7 +288,7 @@ Keep EVPN Type-5 identity and VPC import context distinct, retain underlay ECMP 
 3. Drag devices within the allowed small offset. Lines and illustrative markers follow; a click still inspects. Check pointer cancel, touch, zoom, keyboard movement, and reset layout. Verify canonical topology, placement, sessions, routes, and YAML export are unchanged.
 4. Toggle physical links and BGP sessions independently; test expanded/collapsed RS and actual-host/abstract placement combinations. The first-member host anchor rule remains intact.
 5. Verify expected tables are available immediately after load/rebuild and remain identical while inspecting, dragging, toggling layers, or animating. Check Type-5/VPC/next-hop information and VPC isolation against fixtures.
-6. Confirm route flow is off initially. Enable the illustrative switch; show direction along valid modeled relationships. Disable it and confirm markers and clock stop. Check hidden layers, moved/clustered endpoints, unsupported examples, and reduced motion.
+6. Per D21, confirm BGP sessions and route flow start enabled. Observe sequential labeled prefix examples and RS fanout reaching end devices; select a single example to repeat. Disable it and confirm markers and clock stop. Check hidden layers, moved/clustered endpoints, unsupported examples, and reduced motion.
 7. Check retained VM/control-traffic examples against resolved paths without RS customer-transit hops; verify the negative cross-VPC case.
 8. Change count controls, verify atomic rebuild of topology/expected state and stale-view cleanup, then export/reload YAML. Export while collapsed or dragged retains actual members and placements. Invalid input preserves valid state.
 9. Repeat key interactions at 1280×900 and 390×844 and at capped scale; record actual performance and console/network errors. Test mount/destroy for leaked listeners/animation loops.
@@ -302,7 +302,7 @@ Keep EVPN Type-5 identity and VPC import context distinct, retain underlay ECMP 
 | Popup inspection over the topology | 05, 07 / R02 |
 | Small bounded device dragging; model-independent view offsets | 03, 06, 11 / R03 |
 | Initial expected route tables, no BGP convergence simulator | 02, 07, 09, 11 / R04 |
-| Optional hardcoded illustrative route flow, switched off initially | 08 / R05 |
+| Illustrative route flow, independently switched; D21 starts enabled | 08 / R05 |
 | YAML load/export and rebuilding count controls | 02, 11 |
 | Confirmed physical fabric, customers/RS VMs, peering matrix | 03–05 |
 | Independent link layers, RS collapse, first-member actual-host anchor | 06 |

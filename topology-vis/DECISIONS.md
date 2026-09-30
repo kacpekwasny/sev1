@@ -366,13 +366,23 @@ context. Pause the general illustrative stream during route inspection/preview.
 
 ### D21 — Playback repair and complete advertisement illustrations
 
-Queued after finishing D20: repair stalled traffic playback and inspection's
+Implemented after finishing D20: repair stalled traffic playback and inspection's
 teleport to the destination; show UPDATE fanout when an RS receives it; continue
 illustrations through the RS hierarchy to end devices; make the default BGP flow
 a sequence explaining how each advertisement propagates. Commit each point.
 Keep expected route snapshots authoritative and preserve explicit packet inspection.
 This supersedes the single linear UPDATE-marker illustration where branching is
 needed to explain an advertisement's spread.
+
+Authorized defaults: both flow and BGP sessions start enabled. A compact selector
+cycles representative examples for each family, origin device role and VPC, or
+repeats one. EVPN precedes customer and underlay IPv4/IPv6. Examples project only
+complete expected export paths onto waves; each RS branch continues to a host,
+customer VM or border. Border/static origins have no BGP example. Custom UPDATE
+inspection keeps its chosen decoded path while illustrating the prefix's complete
+end-device delivery context. Reduced motion retains static direction and labels.
+This supersedes earlier off-by-default and single-marker defaults; tables remain
+independent of playback.
 
 ## Recording an answer
 

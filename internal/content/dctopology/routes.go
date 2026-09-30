@@ -446,7 +446,7 @@ func BuildExpectedRouteState(model Model) RouteState {
 
 	state.Tables = buildRouteTables(model, allCandidates, selectedBySpeaker)
 	state.Advertisements = buildRouteAdvertisements(model, selectedBySpeaker, candidateBySpeakerAndRoute, entityByID, peersByEntity, underlayPeersByEntity)
-	state.FlowExamples = buildFlowExamples(state)
+	state.FlowExamples = buildFlowExamples(model, state)
 	state.AdvertisementCounts = make(map[string]int, len(model.Sessions))
 	for _, session := range model.Sessions {
 		state.AdvertisementCounts[session.ID] = 0
