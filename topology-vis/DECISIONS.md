@@ -304,8 +304,11 @@ after each point. D16's sequential presentation supersedes simultaneous D15 stre
 
 Point 1 is implemented: explicit packet Play opts into motion even with the OS
 reduced-motion preference; automatic route illustration stays suppressed. A new
-reduced-motion preference or hiding physical links pauses a running packet. Points
-2 and 3 remain pending; consult PROGRESS for verification and separate commits.
+reduced-motion preference or hiding physical links pauses a running packet.
+Point 2 is implemented: keep a bounded list of prefixes but advance one UPDATE
+marker through each entire path before starting the next. Step highlights and
+marker metadata follow the active prefix; static session context remains visible.
+Point 3 remains pending; consult PROGRESS for verification and separate commits.
 
 ## Recording an answer
 

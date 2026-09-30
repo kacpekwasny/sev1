@@ -46,9 +46,10 @@ Ctrl centered, and User at the top right. Expanded cards show all four members;
 Grupuj RS replaces them with one aggregate icon. Rack outlines stay inside their
 bolt, with gaps between neighboring racks and bolts.
 
-Przepływ tras is off initially. Enable it with the BGP layer to show a fixed,
-a stream of different prefix illustrations through valid RS hierarchy sessions,
-with up to 24 staggered markers. A selected UPDATE adds a focused stream.
+Przepływ tras is off initially. Enable it with the BGP layer to show a sequence
+of up to 24 different prefix illustrations through valid RS hierarchy sessions.
+One UPDATE marker completes its path before the next prefix starts; its tooltip
+identifies the current prefix. A selected UPDATE adds a focused sequence first.
 It does not learn routes or change tables. Reduced-motion settings keep static
 direction arrows. Packet examples use their calculated physical paths separately.
 

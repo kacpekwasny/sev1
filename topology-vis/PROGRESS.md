@@ -147,10 +147,15 @@ repeat completed rework milestones.
 
 ## Playback refinements — separately committed points
 
-1. Custom-endpoint packet playback: implemented in this checkpoint's commit.
+1. Custom-endpoint packet playback: implemented in `0ad13df`.
    Reproduced a blocked Play click under reduced motion; an explicit click now
    starts the packet without enabling decorative motion. Physical-layer hiding
    also pauses custom packets. Chrome checks verify position changes, pause,
    rewind, and layer hiding; desktop/narrow/touch walkthrough and Go tests pass.
-2. Sequential route-flow illustration: pending.
+2. Sequential route-flow illustration: implemented in this checkpoint's commit.
+   A single UPDATE marker completes one route's hierarchy path before the next
+   prefix starts. Current route metadata and focused UPDATE step follow that
+   marker. Chrome checks verify one marker, movement, prefix succession, all RS
+   projections, hidden layers, reduced motion, unchanged tables/YAML and teardown;
+   desktop/narrow walkthroughs and Go tests pass.
 3. Inspect-packet scrolling and viewport visibility: pending.

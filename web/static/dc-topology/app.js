@@ -652,16 +652,17 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       : !showSessions.checked ? "Przepływ poglądowy — włącz warstwę Sesje BGP."
       : !illustration.sequence.length ? "Brak zgodnego przykładu przepływu tras w tej konfiguracji."
       : exploration.update ? `UPDATE: ${exploration.update.from_id} → ${exploration.update.to_id} · ${exploration.update.route.prefix}. Tablice pozostają stałe.`
-      : `Poglądowo: ${illustration.streams.length} ogłoszeń płynie równolegle przez RS. Tablice pozostają stałe.`;
+      : `Poglądowo: ${illustration.streams.length} ogłoszeń płynie kolejno przez RS, po jednym UPDATE. Tablice pozostają stałe.`;
     if (!active || reducedMotion.matches) {
       if (illustration.frame) cancelAnimationFrame(illustration.frame);
       illustration.frame = 0;
       for (const marker of graphEl.querySelectorAll(".dc-route-marker")) marker.setAttribute("visibility", "hidden");
       return;
     }
-    updateIllustrationMarker(performance.now());
+    const now = performance.now();
+    if (!illustration.frame) illustration.startedAt = now;
+    updateIllustrationMarker(now);
     if (!illustration.frame) {
-      illustration.startedAt = performance.now();
       const tick = (now) => {
         if (destroyed) return;
         updateIllustrationMarker(now);
@@ -672,20 +673,28 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function updateIllustrationMarker(now) {
-    if (!showRouteFlow.checked || !showSessions.checked || reducedMotion.matches) return;
-    for (const [index, stream] of illustration.streams.entries()) {
-      const marker=graphEl.querySelector(`[data-flow-index="${index}"]`);
-      const sequence=stream.steps;
-      if(!marker||!sequence.length)continue;
-      const scaled=((Math.max(0,now-illustration.startedAt)+index*430)%(sequence.length*1100))/1100;
-      const step=sequence[Math.floor(scaled)];
-      const from=currentPositions?.entityPoints.get(step.fromID),to=currentPositions?.entityPoints.get(step.toID);
-      if(!from||!to){marker.setAttribute("visibility","hidden");continue;}
-      const fraction=scaled%1;
-      marker.setAttribute("cx",String(from.x+(to.x-from.x)*fraction));
-      marker.setAttribute("cy",String(from.y+(to.y-from.y)*fraction));
-      marker.setAttribute("visibility","visible");
-      if(stream.focused)for(const item of detailsEl.querySelectorAll(".dc-update-step"))item.classList.toggle("is-current",Number(item.dataset.stepIndex)===Math.floor(scaled));
+    if (!showRouteFlow.checked || !showSessions.checked || reducedMotion.matches || !illustration.sequence.length) return;
+    const marker = graphEl.querySelector("#dc-route-marker");
+    if (!marker) return;
+    const scaled = (Math.max(0, now - illustration.startedAt) % (illustration.sequence.length * 1100)) / 1100;
+    let stepIndex = Math.floor(scaled), streamIndex = 0;
+    while (stepIndex >= illustration.streams[streamIndex].steps.length) {
+      stepIndex -= illustration.streams[streamIndex++].steps.length;
+    }
+    const stream = illustration.streams[streamIndex], step = stream.steps[stepIndex];
+    const from = currentPositions?.entityPoints.get(step.fromID), to = currentPositions?.entityPoints.get(step.toID);
+    if (!from || !to) { marker.setAttribute("visibility", "hidden"); return; }
+    const fraction = scaled % 1;
+    marker.setAttribute("cx", String(from.x + (to.x - from.x) * fraction));
+    marker.setAttribute("cy", String(from.y + (to.y - from.y) * fraction));
+    marker.setAttribute("visibility", "visible");
+    marker.setAttribute("r", stream.focused ? "7" : "5");
+    marker.dataset.flowIndex = String(streamIndex);
+    marker.dataset.routeId = stream.route.id;
+    marker.style.fill = ["#d4b1fc", "#82d7e9", "#ffd782", "#9cdfb2"][streamIndex % 4];
+    marker.querySelector("title").textContent = `${stream.route.prefix} · VPC ${stream.route.vpc_id}`;
+    for (const item of detailsEl.querySelectorAll(".dc-update-step")) {
+      item.classList.toggle("is-current", stream.focused && Number(item.dataset.stepIndex) === stepIndex);
     }
   }
 
@@ -1075,12 +1084,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     }
     svg.append(vmLayer);
     svg.append(svgElement("circle", { id: "dc-packet-marker", class: "dc-packet-marker", r: 7, visibility: "hidden" }));
-    for (const [index, stream] of illustration.streams.entries()) {
-      const marker=svgElement("circle", {id:index===0?"dc-route-marker":`dc-route-marker-${index}`,class:"dc-route-marker",r:stream.focused?7:5,visibility:"hidden","data-flow-index":index,"data-route-id":stream.route.id,fill:["#d4b1fc","#82d7e9","#ffd782","#9cdfb2"][index%4]});
-      marker.style.fill=["#d4b1fc","#82d7e9","#ffd782","#9cdfb2"][index%4];
-      const title=svgElement("title",{});title.textContent=`${stream.route.prefix} · VPC ${stream.route.vpc_id}`;marker.append(title);svg.append(marker);
-    }
-    if(!illustration.streams.length)svg.append(svgElement("circle",{id:"dc-route-marker",class:"dc-route-marker",r:5,visibility:"hidden"}));
+    const routeMarker = svgElement("circle", {id:"dc-route-marker",class:"dc-route-marker",r:5,visibility:"hidden"});
+    routeMarker.append(svgElement("title", {})); svg.append(routeMarker);
     graphEl.replaceChildren(svg);
     updateAnimationMarker();
     updatePlaybackControls();

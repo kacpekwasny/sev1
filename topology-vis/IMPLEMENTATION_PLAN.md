@@ -24,6 +24,8 @@ These milestones define the revised scope; consult progress before executing an 
 
 | R10 — Device-first flows and provenance | Apply D15: many route streams, RS ASN prepending, compact device-adjacent traffic sending, per-device originated routes, and hover/focus path previews. | Commit after each of the five points. Check stream multiplicity/invariants, all intermediate AS sequences, device target selection, canonical origin ownership, GUI/Linux hover without navigation/network reads, and restore/teardown behavior at desktop/narrow widths. |
 
+| R11 — Refine playback and visibility | Apply D16: explicit custom packet playback, sequential UPDATE markers, and Inspect packet scrolling to visible fields. | Commit after each of the three points. Verify packet movement/pause/rewind under reduced motion, one route marker with successive prefixes and stable tables, and packet fields visible in the viewport at desktop/narrow widths, including asynchronous and session inspection. Consult PROGRESS for completion. |
+
 The 48-layout-unit drag bound, ephemeral offsets, popup behavior, and illustrative-flow defaults are specified in the guide and D11. These are authorized defaults that may be refined during usability checks. The latest user explicitly resumed implementation; the earlier instructions-only limit no longer applies.
 
 ## Intended outcome and evidence
