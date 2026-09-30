@@ -52,6 +52,7 @@ try {
  // Explicit playback must move custom-endpoint packets even with reduced motion.
  // The decorative route stream remains disabled by that preference.
  await page.emulateMedia({reducedMotion:'reduce'});
+ await page.locator('#dc-rewind').click();
  const sourceMarker=await page.locator('#dc-packet-marker').evaluate(m=>[Number(m.getAttribute('cx')),Number(m.getAttribute('cy'))]);
  await page.locator('#dc-play').click();
  await page.waitForFunction(([x,y])=>{

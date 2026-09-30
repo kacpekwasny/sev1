@@ -290,9 +290,15 @@ YAML. Screenshots at both widths were inspected against the fresh embedded previ
 D20 commits: `10b620c` (directional route propagation), `8d73174` (edge/corner
 resize), and the commit containing this checkpoint (focused route details).
 
-## D21 flow refinements — queued after D20
+## D21 flow refinements — in progress
 
-1. Repair traffic playback stalling and inspection teleport — pending.
+1. Repaired traffic playback: clamp the first rAF clock to avoid a negative segment
+   index; sending traffic and preset clicks play once ready. Presets decode their
+   saved ECMP path, including local VM/TAP hops. Inspection reuses the packet
+   without refetching or moving its marker. Desktop/narrow Chrome checks cover
+   actual movement, pause, inspection, destination arrival, rewind and reduced
+   motion; all existing walkthroughs and Go tests/build pass.
+   Commit: the commit containing this checkpoint.
 2. Show RS fanout — pending.
 3. Complete BGP illustrations at end devices — pending.
 4. Default advertisement-explanation sequence — pending.

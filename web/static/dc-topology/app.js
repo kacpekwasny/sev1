@@ -187,6 +187,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   const exploration = { update: null, packet: null };
   const exploreRequests = { update: 0, packet: 0 };
   const exploreErrors = { update: "", packet: "" };
+  let pendingPacketPlayback=null;
   const animation = { playing: false, elapsed: 0, startedAt: 0, frame: 0 };
 
   function routeSelection(element) {
@@ -308,7 +309,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if(pick.pair&&pick.name==="from")endpointPick={name:"to",pair:true};
     else endpointPick=null;
     updatePickBanner();renderGraph();
-    if(pick.pair&&pick.name==="to")beginExploration("packet");
+    if(pick.pair&&pick.name==="to")beginExploration("packet",{autoplay:true});
   }
 
   const onSubmit = (event) => {
@@ -462,12 +463,10 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   const onTrafficClick = (event) => {
     const button = event.target.closest("[data-traffic-id]");
     if (!button || !trafficList.contains(button)) return;
-    selected = { type: "traffic", id: button.dataset.trafficId };
-    resetAnimation();
-    renderTrafficList();
-    renderGraph();
-    renderInspector();
-    openInspector();
+    const flow=state.model.route_state?.traffic?.find(item=>item.id===button.dataset.trafficId);
+    if(!flow?.reachable)return;
+    const form=root.querySelector("#dc-packet-form");form.elements.from.value=flow.source_vm_id;form.elements.to.value=flow.destination_id;form.elements.family.value="ipv4";
+    beginExploration("packet",{autoplay:true,trafficID:flow.id});
   };
   const onPlaybackClick = () => animation.playing ? pauseAnimation() : startAnimation();
   const onRewindClick = () => resetAnimation();
@@ -635,6 +634,9 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     });
   }
   listen(root.querySelector("#dc-inspect-packet"), "click", () => {
+    if(selected?.type==="packet") {
+      renderInspector();openInspector();requestPacketReveal();return;
+    }
     if (selected?.type === "session") {
       renderInspector(); openInspector();
       requestPacketReveal();
@@ -732,14 +734,15 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     setRouteOptions(null);
   }
 
-  function beginExploration(kind) {
+  function beginExploration(kind,{autoplay=false,trafficID=""}={}) {
     const form = root.querySelector(`#dc-${kind}-form`);
     if (!state.model || state.busy) return;
     deviceMenu=null;positionDeviceMenu();
     const requestID = ++exploreRequests[kind];
     exploration[kind] = null; exploreErrors[kind] = "";
     rememberInspector();
-    selected = { type: kind, id: String(requestID) };
+    selected = { type: kind, id: String(requestID),presetID:trafficID||undefined };
+    if(kind==="packet")pendingPacketPlayback=autoplay?requestID:null;
     resetAnimation();
     form.querySelector("button[type=submit]").disabled = true;
     root.querySelector(`#dc-${kind}-status`).textContent = "Sprawdzam wybrane końce…";
@@ -749,6 +752,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     inspectorEl.scrollIntoView({ block: "start" });
     send({ type: "explore", kind, from: form.elements.from.value, to: form.elements.to.value,
       route: kind === "update" ? form.elements.route.value : "", family: kind === "packet" ? form.elements.family.value : "",
+      traffic:trafficID,
       requestID, revision: modelRevision });
   }
 
@@ -835,7 +839,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     }
     if(!currentPacketSegments.length) {marker.setAttribute("visibility","hidden");return;}
     const duration = animationDuration();
-    const progress = Math.min(1, animationElapsed(now) / duration);
+    // rAF timestamps can precede performance.now() when playback starts mid-frame.
+    const progress = Math.max(0, Math.min(1, animationElapsed(now) / duration));
     const scaled = progress * currentPacketSegments.length;
     const segment = Math.min(currentPacketSegments.length - 1, Math.floor(scaled));
     const fraction = progress >= 1 ? 1 : scaled - segment;
@@ -852,7 +857,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const canPlay = path.length > 1 && showLinks.checked && !hiddenPath;
     playButton.disabled = !canPlay;
     rewindButton.disabled = !canPlay;
-    root.querySelector("#dc-inspect-packet").disabled = !exploration.packet && (!selected || !["traffic", "session"].includes(selected.type));
+    root.querySelector("#dc-inspect-packet").disabled = !exploration.packet && (!selected || !["traffic", "session", "packet"].includes(selected.type));
     playButton.textContent = animation.playing ? "Wstrzymaj pakiet" : "Odtwórz pakiet";
     if (animation.playing) return;
     if (!selected || !["traffic", "session", "packet"].includes(selected.type)) playStatus.textContent = "Wybierz przepływ lub sesję BGP, aby prześledzić pakiet.";
@@ -866,8 +871,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   function startAnimation() {
     const path = selectedPath();
     if (path.length < 2 || !showLinks.checked || animation.playing || path.some(id=>!currentPositions?.entityPoints.has(id))) return;
-    // A deliberate Play click opts into this packet's motion; decorative streams
-    // still respect reduced motion and neither kind of packet starts automatically.
+    // Sending traffic or choosing a preset opts into packet playback.
+    // Decorative streams still respect reduced motion.
     const duration = animationDuration();
     if (animation.elapsed >= duration) animation.elapsed = 0;
     animation.playing = true;
@@ -923,6 +928,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       modelRevision++;
       inspectorLoaded.clear();
       inspectorPending.clear();
+      pendingPacketPlayback=null;
       inspectorErrors.clear();
       endDrag(null, true);
       cancelResize();
@@ -984,6 +990,10 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     renderTrafficList();
     renderGraph();
     renderInspector();
+    if(next.explorationData?.kind==="packet"&&next.explorationData.revision===modelRevision&&next.explorationData.ok&&pendingPacketPlayback===next.explorationData.requestID&&selected?.type==="packet"&&selected.id===String(pendingPacketPlayback)) {
+      pendingPacketPlayback=null;
+      if(exploration.packet?.reachable)startAnimation();
+    }
   }
 
   function renderSummary() {
@@ -1027,7 +1037,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const button = document.createElement("button");
       button.type = "button"; button.className = "dc-flow-button";
       button.dataset.trafficId = flow.id;
-      button.classList.toggle("active", selected?.type === "traffic" && selected.id === flow.id);
+      button.classList.toggle("active", (selected?.type === "traffic" && selected.id === flow.id)||selected?.presetID===flow.id);
       button.textContent = `${flow.id}${flow.reachable ? " · osiągalny" : " · brak trasy"}`;
       trafficList.append(button);
     }

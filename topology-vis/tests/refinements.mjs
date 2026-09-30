@@ -117,6 +117,8 @@ try {
   await page.locator('#dc-send-to').click();
   await page.locator('.dc-vm[data-entity-id="customer-3"]').click();
   await page.waitForFunction(()=>!document.querySelector('#dc-packet-form button[type=submit]').disabled);
+  assert.equal(await page.locator('#dc-play').textContent(),'Wstrzymaj pakiet','Send traffic should start the packet');
+  await page.locator('#dc-play').click();await page.locator('#dc-rewind').click();
   await page.keyboard.press('Escape');
   const onYellow=()=>page.evaluate(()=>{
     const m=document.querySelector('#dc-packet-marker'),x=Number(m.getAttribute('cx')),y=Number(m.getAttribute('cy'));

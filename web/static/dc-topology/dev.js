@@ -31,9 +31,10 @@ async function loadInspector(command) {
 }
 
 async function loadExploration(command) {
-  const { kind, from, to, route, family, requestID, revision } = command;
+  const { kind, from, to, route, family, traffic, requestID, revision } = command;
   try {
     const query = new URLSearchParams({kind,from,to,route,family});
+    if(traffic)query.set("traffic",traffic);
     const data = await request(`/explore?${query}`);
     app.setState({explorationData:{...data,kind,requestID,revision}});
   } catch(error) {

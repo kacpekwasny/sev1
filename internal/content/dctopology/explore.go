@@ -108,7 +108,16 @@ func (s *configStore) explore(w http.ResponseWriter, r *http.Request) {
 			respond(http.StatusBadRequest, explorationResponse{Message: "niepoprawna rodzina pakietu"})
 			return
 		}
-		packet := InspectPacket(model, from, to, family)
+		var packet PacketInspection
+		if id := q.Get("traffic"); id != "" {
+			packet = InspectTrafficPacket(model, id)
+			if family != "ipv4" || packet.FromID != from || packet.ToID != to {
+				respond(http.StatusBadRequest, explorationResponse{Message: "wybierz końce i rodzinę skonfigurowanego przepływu"})
+				return
+			}
+		} else {
+			packet = InspectPacket(model, from, to, family)
+		}
 		respond(http.StatusOK, explorationResponse{OK: true, Packet: &packet})
 	default:
 		respond(http.StatusBadRequest, explorationResponse{Message: "nieznany rodzaj inspekcji"})
@@ -179,6 +188,21 @@ func InspectUpdateFlow(model Model, from, to, routeID string) UpdateFlow {
 }
 
 func InspectPacket(model Model, from, to, family string) PacketInspection {
+	return inspectPacket(model, from, to, family, nil)
+}
+
+// InspectTrafficPacket decodes the already resolved preset without choosing a
+// different route or ECMP path under the synthetic inspection flow identifier.
+func InspectTrafficPacket(model Model, id string) PacketInspection {
+	for _, flow := range model.Routes.Traffic {
+		if flow.ID == id {
+			return inspectPacket(model, flow.SourceVMID, flow.DestinationID, "ipv4", &flow)
+		}
+	}
+	return PacketInspection{Reason: "configured-flow-not-found"}
+}
+
+func inspectPacket(model Model, from, to, family string, preset *ResolvedTraffic) PacketInspection {
 	result := PacketInspection{FromID: from, ToID: to, Family: family, Protocol: "ICMP Echo Request", Payload: "SEV1: przykładowy pakiet", TTL: 64}
 	if family == "ipv6" {
 		result.Protocol = "ICMPv6 Echo Request"
@@ -218,42 +242,55 @@ func InspectPacket(model Model, from, to, family string) PacketInspection {
 	destination, destinationVM := vms[to]
 	graph := newUnderlay(model)
 	if sourceVM && source.Role == VMCustomer {
-		var sourceNumber int
-		_, _ = fmt.Sscanf(source.ID, "customer-%d", &sourceNumber)
-		request := TrafficRequest{ID: "inspected-packet", SourceVMID: sourceNumber}
-		if destinationVM && destination.Role == VMCustomer {
-			var id int
-			_, _ = fmt.Sscanf(destination.ID, "customer-%d", &id)
-			request.DestinationVMID = &id
-		} else if node, ok := nodes[to]; ok && node.Kind == NodeBorder {
-			for _, route := range model.Routes.Origins {
-				if route.OriginID == to && route.OriginKind == "border" && route.VPCID == source.VPCID && route.IPFamily == family {
-					request.DestinationPrefix = route.Prefix
-					prefix := netip.MustParsePrefix(route.Prefix)
-					address := prefix.Addr()
-					if prefix.Contains(address.Next()) {
-						address = address.Next()
-					}
-					result.Destination = address.String()
-					break
+		var flow ResolvedTraffic
+		if preset != nil {
+			flow = *preset
+			if !destinationVM && flow.DestinationPrefix != "" {
+				prefix := netip.MustParsePrefix(flow.DestinationPrefix)
+				address := prefix.Addr()
+				if prefix.Contains(address.Next()) {
+					address = address.Next()
 				}
+				result.Destination = address.String()
 			}
-			if request.DestinationPrefix == "" {
+		} else {
+			var sourceNumber int
+			_, _ = fmt.Sscanf(source.ID, "customer-%d", &sourceNumber)
+			request := TrafficRequest{ID: "inspected-packet", SourceVMID: sourceNumber}
+			if destinationVM && destination.Role == VMCustomer {
+				var id int
+				_, _ = fmt.Sscanf(destination.ID, "customer-%d", &id)
+				request.DestinationVMID = &id
+			} else if node, ok := nodes[to]; ok && node.Kind == NodeBorder {
+				for _, route := range model.Routes.Origins {
+					if route.OriginID == to && route.OriginKind == "border" && route.VPCID == source.VPCID && route.IPFamily == family {
+						request.DestinationPrefix = route.Prefix
+						prefix := netip.MustParsePrefix(route.Prefix)
+						address := prefix.Addr()
+						if prefix.Contains(address.Next()) {
+							address = address.Next()
+						}
+						result.Destination = address.String()
+						break
+					}
+				}
+				if request.DestinationPrefix == "" {
+					result.Reason = "no-matching-vpc-route"
+					return result
+				}
+			} else {
+				result.Reason = "tenant-target-not-supported"
+				return result
+			}
+			scenario := model
+			scenario.Config.Traffic = []TrafficRequest{request}
+			flows := resolveTrafficInFamily(scenario, model.Routes.Forwarding, graph, family)
+			if len(flows) == 0 {
 				result.Reason = "no-matching-vpc-route"
 				return result
 			}
-		} else {
-			result.Reason = "tenant-target-not-supported"
-			return result
+			flow = flows[0]
 		}
-		scenario := model
-		scenario.Config.Traffic = []TrafficRequest{request}
-		flows := resolveTrafficInFamily(scenario, model.Routes.Forwarding, graph, family)
-		if len(flows) == 0 {
-			result.Reason = "no-matching-vpc-route"
-			return result
-		}
-		flow := flows[0]
 		result.Reachable, result.Reason = flow.Reachable, flow.Reason
 		result.RouteID = flow.RouteID
 		result.VPCID = source.VPCID

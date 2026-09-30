@@ -73,6 +73,26 @@ func TestUpdateInspectionUsesDirectedExports(t *testing.T) {
 	}
 }
 
+func TestPresetPacketRetainsResolvedPath(t *testing.T) {
+	model, err := BuildTopology(exampleConfig(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, flow := range model.Routes.Traffic {
+		packet := InspectTrafficPacket(model, flow.ID)
+		if !packet.Reachable || !reflect.DeepEqual(packet.PhysicalNodeIDs, flow.PhysicalNodeIDs) || !reflect.DeepEqual(packet.PhysicalLinkIDs, flow.PhysicalLinkIDs) || packet.SelectedPathIndex != flow.SelectedPathIndex || packet.RouteID != flow.RouteID {
+			t.Fatalf("preset inspection changed forwarding: flow=%+v packet=%+v", flow, packet)
+		}
+		if packet.DisplayHopIDs[0] != flow.SourceVMID || packet.DisplayHopIDs[len(packet.DisplayHopIDs)-1] != flow.DestinationID {
+			t.Fatalf("missing preset VM/TAP endpoints: %+v", packet)
+		}
+	}
+	local := InspectTrafficPacket(model, "lokalny-host")
+	if !reflect.DeepEqual(local.DisplayHopIDs, []string{"customer-1", "host-b1-h1", "customer-2"}) {
+		t.Fatalf("local preset must traverse both TAPs: %v", local.DisplayHopIDs)
+	}
+}
+
 func TestPacketInspectionEncapsulationAndTAPs(t *testing.T) {
 	model, err := BuildTopology(exampleConfig(t))
 	if err != nil {

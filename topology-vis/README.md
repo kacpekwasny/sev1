@@ -90,7 +90,10 @@ path for playback; Inspektuj pakiet reopens it. Highlighted steps follow playbac
 Inspektuj pakiet opens containing sections, brings the popup into view below the
 navigation, and scrolls its body to the focused Pakiet bit po bicie heading and
 fields. This also works for fetched preset packets and BGP session transport.
-An explicit Odtwórz pakiet click plays the selected path even when the OS requests
+Sending traffic or clicking a preset starts playback after calculation. Presets
+retain their saved ECMP path and include local VM/TAP hops. Packet inspection
+reuses that packet without resetting its position. Odtwórz pakiet resumes or
+replays the selected path even when the OS requests
 reduced motion. Decorative route animation still honors that preference. Hiding
 physical links pauses playback, including packets between custom endpoints.
 The packet marker travels on the yellow cable/TAP segments, using device ports
@@ -192,6 +195,7 @@ node topology-vis/tests/exploration.mjs
 PLAYWRIGHT_MODULE=/absolute/path/to/playwright-core/index.mjs \
 TOPOLOGY_URL=http://127.0.0.1:8081/topologie/dc/ \
 node topology-vis/tests/refinements.mjs
+node topology-vis/tests/playback.mjs
 ```
 
 The walkthrough checks desktop/narrow popup behavior, stale responses, mouse/touch
