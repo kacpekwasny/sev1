@@ -296,6 +296,17 @@ changing selection or tables; leaving restores the selected view. Unrelated pack
 markers and the decorative stream are suppressed during preview. Consult PROGRESS
 for the five separate commits and validation.
 
+### D16 — Playback and packet-inspection refinements
+
+Latest user direction: fix custom-endpoint packet playback, animate only one BGP
+UPDATE at a time, and make Inspect packet scroll to visible packet fields. Commit
+after each point. D16's sequential presentation supersedes simultaneous D15 streams.
+
+Point 1 is implemented: explicit packet Play opts into motion even with the OS
+reduced-motion preference; automatic route illustration stays suppressed. A new
+reduced-motion preference or hiding physical links pauses a running packet. Points
+2 and 3 remain pending; consult PROGRESS for verification and separate commits.
+
 ## Recording an answer
 
 Record the latest user direction and affected milestones. If it changes previously implemented work, reopen the affected acceptance checks; do not claim the old checks verify new behavior. Distinguish direct user requirements from authorized implementation defaults. Preserve the original TODO while keeping this decision record and the active plan authoritative for later changes.

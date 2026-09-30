@@ -35,6 +35,28 @@ try {
  await page.locator('.dc-vm[data-entity-id="customer-3"]').click();
  await page.waitForFunction(()=>!document.querySelector('#dc-packet-form button[type=submit]').disabled);
  assert.match(await page.locator('#dc-details').textContent(),/ICMPv6/);
+ // Explicit playback must move custom-endpoint packets even with reduced motion.
+ // The decorative route stream remains disabled by that preference.
+ await page.emulateMedia({reducedMotion:'reduce'});
+ const sourceMarker=await page.locator('#dc-packet-marker').evaluate(m=>[Number(m.getAttribute('cx')),Number(m.getAttribute('cy'))]);
+ await page.locator('#dc-play').click();
+ await page.waitForFunction(([x,y])=>{
+   const m=document.querySelector('#dc-packet-marker');
+   return Math.hypot(Number(m.getAttribute('cx'))-x,Number(m.getAttribute('cy'))-y)>1;
+ },sourceMarker,{timeout:3000});
+ assert.equal(await page.locator('#dc-play').textContent(),'Wstrzymaj pakiet');
+ await page.locator('#dc-play').click();
+ const pausedMarker=await page.locator('#dc-packet-marker').getAttribute('cy');
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+ assert.equal(await page.locator('#dc-packet-marker').getAttribute('cy'),pausedMarker);
+ await page.locator('#dc-rewind').click();
+ assert.deepEqual(await page.locator('#dc-packet-marker').evaluate(m=>[Number(m.getAttribute('cx')),Number(m.getAttribute('cy'))]),sourceMarker);
+ await page.locator('#dc-play').click();
+ await page.locator('#dc-show-links').uncheck();
+ assert.equal(await page.locator('#dc-play').textContent(),'Odtwórz pakiet');
+ assert.equal(await page.locator('#dc-packet-marker').getAttribute('visibility'),'hidden');
+ await page.locator('#dc-show-links').check();
+ await page.emulateMedia({reducedMotion:'no-preference'});
  await page.keyboard.press('Escape');
  await page.locator('#dc-explorer > summary').click();
  await page.locator('#dc-packet-form [name="family"]').selectOption('ipv4');

@@ -261,9 +261,10 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     });
   };
   const onReset = () => send({ type: "reset_default" });
-  const onLayerChange = () => {
-    const layerHidden = (selected?.type === "traffic" || selected?.type === "session") && !showLinks.checked;
-    if (animation.playing && (layerHidden || reducedMotion.matches)) pauseAnimation();
+  const onLayerChange = (event) => {
+    const layerHidden = ["traffic", "session", "packet"].includes(selected?.type) && !showLinks.checked;
+    const motionChanged = event.currentTarget === reducedMotion && reducedMotion.matches && !animation.reducedAtStart;
+    if (animation.playing && (layerHidden || motionChanged)) pauseAnimation();
     renderGraph();
     renderInspector();
   };
@@ -737,13 +738,12 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   function startAnimation() {
     const path = selectedPath();
     if (path.length < 2 || !showLinks.checked || animation.playing) return;
-    if (reducedMotion.matches) {
-      playStatus.textContent = "Animacja wyłączona przez ustawienie ograniczenia ruchu; ścieżka pozostaje podświetlona.";
-      return;
-    }
+    // A deliberate Play click opts into this packet's motion; decorative streams
+    // still respect reduced motion and neither kind of packet starts automatically.
     const duration = animationDuration();
     if (animation.elapsed >= duration) animation.elapsed = 0;
     animation.playing = true;
+    animation.reducedAtStart = reducedMotion.matches;
     animation.startedAt = performance.now();
     animation.speed = Number(speedSelect.value);
     playStatus.textContent = "Poglądowy pakiet przemieszcza się po wybranej ścieżce…";

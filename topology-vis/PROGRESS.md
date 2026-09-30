@@ -144,3 +144,13 @@ repeat completed rework milestones.
    after closing the inspector. GUI/Linux hover and keyboard-focus checks, desktop/
    narrow/touch walkthroughs against embedded production assets, Go tests/build,
    vet, and packet-bit checks pass.
+
+## Playback refinements — separately committed points
+
+1. Custom-endpoint packet playback: implemented in this checkpoint's commit.
+   Reproduced a blocked Play click under reduced motion; an explicit click now
+   starts the packet without enabling decorative motion. Physical-layer hiding
+   also pauses custom packets. Chrome checks verify position changes, pause,
+   rewind, and layer hiding; desktop/narrow/touch walkthrough and Go tests pass.
+2. Sequential route-flow illustration: pending.
+3. Inspect-packet scrolling and viewport visibility: pending.
