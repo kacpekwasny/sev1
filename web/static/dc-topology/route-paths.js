@@ -7,7 +7,8 @@ export function routePaths(model, selection) {
   const owner=selection.ownerID || candidate?.speaker_id || candidate?.to_id;
   if(!candidate||!owner) return {learned:[],pointsTo:[]};
   const table=model.route_state?.tables?.find((t)=>t.speaker_id===owner);
-  const route=candidate.path||candidate.propagation_path ? candidate : table?.selected?.find((r)=>r.id===selection.id) ?? candidate;
+  const localStatic=candidate.protocol==="static"&&candidate.kernel_device?.startsWith("tap-");
+  const route=localStatic||candidate.path||candidate.propagation_path ? candidate : table?.selected?.find((r)=>r.id===selection.id) ?? candidate;
   const learned=[...(route.path??route.propagation_path??[])];
   const hostOf=(id)=>model.vms.find((v)=>v.id===id)?.host_id??id;
   const source=hostOf(owner),destination=route.next_hop_node_id ?? origin?.next_hop_node_id;

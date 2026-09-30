@@ -1,5 +1,5 @@
 const NS = "http://www.w3.org/2000/svg";
-import { appendRIB, appendFIB, identifyRoute, appendRoutingRIB, appendOriginatedRoutes, appendBorderRoutes } from "./tables.js";
+import { appendRIB, appendFIB, identifyRoute, appendRoutingRIB, appendOriginatedRoutes } from "./tables.js";
 import { routeFlowStreams, originatedRouteFlow } from "./route-flow.js";
 import { displayNames } from "./labels.js";
 import { physicalPoints, tapPoints, packetSegments, packetTraversal, packetPosition } from "./packet-path.js";
@@ -729,7 +729,6 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if (table) {
       if(state.model.nodes.some(node=>node.id===speakerID&&node.kind==="host"))appendRoutingRIB(container,state.model,speakerID,root.querySelector("#dc-rib-view").value,appendRouteRows);
       appendRIB(container, state.model, speakerID, root.querySelector("#dc-rib-view").value, appendRouteRows);
-      appendBorderRoutes(container,state.model,speakerID,root.querySelector("#dc-rib-view").value,appendRouteRows);
     }
     else appendInspectorLoading(container, "speaker", speakerID);
   }
@@ -1523,6 +1522,16 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         : route.origin_kind==="border-default"?"Default/public VRF · trasa domyślna z border · underlay bez VXLAN"
         : route.vni===3||route.origin_kind==="customer"?`Default/public VRF · VNI 3${route.rd?` · RD ${route.rd}`:""}`:"Underlay · bez kontekstu VPC/VNI";
       detailsEl.append(identity, context);
+      const localStatic=selected.candidate?.protocol==="static"&&selected.candidate?.kernel_device?.startsWith("tap-");
+      if(localStatic) {
+        const note=document.createElement("p");note.className="dc-static-redistribution";
+        const sourceVM=route.source_vm_id||state.model.route_state.origins.find(origin=>origin.id===selected.candidate.resolved_route_id)?.source_vm_id;
+        const node=state.model.nodes.find(node=>node.id===selected.ownerID);
+        identity.textContent=`Lokalna trasa statyczna ${route.prefix} · dev ${selected.candidate.kernel_device} · VM ${sourceVM??""} na ${node?.label??selected.ownerID}`;
+        note.textContent=(selected.candidate.vni||route.vni)?"Statyczny prefiks lokalnej VM jest redystrybuowany do BGP i ogłaszany jako EVPN Type 5. Inne hosty importują go jako trasę BGP przez VXLAN.":"Statyczna trasa TAP do lokalnej VM infrastruktury; host ogłasza jej IPv6 w underlay BGP.";
+        detailsEl.querySelector("h3").textContent="Lokalna trasa statyczna do VM";
+        detailsEl.append(note);
+      }
       const recursive=(state.model.route_state.forwarding??[]).find(f=>f.owner_id===paths.owner&&f.route_id===route.id&&f.resolved_route_id);
       if(recursive) {
         const resolution=document.createElement("p");resolution.className="dc-recursive-resolution";
@@ -1841,7 +1850,7 @@ function trafficReasonText(reason) {
     "unresolved-underlay-next-hop": "next hop nie jest osiągalny w underlay",
     "destination-vm-not-found": "VM docelowa nie istnieje",
     "no-expected-advertisement-path": "brak oczekiwanych eksportów tej trasy między wybranymi końcami",
-    "tenant-target-not-supported": "VM klienta wymaga celu w tej samej VPC albo statycznej trasy do border; nie ma trasy do tego celu w underlay",
+    "tenant-target-not-supported": "VM klienta wymaga celu w tej samej VRF albo pasującej trasy BGP/default; brak trasy w jej VRF",
     "endpoint-address-unavailable": "wybrany koniec nie ma adresu w tej rodzinie IP",
   };
   return messages[reason] ?? reason ?? "nieznana przyczyna";

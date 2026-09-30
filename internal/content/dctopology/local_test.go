@@ -51,7 +51,7 @@ func TestEveryVMHasLocalTAPAndGuestNIC(t *testing.T) {
 					evpn++
 				}
 			}
-			if underlay != 68 || evpn != 6 {
+			if underlay != 72 || evpn != 6 {
 				t.Fatalf("host RIB lacks underlay or EVPN: %d %d", underlay, evpn)
 			}
 		}

@@ -438,5 +438,18 @@ No pending D25 work. Preview: http://127.0.0.1:8099/topologie/dc/.
    FIB remains separately inspectable. Both views use the same expected snapshot.
    Go tests/build, syntax checks and desktop/narrow GUI/Linux route hover/back pass.
    Commit: the commit containing this checkpoint.
-3. Replace fabricated remote static egress with learned routing: pending.
+3. Removed fabricated static border loopbacks and per-host uplink prefixes.
+   Configured external prefixes are targets, served by public BGP defaults.
+   Borders originate their own loopbacks on physical underlay sessions, alongside
+   defaults; they do not export tenant NLRI or learned transit. Host static /32s
+   and /128s exclusively point to local customer/infra VM TAPs. Local customer
+   static prefixes originate EVPN with incomplete ORIGIN; remote copies use BGP
+   and VXLAN. Public host-VRF projections include underlay; private VRFs gain no
+   invented egress. Unreachable presets preserve their routing failure reason.
+   Tests verify every host's complete static set and public/private egress,
+   IPv4/IPv6 border reachability, redistribution and default precedence.
+   Go tests/build and desktop/narrow host/kernel route inspection pass, including
+   local-static redistribution details without a fabricated learned path.
+   Packet bits, refinements and preset playback checks pass.
+   Commit: the commit containing this checkpoint.
 4. Address purpose/ownership hover: pending.

@@ -132,9 +132,8 @@ try {
   }
   assert.doesNotMatch(await page.locator('#dc-packet-form select[name="from"]').textContent(),/host-b\d+-h\d+/);
   await page.locator('#dc-rib-view').selectOption('gui');
-  await page.locator('.dc-border-routes > summary').click();
-  assert((await page.locator('.dc-border-routes .dc-route-row').count())>=4);
-  assert.match(await page.locator('.dc-border-routes').textContent(),/statyczn/);
+  assert.equal(await page.locator('.dc-border-routes').count(),0);
+  assert.equal(await page.locator('.dc-routing-rib [data-routing-source="bgp-underlay"]').count(),1);
   for(const family of ['ipv4','ipv6']) {
     const packet=await (await page.request.get(`${api}/explore?kind=packet&from=customer-1&to=border-2&family=${family}`)).json();
     assert.equal(packet.packet.reachable,true);

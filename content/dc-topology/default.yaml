@@ -44,6 +44,7 @@ route_servers:
       member: 1
       host: {bolt_id: 1, host_id: 2}
 
+# Cele poza fabric; ruch publiczny korzysta z domyślnej trasy BGP.
 route_origins:
   - id: przyklad-uplink-v4
     vpc_id: 0

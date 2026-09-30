@@ -51,6 +51,7 @@ try {
   await page.locator('#dc-device-actions-close').click();
   await page.locator('.dc-originated-routes > summary').click();
   assert.equal(await page.locator('.dc-originated-routes [data-route-id^="default/"]').count(),2);
+  assert.equal(await page.locator('.dc-originated-routes [data-route-id^="underlay/border-1/"]').count(),2);
   assert.deepEqual(errors,[]);await page.close();
  }
  console.log('Resolved kernel routes in GUI/Linux at desktop and narrow widths: passed');

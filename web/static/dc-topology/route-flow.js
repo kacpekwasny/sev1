@@ -2,7 +2,9 @@
 // No route tables or convergence state are changed by this view.
 export function originatedRouteFlow(model, selection) {
   if(selection?.type!=="route")return null;
-  const example=(model.route_state?.originated_flows??[]).find(flow=>flow.route.id===selection.id&&flow.route.origin_id===selection.ownerID);
+  const localStatic=selection.candidate?.protocol==='static'&&selection.candidate?.kernel_device?.startsWith('tap-');
+  const routeID=localStatic?(selection.candidate.resolved_route_id||selection.id):selection.id;
+  const example=(model.route_state?.originated_flows??[]).find(flow=>flow.route.id===routeID&&flow.route.origin_id===selection.ownerID);
   if(!example?.steps.length || (selection.candidate?.path??selection.candidate?.propagation_path??[]).length>1)return null;
   return {reachable:true,route:example.route,example};
 }

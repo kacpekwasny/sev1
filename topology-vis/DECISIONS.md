@@ -457,7 +457,12 @@ restores the prior selection and switches. Never list all exports in route detai
 Add the combined host routing RIB alongside the BGP AFI tables, exposing imported
 EVPN VM routes with VXLAN resolution. Local customer delivery starts with static
 TAP host routes redistributed into BGP/EVPN; remote reachability is learned BGP.
-Remove fabricated per-host static border routes. Preserve loopback underlay,
+Remove fabricated per-host static border routes. Border loopbacks are originated
+only over physical underlay BGP; defaults also use Ctrl. This supersedes the
+previous blanket prohibition on non-default border exports for loopback identities
+only. Configured `route_origins` prefixes remain external-target metadata, not
+injected host routes. Public egress uses defaults; private VRFs have no assumed
+border egress without a configured learned route. Preserve loopback underlay,
 IPv6 infrastructure reachability, customer recursion and private VRF isolation.
 Address hover should explain purpose and ownership with VRF/interface scope;
 ambiguous/shared and external addresses must be described honestly. Commit each

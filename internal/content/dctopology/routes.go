@@ -252,7 +252,7 @@ func BuildExpectedRouteState(model Model) RouteState {
 			}
 			route := makeRoute(
 				fmt.Sprintf("vm/%s/%s/%s", vm.ID, family, parsed), netip.PrefixFrom(parsed, prefixBits).String(),
-				family, vm.VPCID, host.ID, vm.Label+" via "+host.Label, "host", host.ASN, nveID(host), host.IPv4, host.ID, 0, vpcByID[vm.VPCID],
+				family, vm.VPCID, host.ID, vm.Label+" via "+host.Label, "host", host.ASN, nveID(host), host.IPv4, host.ID, 2, vpcByID[vm.VPCID],
 			)
 			route.SourceVMID = vm.ID
 			state.Origins = append(state.Origins, route)
@@ -293,56 +293,8 @@ func BuildExpectedRouteState(model Model) RouteState {
 			})
 		}
 	}
-	for _, origin := range model.Config.RouteOrigins {
-		borderID := fmt.Sprintf("border-%d", origin.BorderID)
-		border := nodes[borderID]
-		prefix, _ := netip.ParsePrefix(origin.Prefix)
-		family := "ipv6"
-		if prefix.Addr().Is4() {
-			family = "ipv4"
-		}
-		route := makeRoute(
-			"border/"+origin.ID, prefix.Masked().String(), family, origin.VPCID,
-			border.ID, border.Label, "border", border.ASN, uint16(0xf000+origin.BorderID),
-			border.IPv4, border.ID, 2, vpcByID[origin.VPCID],
-		)
-		// Configured uplinks are static egress destinations, not border BGP NLRI.
-		route.Protocol, route.AFI, route.SAFI, route.RouteType, route.RD, route.OriginASN = "static", family, "unicast", 0, "", 0
-		state.Origins = append(state.Origins, route)
-	}
-	// Border addresses are reachable through static underlay and per-VPC egress
-	// routes, independently of any UPDATE from a border speaker.
-	for _, border := range model.Nodes {
-		if border.Kind != NodeBorder {
-			continue
-		}
-		contexts := append([]VPCContext{}, state.VPCs...)
-		public := false
-		for _, context := range contexts {
-			if context.ID == 0 {
-				public = true
-			}
-		}
-		if !public {
-			contexts = append(contexts, VPCContext{})
-		}
-		for _, context := range contexts {
-			for _, item := range []struct{ family, address string }{{"ipv4", border.IPv4}, {"ipv6", border.IPv6}} {
-				bits := 128
-				if item.family == "ipv4" {
-					bits = 32
-				}
-				nextHop := border.IPv4
-				if context.ID == 0 {
-					nextHop = item.address
-				}
-				state.Origins = append(state.Origins, Route{ID: fmt.Sprintf("static/%s/vpc%d/%s", border.ID, context.ID, item.family),
-					Protocol: "static", Prefix: netip.PrefixFrom(netip.MustParseAddr(item.address), bits).String(),
-					IPFamily: item.family, AFI: item.family, SAFI: "unicast", VPCID: context.ID, VNI: context.VNI, RouteTarget: context.RouteTarget,
-					OriginID: border.ID, OriginKind: "border", OriginLabel: border.Label, NextHop: nextHop, NextHopNodeID: border.ID, LocalPreference: 100})
-			}
-		}
-	}
+	// Configured uplink prefixes describe external packet targets, not routes
+	// installed statically across the fabric. Public egress uses learned defaults.
 	sort.Slice(state.Origins, func(i, j int) bool { return state.Origins[i].ID < state.Origins[j].ID })
 
 	entityByID := make(map[string]SessionEndpoint, len(model.Nodes)+len(model.VMs))
@@ -396,9 +348,6 @@ func BuildExpectedRouteState(model Model) RouteState {
 		if route.OriginKind == "host" {
 			// A host/NVE originates VM prefixes; the VM itself is not made a BGP peer for EVPN.
 			start = route.NextHopNodeID
-		}
-		if route.OriginKind == "border" {
-			start = route.OriginID
 		}
 		previous := reachableRouteSpeakers(start, route, peers, entityByID, route.VPCID, vms, physicalTransit)
 		for speakerID, path := range previous {
@@ -556,7 +505,7 @@ func reachableRouteSpeakers(start string, route Route, peers map[string][]routeP
 	for len(queue) > 0 {
 		current := queue[0]
 		queue = queue[1:]
-		if entities[current].Kind == "border" && !(current == start && route.OriginKind == "border-default") {
+		if entities[current].Kind == "border" && !(current == start && (route.OriginKind == "border-default" || route.OriginKind == "underlay")) {
 			continue
 		}
 		if !physicalTransit && current != start && !isRouteServerEntity(current) {
@@ -671,7 +620,7 @@ func buildRouteAdvertisements(model Model, selected map[string][]RouteCandidate,
 	defaultPeers := mergeRoutePeers(overlayPeers, underlayPeers)
 	for speakerID, candidates := range selected {
 		for _, candidate := range candidates {
-			if entities[speakerID].Kind == "border" && (candidate.OriginKind != "border-default" || candidate.OriginID != speakerID) {
+			if entities[speakerID].Kind == "border" && (candidate.OriginID != speakerID || (candidate.OriginKind != "border-default" && candidate.OriginKind != "underlay")) {
 				continue
 			}
 			physicalTransit := candidate.OriginKind == "underlay" || candidate.OriginKind == "border-default"
@@ -756,6 +705,7 @@ func buildForwarding(model Model, selected map[string][]RouteCandidate, origins 
 				}
 				entry := forwardingEntry(node.ID, string(node.Kind), node.ID, candidate)
 				entry.VRF, entry.EncapsulateVXLAN = "default", false
+				entry.NextHopNodeID = candidate.OriginID // Logical destination; ECMP retains physical first hops.
 				if candidate.OriginKind == "border-default" {
 					// The kernel uses physical first hops, while packet inspection
 					// follows the complete path to the originating egress border.
@@ -776,7 +726,7 @@ func buildForwarding(model Model, selected map[string][]RouteCandidate, origins 
 	}
 	hostEntries := map[string][]ForwardingEntry{}
 	for _, entry := range result {
-		if entry.OwnerType == "host" && entry.VPCID == 0 && (entry.Prefix == "::/0" || entry.Prefix == "0.0.0.0/0") {
+		if entry.OwnerType == "host" && entry.VPCID == 0 {
 			hostEntries[entry.OwnerID] = append(hostEntries[entry.OwnerID], entry)
 		}
 	}
@@ -866,57 +816,8 @@ func buildForwarding(model Model, selected map[string][]RouteCandidate, origins 
 		}
 	}
 	nodes := map[string]Node{}
-	vms := map[string]VM{}
 	for _, node := range model.Nodes {
 		nodes[node.ID] = node
-	}
-	for _, vm := range model.VMs {
-		vms[vm.ID] = vm
-	}
-	underlay := newUnderlay(model)
-	for _, route := range origins {
-		if route.Protocol != "static" {
-			continue
-		}
-		add := func(owner, kind, host string) {
-			if owner == route.NextHopNodeID && route.VPCID == 0 && route.Prefix == netip.PrefixFrom(netip.MustParseAddr(route.NextHop), netip.MustParseAddr(route.NextHop).BitLen()).String() {
-				return // The border's own loopback already has a local kernel route.
-			}
-			resolved := underlay.resolve(host, route.NextHopNodeID, nodes, vms)
-			if !resolved.Reachable {
-				return
-			}
-			candidate := RouteCandidate{Route: route, UnderlayCost: resolved.Cost, UnderlayNextHops: resolved.NextHops}
-			entry := forwardingEntry(owner, kind, host, candidate)
-			entry.EncapsulateVXLAN = route.VPCID != 0 && host != route.NextHopNodeID
-			if route.VPCID == 0 {
-				entry.VRF = "default"
-			}
-			result = append(result, entry)
-		}
-		if route.VPCID == 0 {
-			for _, node := range model.Nodes {
-				add(node.ID, string(node.Kind), node.ID)
-			}
-			for _, vm := range model.VMs {
-				if vm.Role != VMCustomer {
-					add(vm.ID, "infra", vm.HostID)
-				} else if vm.VPCID == 0 {
-					add(vm.ID, "vpc-view", vm.HostID)
-				}
-			}
-			continue
-		}
-		for host, vpcs := range hostVPCs {
-			if vpcs[route.VPCID] {
-				add(host, "host", host)
-			}
-		}
-		for _, vm := range model.VMs {
-			if vm.Role == VMCustomer && vm.VPCID == route.VPCID {
-				add(vm.ID, "vpc-view", vm.HostID)
-			}
-		}
 	}
 	byRoute := map[string]Route{}
 	for _, route := range origins {

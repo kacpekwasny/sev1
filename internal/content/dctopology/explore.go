@@ -203,6 +203,9 @@ func InspectTrafficPacket(model Model, id string) PacketInspection {
 			if prefix, err := netip.ParsePrefix(flow.DestinationPrefix); err == nil && prefix.Addr().Is6() {
 				family = "ipv6"
 			}
+			if !flow.Reachable {
+				return PacketInspection{FromID: flow.SourceVMID, ToID: flow.DestinationID, Family: family, Reason: flow.Reason}
+			}
 			return inspectPacket(model, flow.SourceVMID, flow.DestinationID, family, &flow)
 		}
 	}
@@ -269,22 +272,24 @@ func inspectPacket(model Model, from, to, family string, preset *ResolvedTraffic
 				_, _ = fmt.Sscanf(destination.ID, "customer-%d", &id)
 				request.DestinationVMID = &id
 			} else if node, ok := nodes[to]; ok && node.Kind == NodeBorder {
-				for _, route := range model.Routes.Origins {
-					if route.OriginID == to && route.OriginKind == "border" && route.VPCID == source.VPCID && route.IPFamily == family {
-						request.DestinationPrefix = route.Prefix
-						prefix := netip.MustParsePrefix(route.Prefix)
-						address := prefix.Addr()
-						if prefix.Contains(address.Next()) {
-							address = address.Next()
-						}
-						result.Destination = address.String()
-						break
-					}
-				}
-				if request.DestinationPrefix == "" {
+				if source.VPCID != 0 {
 					result.Reason = "no-matching-vpc-route"
 					return result
 				}
+				request.DestinationPrefix = netip.PrefixFrom(netip.MustParseAddr(address(to)), netip.MustParseAddr(address(to)).BitLen()).String()
+				for _, target := range model.Config.RouteOrigins {
+					prefix := netip.MustParsePrefix(target.Prefix)
+					if target.BorderID == node.RoleIndex && target.VPCID == source.VPCID && prefix.Addr().Is6() == (family == "ipv6") {
+						request.DestinationPrefix = target.Prefix
+						destination := prefix.Addr()
+						if prefix.Contains(destination.Next()) {
+							destination = destination.Next()
+						}
+						result.Destination = destination.String()
+						break
+					}
+				}
+
 			} else {
 				result.Reason = "tenant-target-not-supported"
 				return result

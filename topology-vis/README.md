@@ -32,11 +32,14 @@ are not converted into EVPN at Ctrl. GUI/Linux forwarding and route details show
 that recursive resolution. Default-VRF border egress uses table main without VXLAN.
 Each border originates public IPv4/IPv6 defaults through fabric and Ctrl sessions.
 Expected BGP selection retains one default per family, with physical underlay
-ECMP to the selected border; specific VM and configured static egress routes take
-precedence. Public defaults do not enter private guest VRFs. External uplinks are
+ECMP to the selected border; specific VM and loopback routes take precedence. Public defaults do not enter private guest VRFs. External uplinks are
 outside the drawn fabric; the model ends the default's packet path at the border.
 Every physical fabric and host link is IPv6 link-local only; BGP transport
 includes interface scope. Device loopbacks and IPv4 VTEPs remain numbered.
+Host static routes are only local VM TAP /32s and /128s (including IPv6 infra
+services). Customer static prefixes are redistributed as EVPN Type 5 with
+incomplete ORIGIN. Remote VM copies use BGP/VXLAN, and border loopbacks use
+underlay BGP; no fleet-wide static border routes are synthesized.
 Kernel views show the resolved dataplane: local VM /32 and /128 static routes
 use unnumbered TAPs; remote VM and recursive customer routes use an illustrative
 L3-SVI (`br<VNI>`) backed by `vxlan<VNI>`, with neighbor/router-MAC/FDB context.
@@ -107,9 +110,11 @@ Pressing outside the compact send-action popup dismisses it.
 
 Packet examples use IPv4 ICMP or IPv6 ICMPv6 Echo Request. Customer VM pairs obey
 VPC forwarding/isolation; choosing a border targets a configured static egress
-prefix or its identity address. Borders advertise public defaults. Static IPv4/IPv6
-routes to both borders remain available in underlay and tenant contexts; inspect
-them in Trasy do border, separately from expected BGP RIBs.
+prefix or its identity address. Borders advertise public defaults and their
+loopbacks through physical underlay BGP. `route_origins` describes external
+packet targets; these prefixes do not install static routes across hosts.
+Public external traffic uses the learned default, while private VRFs remain
+isolated without an assumed border egress.
 Nodes and infra VMs use underlay paths. Unsupported tenant destinations report why
 they cannot be reached. Inspection includes inner/outer headers, UDP/VNI, selected
 ECMP path, and interfaces at each hop. Closing the custom packet popup keeps its
@@ -280,7 +285,7 @@ IPv4/IPv6 selection, packet bits, click-picked endpoints, popup dragging, table
 back navigation, route provenance, delayed queries, and narrow layout. The pure
 packet test verifies wire lengths/checksums and route-path context without Chrome.
 The refinements walkthrough checks underlay hiding, outside dismissal, disclosure
-hierarchy, resizing, session hover, slugs, customer exports, static border routes,
+hierarchy, resizing, session hover, slugs, customer exports, learned border routes,
 and packet-marker alignment with its yellow track at both viewport widths.
 Measured timings are local observations, not a performance guarantee; see
 [PROGRESS.md](PROGRESS.md) for the latest verification.

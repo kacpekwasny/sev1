@@ -113,8 +113,8 @@ func TestDefaultRouteStateAndForwarding(t *testing.T) {
 			}
 		}
 	}
-	if vmForwarding != 11 {
-		t.Errorf("customer VPC forwarding view has %d entries; want 11", vmForwarding)
+	if vmForwarding != 6 {
+		t.Errorf("customer VPC forwarding view has %d entries; want 6", vmForwarding)
 	}
 	if len(state.Advertisements) == 0 {
 		t.Fatal("expected route advertisements on BGP sessions")
@@ -346,40 +346,26 @@ func TestMultipleAddressesOfOneFamilyKeepDistinctType5RouteIdentity(t *testing.T
 	}
 }
 
-func TestStaticBorderPrefixesNeverEnterBGP(t *testing.T) {
+func TestExternalTargetsDoNotInstallSyntheticStaticRoutes(t *testing.T) {
 	config := exampleConfig(t)
 	config.RouteOrigins = append(config.RouteOrigins, RouteOriginConfig{ID: "alternate-uplink-v4", VPCID: 1, Prefix: "198.51.100.0/24", BorderID: 2})
 	model, err := BuildTopology(config)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, ad := range model.Routes.Advertisements {
-		if strings.HasPrefix(ad.FromID, "border-") && ad.Prefix != "0.0.0.0/0" && ad.Prefix != "::/0" {
-			t.Fatalf("border exported a route: %+v", ad)
+	for _, route := range model.Routes.Origins {
+		if route.Protocol == "static" || route.Prefix == "198.51.100.0/24" {
+			t.Fatalf("external target became a fabricated route: %+v", route)
 		}
 	}
-	for _, table := range model.Routes.Tables {
-		for _, route := range table.Selected {
-			if route.Prefix == "198.51.100.0/24" {
-				t.Fatalf("static egress leaked into BGP: %+v", route)
-			}
-		}
-	}
-	alternatives := 0
 	for _, entry := range model.Routes.Forwarding {
-		if entry.OwnerID == "customer-1" && entry.Prefix == "198.51.100.0/24" {
-			alternatives++
-			if entry.Protocol != "static" {
-				t.Fatal("egress not labeled static")
-			}
+		if entry.Protocol == "static" && !strings.HasPrefix(entry.KernelDevice, "tap-") {
+			t.Fatalf("nonlocal static route: %+v", entry)
 		}
-	}
-	if alternatives != 2 {
-		t.Fatalf("static alternatives=%d, want 2", alternatives)
 	}
 	packet := InspectPacket(model, "customer-1", "border-2", "ipv4")
-	if !packet.Reachable {
-		t.Fatalf("static border egress lost reachability: %+v", packet)
+	if packet.Reachable || packet.Reason != "no-matching-vpc-route" {
+		t.Fatalf("fabricated private VRF egress: %+v", packet)
 	}
 }
 
@@ -400,6 +386,11 @@ func TestRouteStateIsDeterministicAcrossBuilds(t *testing.T) {
 
 func TestDataAndControlTrafficPathsUseRealPhysicalLinks(t *testing.T) {
 	config := exampleConfig(t)
+	config.VPCs = []VPCConfig{{ID: 0, Name: "public"}}
+	config.CustomerVMs.DefaultVPCID = 0
+	for i := range config.RouteOrigins {
+		config.RouteOrigins[i].VPCID = 0
+	}
 	config.CustomerVMs.Count = 5
 	config.CustomerVMs.Overrides = []CustomerVMOverride{
 		{ID: 1, Host: &HostRef{BoltID: 1, HostID: 1}},
@@ -453,7 +444,7 @@ func TestDataAndControlTrafficPathsUseRealPhysicalLinks(t *testing.T) {
 	if flow := flows["cross-bolt-a"]; flow.UnderlayCost != 6 || !flow.VXLAN || flow.EqualCostPathCount < 2 || len(flow.ECMPNextHops) != 2 {
 		t.Errorf("cross-bolt flow must show VXLAN and both eligible host-ToR next hops: %+v", flow)
 	}
-	if flow := flows["border-prefix"]; flow.UnderlayCost != 5 || !flow.VXLAN || flow.DestinationID != "border-1" {
+	if flow := flows["border-prefix"]; flow.UnderlayCost != 5 || flow.VXLAN || flow.DestinationID != "border-1" {
 		t.Errorf("border-prefix path did not resolve to its configured border: %+v", flow)
 	}
 	selectedFirstHops := map[string]bool{}
@@ -710,7 +701,7 @@ func TestPublicDefaultsFanoutAndRecursiveForwarding(t *testing.T) {
 		}
 	}
 	for _, flow := range model.Routes.Traffic {
-		if !flow.Reachable || flow.VNI != 3 {
+		if !flow.Reachable || (flow.ID != "do-uplinku" && flow.VNI != 3) {
 			t.Fatalf("public traffic not resolved on VNI 3: %+v", flow)
 		}
 		if flow.ID == "miedzy-boltami" && !flow.VXLAN {
@@ -820,6 +811,71 @@ func TestKernelForwardingSeparatesUnderlayAndVXLAN(t *testing.T) {
 	}
 }
 
+func TestHostStaticRoutesAreOnlyLocalVMDelivery(t *testing.T) {
+	config := exampleConfig(t)
+	config.VPCs = []VPCConfig{{ID: 0, Name: "public"}}
+	config.CustomerVMs.DefaultVPCID = 0
+	config.RouteOrigins = []RouteOriginConfig{{ID: "external-target", VPCID: 0, Prefix: "198.51.100.0/24", BorderID: 1}}
+	model, err := BuildTopology(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	origins := map[string]Route{}
+	for _, route := range model.Routes.Origins {
+		origins[route.ID] = route
+		if route.RouteType == 5 && route.OriginCode != 2 {
+			t.Fatal("redistributed static EVPN must use incomplete ORIGIN")
+		}
+	}
+	for _, host := range model.Nodes {
+		if host.Kind != NodeHost {
+			continue
+		}
+		local := map[string]bool{}
+		for _, vm := range model.VMs {
+			if vm.HostID != host.ID {
+				continue
+			}
+			if vm.Role == VMCustomer {
+				for _, address := range vm.Addresses {
+					local[netip.PrefixFrom(netip.MustParseAddr(address), netip.MustParseAddr(address).BitLen()).String()] = true
+				}
+			} else {
+				local[vm.IPv6+"/128"] = true
+			}
+		}
+		statics := map[string]bool{}
+		for _, route := range model.Routes.Forwarding {
+			if route.OwnerID != host.ID {
+				continue
+			}
+			if route.Protocol == "static" {
+				if !local[route.Prefix] || !strings.HasPrefix(route.KernelDevice, "tap-") || route.EncapsulateVXLAN {
+					t.Fatalf("nonlocal/static tunnel on %s: %+v", host.ID, route)
+				}
+				statics[route.Prefix] = true
+			}
+			if route.EncapsulateVXLAN && route.Protocol != "bgp" {
+				t.Fatalf("remote VM route must be learned: %+v", route)
+			}
+			if route.Prefix == "198.51.100.0/24" {
+				t.Fatal("external target installed across hosts")
+			}
+		}
+		if !reflect.DeepEqual(local, statics) {
+			t.Fatalf("%s local TAP routes=%v; want %v", host.ID, statics, local)
+		}
+	}
+	for _, from := range []string{"customer-1", "host-b1-h1"} {
+		for _, family := range []string{"ipv4", "ipv6"} {
+			p := InspectPacket(model, from, "border-2", family)
+			if !p.Reachable || p.PhysicalNodeIDs[len(p.PhysicalNodeIDs)-1] != "border-2" || p.VXLAN {
+				t.Fatalf("border loopback needs learned underlay: %+v", p)
+			}
+		}
+	}
+}
+
 func TestBordersAdvertisePublicDefaults(t *testing.T) {
 	data, err := os.ReadFile("../../../content/dc-topology/default.yaml")
 	if err != nil {
@@ -854,8 +910,14 @@ func TestBordersAdvertisePublicDefaults(t *testing.T) {
 				if ad.FromID != border || ad.AFI != family {
 					continue
 				}
+				if origins[ad.RouteID].OriginKind == "underlay" {
+					if !strings.HasPrefix(ad.ToID, "stem-") || ad.OriginID != border {
+						t.Fatalf("border underlay export leaked or relayed: %+v", ad)
+					}
+					continue
+				}
 				if origins[ad.RouteID].OriginKind != "border-default" {
-					t.Fatalf("border exported non-default NLRI: %+v", ad)
+					t.Fatalf("unexpected border NLRI: %+v", ad)
 				}
 				if len(ad.ASPath) != 1 || ad.ASPath[0] != origins[ad.RouteID].OriginASN {
 					t.Fatalf("bad originating AS_PATH: %+v", ad)
@@ -929,8 +991,14 @@ func TestBordersAdvertisePublicDefaults(t *testing.T) {
 			t.Fatalf("default packet lost its destination/family: %+v", packet)
 		}
 	}
-	// Specific EVPN and configured egress routes must win over a new default.
+	// VM prefixes beat defaults; configured external targets use the learned default.
 	for _, f := range model.Routes.Traffic {
+		if f.ID == "do-uplinku" {
+			if !strings.HasPrefix(f.RouteID, "default/") {
+				t.Fatal("external target must use the learned default")
+			}
+			continue
+		}
 		if strings.HasPrefix(f.RouteID, "default/") {
 			t.Fatalf("default overrode a specific route: %+v", f)
 		}
@@ -939,20 +1007,13 @@ func TestBordersAdvertisePublicDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	borderMACs := map[string]string{}
 	for _, f := range private.Routes.Forwarding {
 		if f.OwnerType == "vpc-view" && strings.HasPrefix(f.RouteID, "default/") {
-			t.Fatalf("public default leaked into private guest view: %+v", f)
+			t.Fatalf("public default leaked into private view: %+v", f)
 		}
-		if f.OwnerID == "host-b1-h1" && f.EncapsulateVXLAN && strings.HasPrefix(f.NextHopNodeID, "border-") {
-			if previous := borderMACs[f.RouterMAC]; f.RouterMAC == "" || (previous != "" && previous != f.NextHopNodeID) {
-				t.Fatalf("private border FDB maps two VTEPs to the same router MAC: %+v", f)
-			}
-			borderMACs[f.RouterMAC] = f.NextHopNodeID
+		if f.VPCID != 0 && strings.HasPrefix(f.NextHopNodeID, "border-") {
+			t.Fatalf("fabricated private border tunnel: %+v", f)
 		}
-	}
-	if len(borderMACs) != 2 {
-		t.Fatalf("missing distinct private border neighbor/FDB entries: %v", borderMACs)
 	}
 	examples := 0
 	for _, e := range model.Routes.FlowExamples {

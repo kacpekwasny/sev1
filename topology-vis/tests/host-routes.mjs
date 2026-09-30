@@ -39,10 +39,19 @@ try {
    assert.match(await remote.textContent(),/br3/);
    const local=page.locator('.dc-routing-rib [data-route-id="customer/customer-1/ipv4/10.64.0.1"]');
    assert.match(await local.textContent(),/tap-c1/);
+   await local.click();assert.match(await page.locator('.dc-static-redistribution').textContent(),/EVPN Type 5/);
+   assert.equal(await page.locator('.dc-route-learned').count(),0);
+   await page.locator('#dc-inspector-back').click();
    await remote.hover();await page.locator('.dc-route-propagation-marker').waitFor();
    await remote.click();await page.locator('#dc-inspector-back').click();
    assert.equal(await page.locator('#dc-rib-view').inputValue(),mode);
   }
+  const api=new URL(await page.locator('#dc-topology-app').getAttribute('data-api-base'),target).href;
+  const speaker=await (await page.request.get(`${api}/inspector?kind=speaker&id=host-b1-h1`)).json();
+  assert(speaker.forwarding.filter(route=>route.protocol==='static').every(route=>route.kernel_device.startsWith('tap-')&&!route.encapsulate_vxlan));
+  assert.equal(speaker.forwarding.filter(route=>route.prefix==='198.51.100.0/24').length,0);
+  assert.equal(speaker.forwarding.filter(route=>route.protocol==='static').length,7);
+  assert.equal(await page.locator('.dc-border-routes').count(),0);
   await page.screenshot({path:`/tmp/host-routes-${viewport.width}.png`});
   assert.deepEqual(errors,[]);await page.close();
  }

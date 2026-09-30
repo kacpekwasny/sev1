@@ -199,12 +199,3 @@ export function appendFIB(container, model, ownerID, title, mode, appendRows) {
       `$ ip ${route.prefix.includes(':')?'-6':'-4'} neigh show dev ${route.kernel_device}\n${route.kernel_next_hop} lladdr ${route.router_mac} extern_learn NOARP\n$ bridge fdb show dev ${route.tunnel_device}\n${route.router_mac} dst ${route.resolved_next_hop||route.next_hop} self extern_learn\n`);
   }
 }
-
-export function appendBorderRoutes(container,model,ownerID,mode,appendRows) {
-  const entries=(model.route_state?.forwarding??[]).filter(r=>r.owner_id===ownerID&&r.protocol==='static'&&r.next_hop_node_id.startsWith('border-'));
-  const parent=section(container,`Trasy do border · statyczne · ${entries.length}`);
-  parent.classList.add('dc-border-routes');
-  if(mode!=='linux') {appendRows(parent,entries,true,ownerID);return;}
-  const pre=document.createElement('pre');pre.className='dc-terminal';parent.append(pre);
-  for(const route of entries)routeLine(pre,route,ownerID,`${route.prefix} via ${route.next_hop} proto static${route.vpc_id?` vrf vpc${route.vpc_id}`:' table main'}\n`);
-}

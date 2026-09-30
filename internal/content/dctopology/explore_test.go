@@ -80,6 +80,12 @@ func TestPresetPacketRetainsResolvedPath(t *testing.T) {
 	}
 	for _, flow := range model.Routes.Traffic {
 		packet := InspectTrafficPacket(model, flow.ID)
+		if !flow.Reachable {
+			if packet.Reachable || packet.Reason != flow.Reason {
+				t.Fatalf("unreachable preset lost route failure: %+v", packet)
+			}
+			continue
+		}
 		if !packet.Reachable || !reflect.DeepEqual(packet.PhysicalNodeIDs, flow.PhysicalNodeIDs) || !reflect.DeepEqual(packet.PhysicalLinkIDs, flow.PhysicalLinkIDs) || packet.SelectedPathIndex != flow.SelectedPathIndex || packet.RouteID != flow.RouteID {
 			t.Fatalf("preset inspection changed forwarding: flow=%+v packet=%+v", flow, packet)
 		}
@@ -112,7 +118,7 @@ func TestPacketInspectionEncapsulationAndTAPs(t *testing.T) {
 		t.Fatal("local packet left its host")
 	}
 	border := InspectPacket(model, "customer-1", "border-1", "ipv4")
-	if !border.Reachable || border.Destination != "198.51.100.1" {
+	if border.Reachable || border.Reason != "no-matching-vpc-route" {
 		t.Fatalf("border prefix was not resolved: %+v", border)
 	}
 	fabric := InspectPacket(model, "tor-b1-r1-1", "tor-b1-r1-2", "ipv4")
@@ -164,8 +170,10 @@ func TestExplorationAPIIsReadOnlyAndValidatesEndpoints(t *testing.T) {
 	}
 }
 
-func TestBorderReachabilityDoesNotRequireBorderAdvertisements(t *testing.T) {
+func TestBorderReachabilityUsesLearnedUnderlay(t *testing.T) {
 	c := exampleConfig(t)
+	c.VPCs = []VPCConfig{{ID: 0, Name: "public"}}
+	c.CustomerVMs.DefaultVPCID = 0
 	c.RouteOrigins = nil
 	model, err := BuildTopology(c)
 	if err != nil {
@@ -182,7 +190,7 @@ func TestBorderReachabilityDoesNotRequireBorderAdvertisements(t *testing.T) {
 		}
 	}
 	for _, ad := range model.Routes.Advertisements {
-		if strings.HasPrefix(ad.FromID, "border-") && ad.Prefix != "0.0.0.0/0" && ad.Prefix != "::/0" {
+		if strings.HasPrefix(ad.FromID, "border-") && ad.OriginID != ad.FromID {
 			t.Fatalf("border exported: %+v", ad)
 		}
 	}
