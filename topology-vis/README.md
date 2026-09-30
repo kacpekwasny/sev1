@@ -146,9 +146,17 @@ paths. Local attachments remain separate from physical cables. Host RIBs visibly
 separate EVPN Type 5, IPv4, and IPv6; EVPN retention does not imply importing another
 VPC into forwarding. Select GUI or Linux / FRR in the inspector to switch between
 concise cards and command-style expected BGP/kernel output. No commands are run.
+Host inspection also shows **Tablica routingu hosta · RIB Zebra**, the combined
+selected VRF routing table, separately from BGP AFI RIBs and kernel FIB output.
+GUI and CLI expose local static TAP routes, remote EVPN imports through
+L3-SVI/VXLAN, recursive customer routes and underlay/connected entries. Imported
+VM routes include VNI and IPv4 VTEP resolution instead of only a BGP next hop.
 Every device/VM inspector has Trasy inicjowane przez urządzenie, independently
 of learned routes. RSs without local NLRI explain service-prefix ownership by
-the host. Originated routes are clickable in both formats.
+the host. Originated routes are clickable in both formats. Their hover/focus and click
+preview complete redistribution waves, including RS fanout, using cached
+metadata for that exact prefix. Preview works with decorative flow/sessions off;
+leaving restores the layer switches and prior selection.
 
 AFI/SAFI sections are visually nested under the expected RIB. Routes in either
 format are clickable. The back arrow restores the previous table and its expanded

@@ -27,6 +27,22 @@ try {
    await route.click();assert.match(await page.locator('#dc-flow-note').textContent(),/Redystrybucja/);
    await page.locator('#dc-inspector-back').click();
   }
+  await page.keyboard.press('Escape');
+  await page.locator('.dc-node[data-entity-id="host-b1-h1"] .dc-node-label').click();
+  await page.locator('#dc-device-actions-close').click();
+  await page.locator('.dc-routing-rib').waitFor();
+  for(const mode of ['gui','linux']) {
+   await page.locator('#dc-rib-view').selectOption(mode);
+   const remote=page.locator('.dc-routing-rib [data-route-id="customer/customer-3/ipv4/10.64.0.3"]');
+   assert.equal(await remote.count(),1);
+   assert.match(await remote.textContent(),/VXLAN|vxlan3/);
+   assert.match(await remote.textContent(),/br3/);
+   const local=page.locator('.dc-routing-rib [data-route-id="customer/customer-1/ipv4/10.64.0.1"]');
+   assert.match(await local.textContent(),/tap-c1/);
+   await remote.hover();await page.locator('.dc-route-propagation-marker').waitFor();
+   await remote.click();await page.locator('#dc-inspector-back').click();
+   assert.equal(await page.locator('#dc-rib-view').inputValue(),mode);
+  }
   await page.screenshot({path:`/tmp/host-routes-${viewport.width}.png`});
   assert.deepEqual(errors,[]);await page.close();
  }

@@ -430,6 +430,13 @@ No pending D25 work. Preview: http://127.0.0.1:8099/topologie/dc/.
    and switches. No hover network request or topology-wide export list is added.
    Go tests/build pass; Chrome verifies GUI/Linux and both widths.
    Commit: the commit containing this checkpoint.
-2. Combined host routing RIB with explicit imported VXLAN routes: pending.
+2. Added a combined selected host routing RIB in GUI and Zebra-style CLI,
+   grouped by VRF and route source. Remote VM routes explicitly show EVPN import,
+   L3-SVI/VXLAN/VNI and VTEP resolution; recursive customer prefixes have their
+   own source class. Local VM TAP routes and connected/underlay routes remain
+   distinct. BGP AFI tables retain original attributes/alternatives; the kernel
+   FIB remains separately inspectable. Both views use the same expected snapshot.
+   Go tests/build, syntax checks and desktop/narrow GUI/Linux route hover/back pass.
+   Commit: the commit containing this checkpoint.
 3. Replace fabricated remote static egress with learned routing: pending.
 4. Address purpose/ownership hover: pending.

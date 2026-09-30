@@ -79,6 +79,60 @@ export function appendRIB(container, model, speakerID, mode, appendRows) {
   }
 }
 
+// The selected host routing RIB uses the same resolved routes installed in the
+// expected kernel snapshot. The BGP AFI tables retain their original next hops.
+export function routingEntries(model, ownerID) {
+  return (model.route_state?.forwarding??[]).filter(route=>route.owner_id===ownerID).map(route=>{
+    const origins=model.route_state?.origins??[];
+    const origin=origins.find(item=>item.id===route.resolved_route_id)??origins.find(item=>item.id===route.route_id);
+    const source=route.protocol==='static'?'local-static':route.protocol==='kernel'?'connected'
+      :route.encapsulate_vxlan?(route.resolved_route_id&&route.prefix!==origin?.prefix?'recursive':'evpn-import'):'bgp-underlay';
+    return {...route,rib_source:source,source_route_id:origin?.id};
+  });
+}
+
+export function zebraRouteLine(model, route) {
+  const code=route.protocol==='static'?'S':route.protocol==='kernel'?'C':'B';
+  const network=route.prefix==='0.0.0.0/0'||route.prefix==='::/0'?'default':route.prefix;
+  const distance=code==='S'?1:code==='C'?0:20;
+  let line=`${code}>* ${network} [${distance}/0]`;
+  if(route.kernel_device)line+=route.kernel_next_hop?` via ${route.kernel_next_hop}, ${route.kernel_device}${route.encapsulate_vxlan?' onlink':''}`:` is directly connected, ${route.kernel_device}`;
+  else for(const hop of route.ecmp_next_hops??[]) {
+    const iface=model.interfaces.find(item=>item.node_id===route.owner_id&&item.peer_node_id===hop);
+    const peer=model.interfaces.find(item=>item.link_id===iface?.link_id&&item.node_id===hop);
+    if(iface&&peer)line+=`\n    via ${peer.link_local_ipv6||peer.ipv6_address}, ${iface.name}`;
+  }
+  if(route.encapsulate_vxlan)line+=`\n    # ${route.rib_source==='recursive'?'rekursja BGP przez':'import'} EVPN → ${route.tunnel_device}, VNI ${route.vni}, VTEP IPv4 ${route.resolved_next_hop||route.next_hop}`;
+  if(route.resolved_route_id)line+=`\n    # BGP NH ${route.next_hop}; EVPN ${route.resolved_route_id}`;
+  return line+'\n';
+}
+
+export function appendRoutingRIB(container, model, ownerID, mode, appendRows) {
+  const entries=routingEntries(model,ownerID);
+  const parent=section(container,`Tablica routingu hosta · RIB Zebra · ${entries.length} wybranych`,true);
+  parent.classList.add('dc-routing-rib');
+  const note=document.createElement('p');
+  note.textContent='Wybrane trasy ze wszystkich źródeł: lokalne TAP-y, underlay i import EVPN do VRF. Zdalne VM używają VXLAN; tablice BGP poniżej zachowują oryginalny next hop i wszystkie ścieżki.';
+  parent.append(note);
+  const vrfs=[...new Set(entries.map(route=>route.vpc_id))];
+  for(const vpc of vrfs) {
+    const group=section(parent,vpc?`VRF vpc${vpc}`:'Default/public VRF',true);
+    group.dataset.routingVrf=String(vpc);
+    const categories=[['evpn-import','VM przez EVPN / VXLAN'],['recursive','BGP rekursywny przez EVPN / VXLAN'],['local-static','Lokalne trasy statyczne do VM'],['bgp-underlay','BGP underlay'],['connected','Adresy loopback · connected']];
+    for(const [key,label] of categories) {
+      const rows=entries.filter(route=>route.vpc_id===vpc&&route.rib_source===key);
+      if(!rows.length)continue;
+      const category=section(group,`${label} · ${rows.length}`,key==='evpn-import'||key==='local-static'||key==='recursive');
+      category.dataset.routingSource=key;
+      if(mode!=='linux') {appendRows(category,rows,true,ownerID);continue;}
+      const pre=document.createElement('pre');pre.className='dc-terminal';
+      pre.textContent=`${ownerID}# show ip route${vpc?` vrf vpc${vpc}`:''} / show ipv6 route${vpc?` vrf vpc${vpc}`:''}\n# Oczekiwany wybrany RIB w stylu Zebra; S static, C connected, B BGP; > wybrana, * instalowana.\n`;
+      category.append(pre);
+      for(const route of rows)routeLine(pre,route,ownerID,zebraRouteLine(model,route));
+    }
+  }
+}
+
 // Render the resolved kernel nexthop, keeping BGP recursion in explanatory comments.
 export function kernelRouteLine(model, route) {
   const table=route.kernel_table||'main', protocol=route.protocol||'bgp';

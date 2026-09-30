@@ -1,5 +1,5 @@
 const NS = "http://www.w3.org/2000/svg";
-import { appendRIB, appendFIB, identifyRoute, appendOriginatedRoutes, appendBorderRoutes } from "./tables.js";
+import { appendRIB, appendFIB, identifyRoute, appendRoutingRIB, appendOriginatedRoutes, appendBorderRoutes } from "./tables.js";
 import { routeFlowStreams, originatedRouteFlow } from "./route-flow.js";
 import { displayNames } from "./labels.js";
 import { physicalPoints, tapPoints, packetSegments, packetTraversal, packetPosition } from "./packet-path.js";
@@ -727,6 +727,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     appendOriginatedRoutes(container, state.model, speakerID, root.querySelector("#dc-rib-view").value, appendRouteRows);
     const table = state.model?.route_state?.tables?.find((item) => item.speaker_id === speakerID);
     if (table) {
+      if(state.model.nodes.some(node=>node.id===speakerID&&node.kind==="host"))appendRoutingRIB(container,state.model,speakerID,root.querySelector("#dc-rib-view").value,appendRouteRows);
       appendRIB(container, state.model, speakerID, root.querySelector("#dc-rib-view").value, appendRouteRows);
       appendBorderRoutes(container,state.model,speakerID,root.querySelector("#dc-rib-view").value,appendRouteRows);
     }
