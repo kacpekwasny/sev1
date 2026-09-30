@@ -4,7 +4,7 @@ Updated: 2026-09-30
 
 ## Current status
 
-R00–R13 and the revised Steps 00–13 are implemented and verified. The explorer is
+R00–R14 and the revised Steps 00–13 are implemented and verified. The explorer is
 integrated at `/topologie/dc/`, linked from Topologie, and shares its source with
 the standalone harness. Git and parent-site writes are available. D03 remains
 absent; the original `TODO.md` is unchanged.
@@ -251,3 +251,16 @@ and the commit containing this checkpoint (shallow indentation). RIB route-detai
 behavior was left unchanged as requested. Final Go tests and embedded build pass;
 the full browser and endpoint walkthroughs pass against the fresh embedded binary,
 with no page errors. Packet-bit checks and desktop/narrow wrapped IPv6 hover pass.
+
+## D19 border visibility suboption
+
+Zostaw border is a child of underlay visibility, shown when underlay is hidden
+and enabled by default. Borders and their eight default RS Ctrl session endpoints
+remain visible; Sesje BGP still controls the session layer. Uncheck the child to
+hide borders too. A shared node-visibility rule drives drawing and hidden-path
+playback checks. Configuration, routes, and model IDs stay unchanged.
+
+Go tests, embedded build, JS syntax and diff checks pass. Chrome refinements pass
+at desktop/narrow widths, including default border retention, exact border–Ctrl
+sessions, hiding/restoring borders, parent/child control visibility, and invariant
+YAML. Screenshots at both widths were inspected against the fresh embedded preview.

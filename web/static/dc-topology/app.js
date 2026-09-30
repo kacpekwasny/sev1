@@ -30,7 +30,10 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         <label><input id="dc-show-sessions" type="checkbox"> Sesje BGP</label>
         <label><input id="dc-show-infra-hosts" type="checkbox" checked> RS na hostach</label>
         <label><input id="dc-collapse-rs" type="checkbox"> Grupuj RS</label>
-        <label><input id="dc-show-underlay" type="checkbox" checked> Urządzenia underlay</label>
+        <div class="dc-underlay-options">
+          <label><input id="dc-show-underlay" type="checkbox" checked> Urządzenia underlay</label>
+          <label id="dc-border-option" class="dc-underlay-suboption" hidden><input id="dc-keep-borders" type="checkbox" checked> Zostaw border</label>
+        </div>
         <label title="Ilustracja po sesjach BGP; tablice tras pozostają bez zmian."><input id="dc-show-route-flow" type="checkbox"> Przepływ tras</label>
         <button id="dc-layout-reset" class="dc-tool-button" type="button">Reset układu</button>
         <button id="dc-fit" class="dc-tool-button" type="button">Dopasuj</button>
@@ -146,6 +149,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   const showInfraOnHosts = root.querySelector("#dc-show-infra-hosts");
   const collapseRouteServers = root.querySelector("#dc-collapse-rs");
   const showUnderlay = root.querySelector("#dc-show-underlay");
+  const keepBorders = root.querySelector("#dc-keep-borders");
+  const nodeVisible = node => showUnderlay.checked || node.kind === "host" || (node.kind === "border" && keepBorders.checked);
   const zoomInput = root.querySelector("#dc-zoom");
   const zoomOutput = root.querySelector("#dc-zoom-value");
   const countForm = root.querySelector("#dc-count-form");
@@ -307,7 +312,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   const onReset = () => send({ type: "reset_default" });
   const onLayerChange = (event) => {
     const layerHidden = ["traffic", "session", "packet"].includes(selected?.type) && (!showLinks.checked ||
-      (!showUnderlay.checked && selectedPath().some(id=>state.model.nodes.some(n=>n.id===id&&n.kind!=="host"))));
+      selectedPath().some(id=>state.model.nodes.some(n=>n.id===id&&!nodeVisible(n))));
     const motionChanged = event.currentTarget === reducedMotion && reducedMotion.matches && !animation.reducedAtStart;
     if (animation.playing && (layerHidden || motionChanged)) pauseAnimation();
     renderGraph();
@@ -472,6 +477,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   listen(showInfraOnHosts, "change", onLayerChange);
   listen(collapseRouteServers, "change", onLayerChange);
   listen(showUnderlay, "change", onLayerChange);
+  listen(keepBorders, "change", onLayerChange);
   listen(zoomInput, "input", onZoom);
   listen(graphEl, "click", onGraphClick);
   listen(graphEl, "keydown", onGraphKey);
@@ -1000,6 +1006,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function renderGraph() {
+    root.querySelector("#dc-border-option").hidden = showUnderlay.checked;
     const model = state.model;
     if (!model) {
       graphEl.innerHTML = '<p class="dc-empty">Brak wygenerowanej topologii.</p>';
@@ -1010,7 +1017,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       collapseRouteServers: collapseRouteServers.checked,
       offsets: viewOffsets,
     });
-    if (!showUnderlay.checked) for (const node of model.nodes) if (node.kind !== "host") positions.entityPoints.delete(node.id);
+    for (const node of model.nodes) if (!nodeVisible(node)) positions.entityPoints.delete(node.id);
     const svg = document.createElementNS(NS, "svg");
     const zoom = Number(zoomInput.value) / 100;
     svg.setAttribute("class", "dc-topology-svg");
@@ -1054,7 +1061,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     defs.append(arrow); svg.append(defs, groupLayer);
 
     for (const [label, y] of positions.rowLabels) {
-      if (!showUnderlay.checked && label !== "HOSTY") continue;
+      if (!showUnderlay.checked && label !== "HOSTY" && !(label === "BORDER" && keepBorders.checked)) continue;
       svg.append(svgText(12, y, label, "dc-row-label"));
     }
 
@@ -1130,7 +1137,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const vmCountByHost = new Map();
     for (const vm of model.vms) vmCountByHost.set(vm.host_id, (vmCountByHost.get(vm.host_id) ?? 0) + 1);
     for (const node of model.nodes) {
-      if (!showUnderlay.checked && node.kind !== "host") continue;
+      if (!nodeVisible(node)) continue;
       const point = positions.nodes.get(node.id);
       if (!point) continue;
       const selectedClass = (selected?.type === "node" && selected.id === node.id ? " selected" : "") + endpointClass(node.id);

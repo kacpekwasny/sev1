@@ -344,6 +344,14 @@ Commit each implemented point separately. The host RIB route-detail question is
 answer-only: preserve its behavior. Its rows are topology-wide exports of one
 route, not additional routes in the inspected host's RIB.
 
+### D19 — Keep borders visible when hiding underlay
+
+Add a subordinate Zostaw border option to underlay visibility. Authorized default:
+checked, shown only when underlay is hidden. Preserve border nodes, tier labels,
+and session endpoints so the independently enabled BGP layer shows border–RS Ctrl
+sessions. Unchecking it restores the fully hidden fabric view. This is view state;
+YAML, topology, routing and physical-path playback semantics remain unchanged.
+
 ## Recording an answer
 
 Record the latest user direction and affected milestones. If it changes previously implemented work, reopen the affected acceptance checks; do not claim the old checks verify new behavior. Distinguish direct user requirements from authorized implementation defaults. Preserve the original TODO while keeping this decision record and the active plan authoritative for later changes.
