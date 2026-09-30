@@ -314,6 +314,20 @@ Deferred reveal is tied to the selected packet/session and cancelled on dismissa
 or selection changes. Late session exports trigger a second reveal so inserted
 content cannot push fields away. Consult PROGRESS for verification and commits.
 
+### D17 — Visibility, inspector UX, labels, and routing refinements
+
+Latest user request, in execution order with a separate commit for each point:
+hide underlay devices; dismiss device send actions on outside clicks; visibly
+group every disclosure's children; resize the inspector; center its back arrow;
+preview sessions on hover; show host slugs; suppress border route advertisements;
+show customer VM exports to RS User; retain routes to border; animate packets on
+the yellow path; show RS slugs (`rs13001`, `rsctrl4`, `rsuser3`).
+
+Underlay visibility hides fabric switches while retaining hosts and VMs. It does
+not mutate the model; playback pauses when its physical path is hidden. Keep
+canonical IDs stable and use labels in presentation. Remaining points are tracked
+in PROGRESS; earlier routing defaults are superseded where D17 requires it.
+
 ## Recording an answer
 
 Record the latest user direction and affected milestones. If it changes previously implemented work, reopen the affected acceptance checks; do not claim the old checks verify new behavior. Distinguish direct user requirements from authorized implementation defaults. Preserve the original TODO while keeping this decision record and the active plan authoritative for later changes.

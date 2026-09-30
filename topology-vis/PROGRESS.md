@@ -167,3 +167,11 @@ repeat completed rework milestones.
    fetched packets, repeated clicks from a scrolled body, BGP fields before/after
    a delayed response, and fields actually visible on desktop/narrow screens.
    Go tests, embedded build, vet and packet-bit checks pass.
+
+## D17 refinements — one commit per requested step
+
+1. Hide underlay: implemented in this checkpoint. The checkbox hides fabric
+   switches and attached physical links while preserving hosts/VMs, valid overlay
+   sessions, routes and YAML. Hidden physical paths pause packet playback.
+   Desktop/narrow Chrome checks and Go tests pass.
+2–12. Pending; follow D17's listed order.

@@ -28,6 +28,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         <label><input id="dc-show-sessions" type="checkbox"> Sesje BGP</label>
         <label><input id="dc-show-infra-hosts" type="checkbox" checked> RS na hostach</label>
         <label><input id="dc-collapse-rs" type="checkbox"> Grupuj RS</label>
+        <label><input id="dc-show-underlay" type="checkbox" checked> Urządzenia underlay</label>
         <label title="Ilustracja po sesjach BGP; tablice tras pozostają bez zmian."><input id="dc-show-route-flow" type="checkbox"> Przepływ tras</label>
         <button id="dc-layout-reset" class="dc-tool-button" type="button">Reset układu</button>
         <button id="dc-fit" class="dc-tool-button" type="button">Dopasuj</button>
@@ -141,6 +142,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   const illustration = { frame: 0, startedAt: 0, sequence: [], streams: [] };
   const showInfraOnHosts = root.querySelector("#dc-show-infra-hosts");
   const collapseRouteServers = root.querySelector("#dc-collapse-rs");
+  const showUnderlay = root.querySelector("#dc-show-underlay");
   const zoomInput = root.querySelector("#dc-zoom");
   const zoomOutput = root.querySelector("#dc-zoom-value");
   const countForm = root.querySelector("#dc-count-form");
@@ -286,7 +288,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   };
   const onReset = () => send({ type: "reset_default" });
   const onLayerChange = (event) => {
-    const layerHidden = ["traffic", "session", "packet"].includes(selected?.type) && !showLinks.checked;
+    const layerHidden = ["traffic", "session", "packet"].includes(selected?.type) && (!showLinks.checked ||
+      (!showUnderlay.checked && selectedPath().some(id=>state.model.nodes.some(n=>n.id===id&&n.kind!=="host"))));
     const motionChanged = event.currentTarget === reducedMotion && reducedMotion.matches && !animation.reducedAtStart;
     if (animation.playing && (layerHidden || motionChanged)) pauseAnimation();
     renderGraph();
@@ -450,6 +453,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   listen(reducedMotion, "change", onLayerChange);
   listen(showInfraOnHosts, "change", onLayerChange);
   listen(collapseRouteServers, "change", onLayerChange);
+  listen(showUnderlay, "change", onLayerChange);
   listen(zoomInput, "input", onZoom);
   listen(graphEl, "click", onGraphClick);
   listen(graphEl, "keydown", onGraphKey);
@@ -739,7 +743,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const positions = currentPositions;
     if (!positions) return;
     const points = path.map((id) => positions.entityPoints.get(id)).filter(Boolean);
-    if (points.length < 2) { marker.setAttribute("visibility", "hidden"); return; }
+    if (points.length < 2 || points.length !== path.length) { marker.setAttribute("visibility", "hidden"); return; }
     const duration = (points.length - 1) * 900;
     const progress = Math.min(1, animationElapsed(now) / duration);
     const scaled = progress * (points.length - 1);
@@ -754,13 +758,15 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
 
   function updatePlaybackControls() {
     const path = selectedPath();
-    const canPlay = path.length > 1 && showLinks.checked;
+    const hiddenPath = path.some(id=>!currentPositions?.entityPoints.has(id));
+    const canPlay = path.length > 1 && showLinks.checked && !hiddenPath;
     playButton.disabled = !canPlay;
     rewindButton.disabled = !canPlay;
     root.querySelector("#dc-inspect-packet").disabled = !exploration.packet && (!selected || !["traffic", "session"].includes(selected.type));
     playButton.textContent = animation.playing ? "Wstrzymaj pakiet" : "Odtwórz pakiet";
     if (animation.playing) return;
     if (!selected || !["traffic", "session", "packet"].includes(selected.type)) playStatus.textContent = "Wybierz przepływ lub sesję BGP, aby prześledzić pakiet.";
+    else if (hiddenPath) playStatus.textContent = "Pokaż urządzenia underlay, aby odtworzyć pełną drogę pakietu.";
     else if (!showLinks.checked) playStatus.textContent = "Włącz łącza fizyczne, aby zobaczyć drogę pakietu.";
     else if (path.length === 1) playStatus.textContent = "Dostarczenie lokalne — bez przejścia przez fabric.";
     else if (!path.length) playStatus.textContent = "Brak osiągalnej ścieżki w tej konfiguracji.";
@@ -769,7 +775,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
 
   function startAnimation() {
     const path = selectedPath();
-    if (path.length < 2 || !showLinks.checked || animation.playing) return;
+    if (path.length < 2 || !showLinks.checked || animation.playing || path.some(id=>!currentPositions?.entityPoints.has(id))) return;
     // A deliberate Play click opts into this packet's motion; decorative streams
     // still respect reduced motion and neither kind of packet starts automatically.
     const duration = animationDuration();
@@ -947,6 +953,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       collapseRouteServers: collapseRouteServers.checked,
       offsets: viewOffsets,
     });
+    if (!showUnderlay.checked) for (const node of model.nodes) if (node.kind !== "host") positions.entityPoints.delete(node.id);
     const svg = document.createElementNS(NS, "svg");
     const zoom = Number(zoomInput.value) / 100;
     svg.setAttribute("class", "dc-topology-svg");
@@ -961,7 +968,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const interfaceByID = new Map(model.interfaces.map((iface) => [iface.id, iface]));
     const inspectedPaths = routePaths(model, routeHover??selected);
     root.querySelector("#dc-route-legend").hidden = !routeHover && selected?.type !== "route";
-    illustration.streams = showRouteFlow.checked ? routeFlowStreams(model, exploration.update) : [];
+    illustration.streams = showRouteFlow.checked ? routeFlowStreams(model, exploration.update)
+      .filter(stream=>stream.steps.every(step=>positions.entityPoints.has(step.fromID)&&positions.entityPoints.has(step.toID))) : [];
     illustration.sequence = illustration.streams.flatMap(stream=>stream.steps);
     const illustrationIDs = new Set(illustration.sequence.map((step) => step.sessionID));
     const groupLayer = svgElement("g", { class: "dc-groups", "aria-hidden": "true" });
@@ -988,11 +996,12 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     defs.append(arrow); svg.append(defs, groupLayer);
 
     for (const [label, y] of positions.rowLabels) {
+      if (!showUnderlay.checked && label !== "HOSTY") continue;
       svg.append(svgText(12, y, label, "dc-row-label"));
     }
 
     const edgeLayer = svgElement("g", { class: "dc-edges" });
-    if (showLinks.checked) {
+    if (showLinks.checked && showUnderlay.checked) {
       for (const link of model.physical_links) {
         const a = positions.nodes.get(link.a_node_id);
         const b = positions.nodes.get(link.b_node_id);
@@ -1063,6 +1072,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const vmCountByHost = new Map();
     for (const vm of model.vms) vmCountByHost.set(vm.host_id, (vmCountByHost.get(vm.host_id) ?? 0) + 1);
     for (const node of model.nodes) {
+      if (!showUnderlay.checked && node.kind !== "host") continue;
       const point = positions.nodes.get(node.id);
       if (!point) continue;
       const selectedClass = (selected?.type === "node" && selected.id === node.id ? " selected" : "") + endpointClass(node.id);
