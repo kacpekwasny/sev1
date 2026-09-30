@@ -183,4 +183,7 @@ repeat completed rework milestones.
 4. Inspector resize handle supports pointer/touch input and keyboard dimensions;
    Home restores defaults, cancellation restores the preceding size, and dimensions
    stay bounded by the workspace. Desktop/narrow checks and Go tests pass.
-5–12. Pending; follow D17's listed order.
+5. Back-arrow buttons discard inherited form padding and retain their square
+   dimensions, so the glyph is centered. Shared close buttons benefit as well.
+   Desktop/narrow inspector walkthrough and Go tests pass.
+6–12. Pending; follow D17's listed order.

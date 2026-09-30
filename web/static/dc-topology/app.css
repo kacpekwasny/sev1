@@ -127,6 +127,7 @@ body.dc-harness { margin: 0; min-width: 320px; background: #0b1018; }
 .dc-interface-details.is-current > summary { color: #18785e; background: #e1eee8; border-radius: 5px; }
 .dc-icon-button { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--dc-border); border-radius: 7px; background: transparent; color: var(--dc-ink); font-size: 21px !important; line-height: 1; }
 .dc-icon-button:hover { background: #e2ece8; }
+.dc-icon-button { padding:0; flex-shrink:0; }
 .dc-details { overflow: auto; padding: 16px 18px 22px; font-size: 11px; overscroll-behavior: contain; }
 .dc-disclosure-body { margin:8px 0 4px 5px; padding:4px 0 4px 9px; border-left:2px solid #c6d4df; background:linear-gradient(90deg,#eaf0f680,transparent 35px); }
 .dc-details { min-height:0; flex:1; }
