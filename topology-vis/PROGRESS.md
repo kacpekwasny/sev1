@@ -39,3 +39,11 @@ Large route tables and per-peer advertisements are served on demand through `/ap
 ## Next action
 
 When asked to execute, follow R00–R06 in the revised plan: commit the existing baseline if Git metadata is writable, then redesign the JavaScript workspace, move inspectors into popups, add bounded dragging, simplify expected-table computation, and replace announcement playback with the optional illustrative switch. Verify and commit each working increment. Integrate `/topologie/dc/` when parent source paths are writable and run desktop/narrow browser acceptance when a browser is available. Do not treat the earlier simulation/playback UI as the requested final design.
+
+## Rework checkpoint — R01/R02
+
+- Baseline is committed by the user as `9c50463`; Git metadata and parent paths are now writable.
+- Implemented the JavaScript topology workspace with a dark canvas, compact summary/layer toolbar, local Poppins fonts, and a configuration dialog. Device/link/session/route details now open in a non-modal popup over the topology, with close/Escape and focus return; inspector errors stay inside it. Count drafts survive background inspector responses.
+- Verified in installed headless Chrome via Playwright at 1280×900 and 390×844: initial popup hidden, node selection, overlay bounds inside canvas, Escape dismissal/focus return, config dialog, preservation of a count draft, and no document overflow at narrow width. In-app Node REPL is unavailable; external Chrome is the local fallback.
+- `go test ./...`, site/harness builds, JavaScript syntax, and `git diff --check` passed.
+- Next: R03 dragging, R04 expected-snapshot wording/API, R05 optional illustrative flow, then R06 site integration and full browser acceptance.

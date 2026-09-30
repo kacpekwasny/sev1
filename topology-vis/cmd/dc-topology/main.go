@@ -34,6 +34,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/api/", api)
+	mux.Handle("GET /static/vendor/fonts/", http.StripPrefix("/static/vendor/fonts/", http.FileServer(http.Dir("web/static/vendor/fonts"))))
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir(filepath.Clean(*staticPath)))))
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(filepath.Clean(*staticPath), "dc-topology", "dev.html"))

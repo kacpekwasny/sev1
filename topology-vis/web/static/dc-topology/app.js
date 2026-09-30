@@ -9,60 +9,97 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
 
   root.innerHTML = `
     <header class="dc-head">
-      <div><p class="dc-kicker">AGH WIET · LABORATORIUM SIECI</p><h1>Topologia centrum danych</h1>
-        <p>Deterministyczny model konfigurowany przez YAML. Widok przedstawia topologię syntetyczną.</p></div>
-      <span class="dc-tag">SYMULACJA</span>
+      <div class="dc-brand-mark" aria-hidden="true">◈</div>
+      <div><p class="dc-kicker">AGH WIET / ATLAS SIECI</p><h1>Wewnątrz sieci<span>.</span></h1>
+        <p>Centrum danych — od fizycznych połączeń do oczekiwanych tras.</p></div>
+      <div class="dc-head-actions"><span class="dc-tag">MODEL SYNTETYCZNY</span>
+        <button class="dc-button" id="dc-config-open" type="button">Konfiguracja <span aria-hidden="true">↗</span></button></div>
     </header>
-    <section class="dc-grid" aria-label="Konfiguracja i podsumowanie">
-      <article class="dc-card">
-        <div class="dc-card-head"><h2>Konfiguracja YAML</h2><p>Wczytaj scenariusz. Błędny plik nie zmienia aktywnego modelu.</p></div>
-        <form id="dc-config-form"><label class="dc-sr-only" for="dc-editor">Konfiguracja topologii w YAML</label>
-          <textarea id="dc-editor" class="dc-editor" spellcheck="false" autocomplete="off"></textarea>
-          <div class="dc-actions"><button class="dc-button" type="submit">Wczytaj konfigurację</button>
-            <button class="dc-button secondary" id="dc-reset" type="button">Przywróć przykład</button>
-            <a class="dc-button secondary" href="/api/config.yaml">Eksportuj YAML</a></div>
-        </form>
-        <p id="dc-message" class="dc-message" role="status" aria-live="polite">Wczytywanie przykładu…</p>
-      </article>
-      <article class="dc-card">
-        <div class="dc-card-head"><h2>Podsumowanie modelu</h2><p id="dc-config-label">Brak aktywnej konfiguracji</p></div>
-        <div id="dc-summary" class="dc-summary"><p class="dc-empty">Wczytuję model…</p></div>
-        <form id="dc-count-form" class="dc-count-controls"><h3>Rozmiar scenariusza</h3>
-          <div class="dc-count-grid">
-            <label>Spines <input name="spines" type="number" min="1" max="8" required></label>
-            <label>Bolts <input name="bolts" type="number" min="1" max="4" required></label>
-            <label>Racks / bolt <input name="racks_per_bolt" type="number" min="1" max="4" required></label>
-            <label>Hosty / rack <input name="hosts_per_rack" type="number" min="1" max="4" required></label>
-            <label>VM klientów <input name="customer_vms" type="number" min="0" max="64" required></label>
-          </div>
-          <button class="dc-button secondary" type="submit">Przebuduj topologię</button>
-        </form>
-        <div id="dc-details" class="dc-details"><p>Wybierz urządzenie lub łącze, aby sprawdzić jego parametry.</p></div>
-      </article>
-    </section>
-    <section class="dc-card dc-graph-card" aria-labelledby="dc-graph-title">
-      <div class="dc-card-head dc-graph-head"><div><h2 id="dc-graph-title">Warstwa fizyczna</h2>
-        <p>Wybierz urządzenie lub łącze. Racks i Bolts są grupami, nie urządzeniami sieciowymi.</p></div>
-        <label class="dc-zoom">Powiększenie <input id="dc-zoom" type="range" min="70" max="140" value="100" step="10"><output id="dc-zoom-value">100%</output></label></div>
-      <div class="dc-toolbar"><label><input id="dc-show-links" type="checkbox" checked> Pokaż łącza fizyczne</label>
-        <label><input id="dc-show-sessions" type="checkbox"> Pokaż sesje BGP</label>
-        <label><input id="dc-show-infra-hosts" type="checkbox" checked> Pokaż VM infrastruktury na hostach</label>
-        <label><input id="dc-collapse-rs" type="checkbox"> Grupuj klastry RS</label>
-        <span class="dc-legend"><i class="legend-switch"></i> przełącznik <i class="legend-host"></i> host <i class="legend-vm"></i> VM <i class="legend-link"></i> łącze</span></div>
+    <div class="dc-overview"><div><p class="dc-kicker">TOPOLOGIA DC</p><p id="dc-config-label">Wczytuję konfigurację…</p></div>
+      <div id="dc-summary" class="dc-summary" aria-label="Podsumowanie modelu"></div></div>
+    <section class="dc-graph-card" aria-labelledby="dc-graph-title">
+      <div class="dc-toolbar"><div class="dc-layer-title"><span class="dc-status-dot" aria-hidden="true"></span><h2 id="dc-graph-title">Eksplorator</h2></div>
+        <label><input id="dc-show-links" type="checkbox" checked> Łącza</label>
+        <label><input id="dc-show-sessions" type="checkbox"> Sesje BGP</label>
+        <label><input id="dc-show-infra-hosts" type="checkbox" checked> RS na hostach</label>
+        <label><input id="dc-collapse-rs" type="checkbox"> Grupuj RS</label>
+        <label class="dc-zoom"><span class="dc-sr-only">Powiększenie</span><input id="dc-zoom" type="range" min="50" max="150" value="85" step="5"><output id="dc-zoom-value">85%</output></label>
+      </div>
+      <div class="dc-workspace">
+        <div id="dc-graph" class="dc-graph-scroll"><p class="dc-empty">Buduję widok topologii…</p></div>
+        <div class="dc-canvas-note"><span aria-hidden="true">◎</span> Kliknij, aby zajrzeć do urządzenia</div>
+        <aside id="dc-inspector" class="dc-inspector" role="dialog" aria-labelledby="dc-inspector-heading" tabindex="-1" hidden>
+          <div class="dc-inspector-bar"><span class="dc-kicker">INSPEKTOR / OCZEKIWANY STAN</span>
+            <button id="dc-inspector-close" class="dc-icon-button" type="button" aria-label="Zamknij inspektor">×</button></div>
+          <div id="dc-details" class="dc-details"></div>
+        </aside>
+      </div>
+      <div class="dc-graph-footer"><span class="dc-legend"><i class="legend-switch"></i> fabric <i class="legend-host"></i> host <i class="legend-vm"></i> route server <i class="legend-customer"></i> VM klienta</span>
+        <span>Adresy i tablice są obliczanym przykładem.</span></div>
       <div id="dc-traffic-list" class="dc-traffic-list" aria-label="Scenariusze ruchu"></div>
-      <div class="dc-playback" role="group" aria-label="Sterowanie animacją">
+      <div class="dc-playback" role="group" aria-label="Sterowanie ilustracją pakietu">
         <button id="dc-play" class="dc-button" type="button" disabled>Odtwórz pakiet</button>
         <button id="dc-rewind" class="dc-button secondary" type="button" disabled>Od początku</button>
         <label>Tempo <select id="dc-speed"><option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
-        <span id="dc-play-status" aria-live="polite">Wybierz trasę, przepływ lub sesję BGP.</span>
+        <span id="dc-play-status" aria-live="polite">Wybierz przepływ lub sesję BGP.</span>
       </div>
-      <div id="dc-graph" class="dc-graph-scroll"><p class="dc-empty">Wczytuję topologię…</p></div>
-    </section>`;
+    </section>
+    <p id="dc-message" class="dc-message" role="status" aria-live="polite">Wczytywanie przykładu…</p>
+    <dialog id="dc-config-dialog" class="dc-config-dialog" aria-labelledby="dc-config-title">
+      <div class="dc-inspector-bar"><div><p class="dc-kicker">SCENARIUSZ</p><h2 id="dc-config-title">Konfiguracja sieci</h2></div>
+        <button id="dc-config-close" class="dc-icon-button" type="button" aria-label="Zamknij konfigurację">×</button></div>
+      <p class="dc-config-help">Zmień rozmiar lub wczytaj YAML. Oczekiwane tablice tras zostaną przeliczone po przebudowie.</p>
+      <form id="dc-count-form" class="dc-count-controls"><h3>Rozmiar topologii</h3>
+        <div class="dc-count-grid">
+          <label>Spines <input name="spines" type="number" min="1" max="8" required></label>
+          <label>Bolts <input name="bolts" type="number" min="1" max="4" required></label>
+          <label>Racks / bolt <input name="racks_per_bolt" type="number" min="1" max="4" required></label>
+          <label>Hosty / rack <input name="hosts_per_rack" type="number" min="1" max="4" required></label>
+          <label>VM klientów <input name="customer_vms" type="number" min="0" max="64" required></label>
+        </div><button class="dc-button" type="submit">Przebuduj topologię</button>
+      </form>
+      <form id="dc-config-form"><label class="dc-editor-label" for="dc-editor">Konfiguracja YAML</label>
+        <textarea id="dc-editor" class="dc-editor" spellcheck="false" autocomplete="off"></textarea>
+        <div class="dc-actions"><button class="dc-button" type="submit">Wczytaj YAML</button>
+          <button class="dc-button secondary" id="dc-reset" type="button">Przywróć przykład</button>
+          <a class="dc-button secondary" id="dc-export" href="/api/config.yaml" download="dc-topology.yaml">Eksportuj YAML</a></div>
+      </form><p id="dc-config-message" class="dc-message" role="status" aria-live="polite"></p>
+    </dialog>`;
 
   const editor = root.querySelector("#dc-editor");
   const summaryEl = root.querySelector("#dc-summary");
   const messageEl = root.querySelector("#dc-message");
   const detailsEl = root.querySelector("#dc-details");
+  const inspectorEl = root.querySelector("#dc-inspector");
+  const configDialog = root.querySelector("#dc-config-dialog");
+  const events = new AbortController();
+  let returnFocus = null;
+
+  function listen(target, type, handler, options = {}) {
+    target.addEventListener(type, handler, { ...options, signal: events.signal });
+  }
+
+  function focusEntity(selection) {
+    const element = [...graphEl.querySelectorAll("[data-entity-type]")].find((item) =>
+      item.dataset.entityType === selection?.type && item.dataset.entityId === selection?.id);
+    element?.focus({ preventScroll: true });
+  }
+
+  function openInspector() {
+    if (inspectorEl.hidden) returnFocus = selected;
+    inspectorEl.hidden = false;
+    root.querySelector("#dc-inspector-close").focus({ preventScroll: true });
+  }
+
+  function closeInspector() {
+    inspectorEl.hidden = true;
+    selected = null;
+    resetAnimation();
+    renderGraph();
+    renderTrafficList();
+    focusEntity(returnFocus);
+  }
+
   const graphEl = root.querySelector("#dc-graph");
   const trafficList = root.querySelector("#dc-traffic-list");
   const playButton = root.querySelector("#dc-play");
@@ -82,6 +119,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   let modelRevision = 0;
   const inspectorLoaded = new Set();
   const inspectorPending = new Set();
+  const inspectorErrors = new Map();
   const animation = { playing: false, elapsed: 0, startedAt: 0, frame: 0 };
 
   const onSubmit = (event) => {
@@ -117,6 +155,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     renderTrafficList();
     renderGraph();
     renderInspector();
+    openInspector();
   };
   const onGraphKey = (event) => {
     if ((event.key === "Enter" || event.key === " ") && event.target.matches("[data-entity-type]")) {
@@ -152,6 +191,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     renderTrafficList();
     renderGraph();
     renderInspector();
+    openInspector();
   };
   const onPlaybackClick = () => animation.playing ? pauseAnimation() : startAnimation();
   const onRewindClick = () => resetAnimation();
@@ -165,21 +205,31 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     }
   };
 
-  root.querySelector("#dc-config-form").addEventListener("submit", onSubmit);
-  countForm.addEventListener("submit", onCountSubmit);
-  root.querySelector("#dc-reset").addEventListener("click", onReset);
-  showLinks.addEventListener("change", onLayerChange);
-  showSessions.addEventListener("change", onLayerChange);
-  showInfraOnHosts.addEventListener("change", onLayerChange);
-  collapseRouteServers.addEventListener("change", onLayerChange);
-  zoomInput.addEventListener("input", onZoom);
-  graphEl.addEventListener("click", onGraphClick);
-  graphEl.addEventListener("keydown", onGraphKey);
-  detailsEl.addEventListener("click", onInspectorClick);
-  trafficList.addEventListener("click", onTrafficClick);
-  playButton.addEventListener("click", onPlaybackClick);
-  rewindButton.addEventListener("click", onRewindClick);
-  speedSelect.addEventListener("change", onSpeedChange);
+  listen(root.querySelector("#dc-config-form"), "submit", onSubmit);
+  listen(countForm, "submit", onCountSubmit);
+  listen(root.querySelector("#dc-reset"), "click", onReset);
+  listen(showLinks, "change", onLayerChange);
+  listen(showSessions, "change", onLayerChange);
+  listen(showInfraOnHosts, "change", onLayerChange);
+  listen(collapseRouteServers, "change", onLayerChange);
+  listen(zoomInput, "input", onZoom);
+  listen(graphEl, "click", onGraphClick);
+  listen(graphEl, "keydown", onGraphKey);
+  listen(detailsEl, "click", onInspectorClick);
+  listen(trafficList, "click", onTrafficClick);
+  listen(playButton, "click", onPlaybackClick);
+  listen(rewindButton, "click", onRewindClick);
+  listen(speedSelect, "change", onSpeedChange);
+
+  listen(root.querySelector("#dc-config-open"), "click", () => configDialog.showModal());
+  listen(root.querySelector("#dc-config-close"), "click", () => configDialog.close());
+  listen(root.querySelector("#dc-inspector-close"), "click", closeInspector);
+  listen(root, "keydown", (event) => {
+    if (event.key === "Escape" && !inspectorEl.hidden && !configDialog.open) {
+      event.preventDefault();
+      closeInspector();
+    }
+  });
 
   function send(command) {
     if (!destroyed) onCommand(command);
@@ -188,6 +238,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   function loadInspector(kind, id) {
     const key = `${modelRevision}/${kind}/${id}`;
     if (inspectorLoaded.has(key) || inspectorPending.has(key)) return;
+    inspectorErrors.delete(key);
     inspectorPending.add(key);
     send({ type: "load_inspector", kind, id, revision: modelRevision });
   }
@@ -203,9 +254,9 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
 
   function appendInspectorLoading(container, kind, id) {
     const note = document.createElement("p");
-    note.textContent = inspectorPending.has(`${modelRevision}/${kind}/${id}`)
+    note.textContent = inspectorErrors.get(`${modelRevision}/${kind}/${id}`) || (inspectorPending.has(`${modelRevision}/${kind}/${id}`)
       ? "Wczytuję szczegóły…"
-      : "Szczegóły będą dostępne po wybraniu elementu ponownie.";
+      : "Wybierz element ponownie, aby wczytać szczegóły.");
     container.append(note);
   }
 
@@ -379,6 +430,9 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       modelRevision++;
       inspectorLoaded.clear();
       inspectorPending.clear();
+      inspectorErrors.clear();
+      inspectorEl.hidden = true;
+      selected = null;
       resetAnimation();
     }
     state = { ...state, ...next };
@@ -386,6 +440,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const payload = next.inspectorData;
       const key = `${payload.revision}/${payload.kind}/${payload.id}`;
       inspectorPending.delete(key);
+      if (payload.revision === modelRevision && !payload.ok) inspectorErrors.set(key, payload.message || "Nie udało się wczytać szczegółów. Wybierz element ponownie, aby spróbować jeszcze raz.");
       if (payload.revision === modelRevision && state.model && payload.ok) {
         inspectorLoaded.add(key);
         const routeState = { ...state.model.route_state };
@@ -404,8 +459,11 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if (next.message !== undefined) {
       messageEl.textContent = next.message || "";
       messageEl.classList.toggle("error", Boolean(next.error));
+      const configMessage = root.querySelector("#dc-config-message");
+      configMessage.textContent = next.message || "";
+      configMessage.classList.toggle("error", Boolean(next.error));
     }
-    renderSummary();
+    if (next.summary !== undefined) renderSummary();
     renderTrafficList();
     renderGraph();
     renderInspector();
@@ -420,10 +478,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       return;
     }
     const cards = [
-      [s.physical_devices, "urządzenia fizyczne"], [s.hosts, "hosty"],
-      [s.physical_links, "łącza fizyczne"], [s.bgp_sessions, "sesje BGP"],
-      [s.customer_vms, "VM klientów"], [s.route_server_vms, "VM route serverów"],
-      [s.vpcs, "VPC"], [s.route_origins, "źródła tras"],
+      [s.physical_devices, "urządzeń"], [s.physical_links, "łączy"],
+      [s.bgp_sessions, "sesji BGP"], [s.customer_vms + s.route_server_vms, "maszyn VM"],
     ];
     label.textContent = `Schemat ${s.schema_version} · ${s.topology.borders} border · ${s.topology.stems} stem · ${s.topology.spines} spine · ${s.topology.bolts} bolt`;
     for (const [name, value] of Object.entries({
@@ -619,12 +675,13 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function renderInspector(nodeByID, interfaceByID) {
+    if (!state.model || !selected) inspectorEl.hidden = true;
     if (!state.model) {
       detailsEl.innerHTML = "<p>Wybierz urządzenie lub łącze po wczytaniu modelu.</p>";
       return;
     }
     if (!selected) {
-      detailsEl.innerHTML = "<p>Wybierz urządzenie lub łącze na diagramie. Adresy są fikcyjne i służą wyłącznie symulacji.</p>";
+      detailsEl.innerHTML = "<p>Wybierz urządzenie lub łącze na diagramie. Adresy są fikcyjne; tablice przedstawiają oczekiwany stan.</p>";
       return;
     }
     if (selected.type === "node") {
@@ -805,7 +862,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function appendInspectorTitle(title, id) {
-    const heading = document.createElement("h3"); heading.textContent = title;
+    const heading = document.createElement("h3"); heading.id = "dc-inspector-heading"; heading.textContent = title;
     const code = document.createElement("code"); code.textContent = id;
     detailsEl.replaceChildren(heading, code);
   }
@@ -822,21 +879,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     setState,
     destroy() {
       destroyed = true;
-      root.querySelector("#dc-config-form").removeEventListener("submit", onSubmit);
-      countForm.removeEventListener("submit", onCountSubmit);
-      root.querySelector("#dc-reset").removeEventListener("click", onReset);
-      showLinks.removeEventListener("change", onLayerChange);
-      showSessions.removeEventListener("change", onLayerChange);
-      showInfraOnHosts.removeEventListener("change", onLayerChange);
-      collapseRouteServers.removeEventListener("change", onLayerChange);
-      zoomInput.removeEventListener("input", onZoom);
-      graphEl.removeEventListener("click", onGraphClick);
-      graphEl.removeEventListener("keydown", onGraphKey);
-      detailsEl.removeEventListener("click", onInspectorClick);
-      trafficList.removeEventListener("click", onTrafficClick);
-      playButton.removeEventListener("click", onPlaybackClick);
-      rewindButton.removeEventListener("click", onRewindClick);
-      speedSelect.removeEventListener("change", onSpeedChange);
+      events.abort();
+      if (configDialog.open) configDialog.close();
       if (animation.frame) cancelAnimationFrame(animation.frame);
       root.replaceChildren();
     },
@@ -845,7 +889,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
 
 function layout(model, options) {
   const t = model.config.topology;
-  const margin = 90;
+  const margin = 120;
   const blockWidth = Math.max(240, t.racks_per_bolt * 230, t.leaves_per_bolt * 110 + 60);
   const width = Math.max(1040, margin * 2 + t.bolts * blockWidth);
   let height = 820;
@@ -990,12 +1034,12 @@ function appendSpeakerTable(container, model, speakerID) {
   const details = document.createElement("details");
   details.className = "dc-interface-details";
   const summary = document.createElement("summary");
-  summary.textContent = `Tablica BGP · ${selected.length} wybranych · ${received.length} odebranych`;
+  summary.textContent = `Oczekiwana tablica BGP · ${selected.length} wybranych · ${received.length} odebranych`;
   details.append(summary);
   const groups = [
+    ["Najlepsze ścieżki", selected],
     ["Trasy lokalne", locallyOriginated],
     ["Trasy odebrane", received],
-    ["Najlepsze ścieżki", selected],
   ];
   for (const [label, entries] of groups) {
     const title = document.createElement("p"); title.className = "dc-route-group-title"; title.textContent = label;
@@ -1098,7 +1142,9 @@ function appendRouteRows(container, entries) {
     const direction = route.from_id && route.to_id ? ` · ${route.from_id} → ${route.to_id}` : "";
     const pathNodes = route.propagation_path ?? route.path;
     const path = pathNodes?.length ? ` · ${pathNodes.join(" → ")}` : "";
-    row.textContent = `${prefix}${vpc}${family}${rd}${rt}${vni}${origin}${peer}${direction}${nextHop}${nextHopInterface}${asPath}${policy}${resolution}${path}`;
+    const label = document.createElement("strong"); label.textContent = `${prefix}${vpc}${family}`;
+    const info = document.createElement("span"); info.textContent = `${rd}${rt}${vni}${origin}${peer}${direction}${nextHop}${nextHopInterface}${asPath}${policy}${resolution}${path}`.replace(/^ · /, "");
+    row.append(label, info);
     container.append(row);
   }
 }
