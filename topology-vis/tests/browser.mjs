@@ -170,22 +170,24 @@ await node.click(); await page.locator("#dc-inspector-close").click();
 
 // Decorative route flow is independently switched and never learns routes.
 await page.locator("#dc-show-route-flow").check();
-assert.equal(await page.locator(".dc-session.illustrative").count(), 3);
+assert((await page.locator(".dc-session.illustrative").count()) > 3);
 await page.waitForFunction(() => document.querySelector("#dc-route-marker").getAttribute("visibility") === "visible");
+assert((await page.locator(".dc-route-marker[visibility=visible]").count()) > 1);
+assert((await page.locator(".dc-route-marker[data-route-id]").evaluateAll(markers=>new Set(markers.map(m=>m.dataset.routeId)).size)) > 1);
 const cy = await page.locator("#dc-route-marker").getAttribute("cy");
 await page.waitForFunction((previous) => document.querySelector("#dc-route-marker").getAttribute("cy") !== previous, cy);
 for (const collapsed of [true, false]) {
   await page.locator("#dc-collapse-rs").setChecked(collapsed);
   for (const hosted of [true, false]) {
     await page.locator("#dc-show-infra-hosts").setChecked(hosted);
-    assert.equal(await page.locator(".dc-session.illustrative").count(), 3);
+    assert((await page.locator(".dc-session.illustrative").count()) > 3);
     assert.equal(await page.locator(".dc-vm.cluster").count(), collapsed ? 4 : 0);
     await checkLayout();
   }
 }
 await page.emulateMedia({ reducedMotion: "reduce" });
 await page.waitForFunction(() => document.querySelector("#dc-route-marker").getAttribute("visibility") === "hidden");
-assert.equal(await page.locator(".dc-session.illustrative").count(), 3);
+assert((await page.locator(".dc-session.illustrative").count()) > 3);
 await page.emulateMedia({ reducedMotion: "no-preference" });
 await page.locator("#dc-show-sessions").uncheck();
 assert.equal(await page.locator("#dc-route-marker").getAttribute("visibility"), "hidden");

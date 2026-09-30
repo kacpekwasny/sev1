@@ -17,7 +17,7 @@ Baseline: user commit `9c50463`. Working rework commits:
 - `295c4dd` — site integration, source relocation, and browser isolation.
 - `993aeba` — D12/R07 RS tiers, contained host badges, and separated outlines.
 - `252c732` — D13/R08 endpoint/message/table inspection.
-- D14/R09 placement and interactive inspection is in the commit containing this checkpoint.
+- `9ad9761` — D14/R09 placement and interactive inspection.
 
 ## Delivered behavior
 
@@ -117,3 +117,14 @@ The in-app browser Node REPL is unavailable; installed headless Chrome was the
 verification fallback. Other browsers/devices have not been checked. No deployment
 or push was performed. The next work should follow a new user request, rather than
 repeat completed rework milestones.
+
+## Latest request — separately committed points
+
+1. Multi-route flow: implemented. The switch shows a bounded stream of up to 24
+   independent prefix illustrations, staggered over actual RS sessions. A selected
+   UPDATE remains an additional focused stream. Tables/YAML remain unchanged.
+   Desktop/narrow Chrome walkthrough and Go tests passed.
+2. RS ASN prepending: pending.
+3. Compact device-adjacent traffic actions: pending.
+4. Originated-route sections: pending.
+5. Route/packet path previews on hover: pending.

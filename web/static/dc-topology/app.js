@@ -1,5 +1,6 @@
 const NS = "http://www.w3.org/2000/svg";
 import { appendRIB, appendFIB, identifyRoute } from "./tables.js";
+import { routeFlowStreams } from "./route-flow.js";
 import { routePaths } from "./route-paths.js";
 import { appendBGPBits } from "./packet-bits.js";
 import { explorerMarkup, appendUpdateInspection, appendPacketInspection } from "./inspection.js";
@@ -129,7 +130,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   const showRouteFlow = root.querySelector("#dc-show-route-flow");
   const flowNote = root.querySelector("#dc-flow-note");
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const illustration = { frame: 0, startedAt: 0, sequence: [] };
+  const illustration = { frame: 0, startedAt: 0, sequence: [], streams: [] };
   const showInfraOnHosts = root.querySelector("#dc-show-infra-hosts");
   const collapseRouteServers = root.querySelector("#dc-collapse-rs");
   const zoomInput = root.querySelector("#dc-zoom");
@@ -571,39 +572,17 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     return [];
   }
 
-  // This is a curated illustration of the RS hierarchy, independent of route tables.
-  function routeFlowSequence() {
-    const model = state.model;
-    if (!model) return [];
-    if (exploration.update) return (exploration.update.steps ?? []).map((step) => ({ sessionID: step.session_id, fromID: step.from_id, toID: step.to_id }));
-    if (selected?.type === "update") return [];
-    const origin = model.route_state?.origins?.find((route) => route.route_type === 5 && route.origin_kind === "host");
-    if (!origin) return [];
-    let fromID = origin.next_hop_node_id;
-    const sequence = [];
-    for (const kind of ["host-rs-bolt", "rs-bolt-rs-ctrl", "border-rs-ctrl"]) {
-      const session = model.bgp_sessions.find((item) => item.kind === kind &&
-        (item.a.entity_id === fromID || item.b.entity_id === fromID) &&
-        item.families.some((family) => family.route_types?.includes(5)));
-      if (!session) return [];
-      const toID = session.a.entity_id === fromID ? session.b.entity_id : session.a.entity_id;
-      sequence.push({ sessionID: session.id, fromID, toID });
-      fromID = toID;
-    }
-    return sequence;
-  }
-
   function syncIllustration() {
     const active = showRouteFlow.checked && showSessions.checked && illustration.sequence.length > 0;
     flowNote.textContent = !showRouteFlow.checked ? "Adresy i tablice są obliczanym przykładem."
       : !showSessions.checked ? "Przepływ poglądowy — włącz warstwę Sesje BGP."
       : !illustration.sequence.length ? "Brak zgodnego przykładu przepływu tras w tej konfiguracji."
       : exploration.update ? `UPDATE: ${exploration.update.from_id} → ${exploration.update.to_id} · ${exploration.update.route.prefix}. Tablice pozostają stałe.`
-      : "Poglądowo: host → RS Bolt → RS Ctrl → border. Tablice pozostają stałe.";
+      : `Poglądowo: ${illustration.streams.length} ogłoszeń płynie równolegle przez RS. Tablice pozostają stałe.`;
     if (!active || reducedMotion.matches) {
       if (illustration.frame) cancelAnimationFrame(illustration.frame);
       illustration.frame = 0;
-      graphEl.querySelector("#dc-route-marker")?.setAttribute("visibility", "hidden");
+      for (const marker of graphEl.querySelectorAll(".dc-route-marker")) marker.setAttribute("visibility", "hidden");
       return;
     }
     updateIllustrationMarker(performance.now());
@@ -619,19 +598,21 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function updateIllustrationMarker(now) {
-    const marker = graphEl.querySelector("#dc-route-marker");
-    const sequence = illustration.sequence;
-    if (!marker || !sequence.length || !showRouteFlow.checked || !showSessions.checked || reducedMotion.matches) return;
-    const scaled = (Math.max(0, now - illustration.startedAt) % (sequence.length * 1100)) / 1100;
-    const step = sequence[Math.floor(scaled)];
-    const from = currentPositions?.entityPoints.get(step.fromID);
-    const to = currentPositions?.entityPoints.get(step.toID);
-    if (!from || !to) { marker.setAttribute("visibility", "hidden"); return; }
-    const fraction = scaled % 1;
-    marker.setAttribute("cx", String(from.x + (to.x - from.x) * fraction));
-    marker.setAttribute("cy", String(from.y + (to.y - from.y) * fraction));
-    marker.setAttribute("visibility", "visible");
-    for (const item of detailsEl.querySelectorAll(".dc-update-step")) item.classList.toggle("is-current", Number(item.dataset.stepIndex) === Math.floor(scaled));
+    if (!showRouteFlow.checked || !showSessions.checked || reducedMotion.matches) return;
+    for (const [index, stream] of illustration.streams.entries()) {
+      const marker=graphEl.querySelector(`[data-flow-index="${index}"]`);
+      const sequence=stream.steps;
+      if(!marker||!sequence.length)continue;
+      const scaled=((Math.max(0,now-illustration.startedAt)+index*430)%(sequence.length*1100))/1100;
+      const step=sequence[Math.floor(scaled)];
+      const from=currentPositions?.entityPoints.get(step.fromID),to=currentPositions?.entityPoints.get(step.toID);
+      if(!from||!to){marker.setAttribute("visibility","hidden");continue;}
+      const fraction=scaled%1;
+      marker.setAttribute("cx",String(from.x+(to.x-from.x)*fraction));
+      marker.setAttribute("cy",String(from.y+(to.y-from.y)*fraction));
+      marker.setAttribute("visibility","visible");
+      if(stream.focused)for(const item of detailsEl.querySelectorAll(".dc-update-step"))item.classList.toggle("is-current",Number(item.dataset.stepIndex)===Math.floor(scaled));
+    }
   }
 
   function animationDuration() {
@@ -873,7 +854,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const interfaceByID = new Map(model.interfaces.map((iface) => [iface.id, iface]));
     const inspectedPaths = routePaths(model, selected);
     root.querySelector("#dc-route-legend").hidden = selected?.type !== "route";
-    illustration.sequence = showRouteFlow.checked ? routeFlowSequence() : [];
+    illustration.streams = showRouteFlow.checked ? routeFlowStreams(model, exploration.update) : [];
+    illustration.sequence = illustration.streams.flatMap(stream=>stream.steps);
     const illustrationIDs = new Set(illustration.sequence.map((step) => step.sessionID));
     const groupLayer = svgElement("g", { class: "dc-groups", "aria-hidden": "true" });
     const rsLayer = svgElement("g", { class: "dc-rs-tiers", "aria-hidden": "true" });
@@ -1019,7 +1001,12 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     }
     svg.append(vmLayer);
     svg.append(svgElement("circle", { id: "dc-packet-marker", class: "dc-packet-marker", r: 7, visibility: "hidden" }));
-    svg.append(svgElement("circle", { id: "dc-route-marker", class: "dc-route-marker", r: 7, visibility: "hidden" }));
+    for (const [index, stream] of illustration.streams.entries()) {
+      const marker=svgElement("circle", {id:index===0?"dc-route-marker":`dc-route-marker-${index}`,class:"dc-route-marker",r:stream.focused?7:5,visibility:"hidden","data-flow-index":index,"data-route-id":stream.route.id,fill:["#d4b1fc","#82d7e9","#ffd782","#9cdfb2"][index%4]});
+      marker.style.fill=["#d4b1fc","#82d7e9","#ffd782","#9cdfb2"][index%4];
+      const title=svgElement("title",{});title.textContent=`${stream.route.prefix} · VPC ${stream.route.vpc_id}`;marker.append(title);svg.append(marker);
+    }
+    if(!illustration.streams.length)svg.append(svgElement("circle",{id:"dc-route-marker",class:"dc-route-marker",r:5,visibility:"hidden"}));
     graphEl.replaceChildren(svg);
     updateAnimationMarker();
     updatePlaybackControls();

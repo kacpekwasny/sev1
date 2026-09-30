@@ -47,7 +47,8 @@ Grupuj RS replaces them with one aggregate icon. Rack outlines stay inside their
 bolt, with gaps between neighboring racks and bolts.
 
 Przepływ tras is off initially. Enable it with the BGP layer to show a fixed,
-illustrative host → RS Bolt → RS Ctrl → border sequence on valid sessions.
+a stream of different prefix illustrations through valid RS hierarchy sessions,
+with up to 24 staggered markers. A selected UPDATE adds a focused stream.
 It does not learn routes or change tables. Reduced-motion settings keep static
 direction arrows. Packet examples use their calculated physical paths separately.
 
