@@ -3,6 +3,7 @@ import { appendRIB, appendFIB, identifyRoute, appendRoutingRIB, appendOriginated
 import { routeFlowStreams, originatedRouteFlow } from "./route-flow.js";
 import { displayNames } from "./labels.js";
 import { physicalPoints, tapPoints, packetSegments, packetTraversal, packetPosition } from "./packet-path.js";
+import { mountAddressHints } from "./addresses.js";
 import { routePaths } from "./route-paths.js";
 import { appendBGPBits } from "./packet-bits.js";
 import { explorerMarkup, appendUpdateInspection, appendPacketInspection } from "./inspection.js";
@@ -59,8 +60,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
           ${["n","e","s","w","ne","se","sw","nw"].map(edge=>`<div class="dc-popup-edge" data-resize="${edge}" aria-hidden="true"></div>`).join("")}
           <button id="dc-inspector-resize" class="dc-popup-resize" type="button" aria-label="Zmień rozmiar inspektora; strzałki zmieniają wymiary, Home przywraca">◢</button>
         </aside>
+        <div id="dc-route-legend" class="dc-route-legend" hidden><span class="learned">● Fioletowy: droga ogłoszenia do tego RIB</span><span class="points-to">● Żółty: droga do next hop / celu</span></div>
       </div>
-      <div id="dc-route-legend" class="dc-route-legend" hidden><span class="learned">● Fioletowy: droga ogłoszenia do tego RIB</span><span class="points-to">● Żółty: droga do next hop / celu</span></div>
       <div class="dc-graph-footer"><span class="dc-legend"><i class="legend-switch"></i> fabric <i class="legend-host"></i> host <i class="legend-vm"></i> route server <i class="legend-customer"></i> VM klienta</span>
         <span class="dc-canvas-note"><span aria-hidden="true">◎</span> Kliknij: szczegóły · przeciągnij: ustawienie</span>
         <span id="dc-flow-note">Adresy i tablice są obliczanym przykładem.</span></div>
@@ -125,6 +126,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function closeInspector() {
+    addressHints.clear();
     cancelResize();
     inspectorEl.hidden = true;
     packetReveal = null;
@@ -190,6 +192,18 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   let popupPosition = null, popupDrag = null, endpointPick = null, deviceMenu = null;
   let popupSize = null, popupResize = null;
   let routeHover = null, sessionHover = null, vmHover = null, previewFrame = 0;
+  let addressOwners=new Set();
+  const addressHints=mountAddressHints(root,{getModel:()=>state.model,getContext:()=>{
+    const vm=state.model?.vms.find(vm=>vm.id===selected?.id);
+    return {ownerID:selected?.ownerID||selected?.id,
+      vpcID:selected?.candidate?.vpc_id??(selected?.type==="packet"?exploration.packet?.vpc_id:selected?.type==="traffic"?state.model.route_state.traffic.find(flow=>flow.id===selected.id)?.vpc_id:vm?.role==="customer"?vm.vpc_id:undefined),
+      sessionID:selected?.type==="session"?selected.id:undefined,linkID:selected?.type==="link"?selected.id:undefined};
+  },onPreview:highlightAddressOwners,signal:events.signal});
+  function highlightAddressOwners(ids=[...addressOwners]) {
+    addressOwners=new Set(ids);
+    const badges=new Set(currentPositions?.displayItems.filter(item=>item.members.some(vm=>addressOwners.has(vm.id))).map(item=>item.id));
+    for(const element of graphEl.querySelectorAll(".dc-node,.dc-vm"))element.classList.toggle("address-preview",addressOwners.has(element.dataset.entityId)||badges.has(element.dataset.entityId));
+  }
   let packetReveal = null;
   const exploration = { update: null, packet: null };
   const exploreRequests = { update: 0, packet: 0 };
@@ -1316,6 +1330,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       routeMarker.append(svgElement("title",{}));svg.append(routeMarker);
     }
     graphEl.replaceChildren(svg);
+    highlightAddressOwners();
     updateAnimationMarker();
     updatePlaybackControls();
     syncIllustration();
@@ -1323,6 +1338,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function renderInspector(nodeByID, interfaceByID) {
+    addressHints.clear();
     previewVM(null);
     if(routeHover||sessionHover) {clearRoutePreview();renderGraph();}
     root.querySelector("#dc-inspector-back").disabled = !inspectorHistory.length;
@@ -1346,6 +1362,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     for (const item of detailsEl.querySelectorAll("details")) {
       if (sections.has(sectionKey(item))) item.open = sections.get(sectionKey(item));
     }
+    addressHints.decorate(detailsEl);
     detailsEl.scrollTop = scroll;
     clampPopup();
     inspectorSelectionKey = key;
@@ -1396,6 +1413,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         const iface = (interfaceByID ?? new Map([...state.model.interfaces, ...(state.model.local_interfaces ?? [])].map((item) => [item.id, item]))).get(id);
         if (!iface) continue;
         const row = document.createElement("p");
+        row.dataset.addressInterface=iface.id;
         row.textContent = `${iface.name} ↔ ${iface.peer_node_id}: ${iface.kind === "tap" ? `TAP · ${iface.vpc_id ? `VPC ${iface.vpc_id}` : state.model.vms.find(vm=>vm.id===iface.peer_node_id)?.role==="customer"?"default/public VRF · VNI 3":"infra"} · port lokalny bez adresu L3` : formatAddress(iface)}`;
         interfaces.append(row);
       }
@@ -1605,6 +1623,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     setState,
     destroy() {
       destroyed = true;
+      addressHints.destroy();
       packetReveal = null;
       clearRoutePreview();
       cancelResize();

@@ -352,11 +352,14 @@ await page.evaluate(async () => {
   window.cancelAnimationFrame = (id) => { active.delete(id); nativeCancel(id); };
   const container = document.createElement("div"); container.className = "dc-app"; document.body.append(container);
   let commands = 0;
+  const hintCount = document.querySelectorAll('.dc-address-tooltip').length;
   const mounted = mountTopologyApp(container, { onCommand: () => { commands++; } }); mounted.setState({ model });
+  if (document.querySelectorAll('.dc-address-tooltip').length !== hintCount + 1) throw new Error('Missing instance address tooltip');
   const sessions = container.querySelector("#dc-show-sessions"), flow = container.querySelector("#dc-show-route-flow");
   sessions.checked = true; sessions.dispatchEvent(new Event("change")); flow.checked = true; flow.dispatchEvent(new Event("change"));
   const button = container.querySelector("#dc-reset");
   mounted.destroy(); const after = commands; button.click();
+  if (document.querySelectorAll('.dc-address-tooltip').length !== hintCount) throw new Error('Teardown leaked address tooltip');
   if (active.size || commands !== after || container.children.length) throw new Error("Teardown leaked animation, listeners, or DOM");
   container.remove(); window.requestAnimationFrame = nativeRequest; window.cancelAnimationFrame = nativeCancel;
 });

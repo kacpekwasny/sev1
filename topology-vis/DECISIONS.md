@@ -468,6 +468,16 @@ Address hover should explain purpose and ownership with VRF/interface scope;
 ambiguous/shared and external addresses must be described honestly. Commit each
 of the four points independently.
 
+Implemented hint defaults: use the current expected model, not external address
+lookups. Derive physical-interface scope from the row/session or Linux nexthop
+device, and VRF scope from the inspected route/VM/packet. Normalize expanded
+IPv6 and mapped IPv4 neighbors. Known owners get a cyan topology highlight;
+grouped RS members highlight their cluster. Hover and keyboard focus share a
+viewport-clamped tooltip. Display addresses inline, preserving CLI spacing and
+bit-field selection; editable YAML/forms and binary grids are not rewritten.
+The route-path legend overlays the canvas so route hover cannot shift addresses
+under the pointer by changing the page height. Teardown removes the hint portal.
+
 ## Recording an answer
 
 Record the latest user direction and affected milestones. If it changes previously implemented work, reopen the affected acceptance checks; do not claim the old checks verify new behavior. Distinguish direct user requirements from authorized implementation defaults. Preserve the original TODO while keeping this decision record and the active plan authoritative for later changes.

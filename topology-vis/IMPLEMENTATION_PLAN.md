@@ -340,3 +340,9 @@ identities; physical link-local addressing and IPv4 VTEPs stay independent.
   per-host border routes and use learned routing with private VRF isolation.
 - R26: address hover/focus explains owner and role, preserving interface/VRF
   scope and acknowledging shared/external addresses. Commit each point.
+
+Implemented and verified: both host table modes, complete own-prefix fanout,
+local TAP-only static routes, remote EVPN/VXLAN imports, and address hints in
+identity/route/kernel/decoded-packet displays. Hints highlight known owners and
+keep viewport bounds; the canvas legend preserves stationary hover targets.
+Desktop/narrow walkthroughs and pure ownership/scope tests cover these behaviors.

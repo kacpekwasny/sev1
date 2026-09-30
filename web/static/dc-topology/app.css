@@ -237,7 +237,7 @@ body.dc-page { background: #0b1018; }
 .dc-family-badge { display:inline-block; padding:2px 4px; margin-right:6px; border-radius:4px; background:#e1e9f0; color:#546b80; font-size:8px; }
 .dc-cli-route { display:block; min-width:100%; text-align:left; white-space:pre; border:0; border-radius:3px; background:transparent; color:inherit; font:inherit; padding:2px 3px; cursor:pointer; }
 .dc-cli-route:hover, .dc-cli-route:focus-visible { background:#304158; outline:1px solid #bc8aff; }
-.dc-route-legend { display:flex; flex-wrap:wrap; gap:16px; padding:10px 20px; font-size:10px; }
+.dc-route-legend { position:absolute; left:8px; bottom:8px; max-width:calc(100% - 16px); z-index:1; display:flex; flex-wrap:wrap; gap:6px 16px; padding:6px 10px; border-radius:6px; background:#0e1621ee; font-size:10px; pointer-events:none; }
 .dc-route-legend .learned { color:#bc8aff; }
 .dc-route-legend .points-to { color:#ffe16a; }
 .dc-route-provenance .learned { color:#7040b1; }
@@ -294,3 +294,13 @@ body.dc-page { background: #0b1018; }
 .dc-session.is-flow-current .dc-session-line { stroke: #f0dcff; stroke-width: 4; }
 
 .dc-packet-internal-track { stroke: #ffe16a; stroke-width: 3; fill: none; opacity: .7; pointer-events: none; }
+
+.dc-address { display:inline-block; max-width:100%; text-decoration:underline dotted #5e91a3; text-underline-offset:3px; cursor:help; border-radius:2px; }
+.dc-route-row .dc-address { display:inline-block; font:inherit; }
+.dc-address:hover, .dc-address:focus-visible { background:#d6eff5; color:#153d51; outline:1px solid #6ca4b4; }
+.dc-terminal .dc-address:hover, .dc-terminal .dc-address:focus-visible { background:#315361; color:#ecfbff; }
+.dc-address-tooltip { position:fixed; z-index:2000; width:min(340px,calc(100vw - 16px)); box-sizing:border-box; padding:10px 12px; border:1px solid #7aa6b7; border-radius:9px; background:#f7fcff; color:#183c50; box-shadow:0 6px 24px #08151b55; font:12px/1.5 Poppins,system-ui,sans-serif; pointer-events:none; overflow-wrap:anywhere; }
+.dc-address-tooltip[hidden] { display:none; }
+.dc-address-tooltip strong { display:block; font-size:12px; }
+.dc-address-tooltip p { margin:5px 0 0; white-space:pre-line; }
+.dc-node.address-preview rect, .dc-vm.address-preview rect { stroke:#81e2f2; stroke-width:3; filter:drop-shadow(0 0 6px #73d7eccc); }

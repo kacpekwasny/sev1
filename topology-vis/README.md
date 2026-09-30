@@ -109,7 +109,7 @@ selectors and UPDATE exploration. Move the popup using its ⠿ handle (also arro
 Pressing outside the compact send-action popup dismisses it.
 
 Packet examples use IPv4 ICMP or IPv6 ICMPv6 Echo Request. Customer VM pairs obey
-VPC forwarding/isolation; choosing a border targets a configured static egress
+VPC forwarding/isolation; choosing a border targets a configured external
 prefix or its identity address. Borders advertise public defaults and their
 loopbacks through physical underlay BGP. `route_origins` describes external
 packet targets; these prefixes do not install static routes across hosts.
@@ -162,6 +162,14 @@ the host. Originated routes are clickable in both formats. Their hover/focus and
 preview complete redistribution waves, including RS fanout, using cached
 metadata for that exact prefix. Preview works with decorative flow/sessions off;
 leaving restores the layer switches and prior selection.
+
+Hover or keyboard-focus a displayed address to see its purpose and owner. Hints
+cover device loopbacks, customer and RS VM addresses, IPv4 VTEPs and mapped IPv6
+neighbors, link-local interface scope, default prefixes and external targets.
+Known owners are highlighted in the topology, including grouped RS members.
+Customer addresses are resolved within their VRF; shared or unknown addresses
+are labeled without inventing ownership. Hints also work in Linux output and
+decoded packet fields, and remain inside the viewport while the popup scrolls.
 
 AFI/SAFI sections are visually nested under the expected RIB. Routes in either
 format are clickable. The back arrow restores the previous table and its expanded
@@ -253,6 +261,7 @@ node --input-type=module --check < web/static/dc-topology/packet-bits.js
 node --input-type=module --check < web/static/dc-topology/route-paths.js
 node topology-vis/tests/packet-bits.mjs
 node topology-vis/tests/packet-path.mjs
+node topology-vis/tests/address-ownership.mjs
 ```
 
 The optional browser walkthrough in [tests/browser.mjs](tests/browser.mjs) uses an
@@ -296,4 +305,16 @@ IPv6 configuration and physical-link checks:
 PLAYWRIGHT_MODULE=/path/to/playwright-core/index.mjs \
 TOPOLOGY_URL=http://127.0.0.1:8081/topologie/dc/ \
 node topology-vis/tests/addressing.mjs
+```
+
+Host routing and address inspection walkthroughs (same external setup):
+
+```sh
+PLAYWRIGHT_MODULE=/path/to/playwright-core/index.mjs \
+TOPOLOGY_URL=http://127.0.0.1:8081/topologie/dc/ \
+node topology-vis/tests/host-routes.mjs
+
+PLAYWRIGHT_MODULE=/path/to/playwright-core/index.mjs \
+TOPOLOGY_URL=http://127.0.0.1:8081/topologie/dc/ \
+node topology-vis/tests/address-hints.mjs
 ```

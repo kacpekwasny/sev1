@@ -422,14 +422,14 @@ Commit: the commit containing this checkpoint.
 
 No pending D25 work. Preview: http://127.0.0.1:8099/topologie/dc/.
 
-## D26 — in progress
+## D26 — complete
 
 1. Every inspected speaker caches complete redistribution for all own prefixes.
    Originated-route hover/focus and click reuse those waves, including RS fanout,
    even with the decorative/session layers off. Leaving restores prior selection
    and switches. No hover network request or topology-wide export list is added.
    Go tests/build pass; Chrome verifies GUI/Linux and both widths.
-   Commit: the commit containing this checkpoint.
+   Commit: `2729228`.
 2. Added a combined selected host routing RIB in GUI and Zebra-style CLI,
    grouped by VRF and route source. Remote VM routes explicitly show EVPN import,
    L3-SVI/VXLAN/VNI and VTEP resolution; recursive customer prefixes have their
@@ -437,7 +437,7 @@ No pending D25 work. Preview: http://127.0.0.1:8099/topologie/dc/.
    distinct. BGP AFI tables retain original attributes/alternatives; the kernel
    FIB remains separately inspectable. Both views use the same expected snapshot.
    Go tests/build, syntax checks and desktop/narrow GUI/Linux route hover/back pass.
-   Commit: the commit containing this checkpoint.
+   Commit: `4be3b62`.
 3. Removed fabricated static border loopbacks and per-host uplink prefixes.
    Configured external prefixes are targets, served by public BGP defaults.
    Borders originate their own loopbacks on physical underlay sessions, alongside
@@ -451,5 +451,21 @@ No pending D25 work. Preview: http://127.0.0.1:8099/topologie/dc/.
    Go tests/build and desktop/narrow host/kernel route inspection pass, including
    local-static redistribution details without a fabricated learned path.
    Packet bits, refinements and preset playback checks pass.
+   Commit: `8d03c2c`.
+4. Displayed addresses have hover/focus purpose and ownership hints, with cyan
+   topology highlights for known devices/VMs or grouped RS members. Resolution
+   respects VRFs, physical interfaces, configured/expanded IPv6 and mapped IPv4
+   VTEPs. Default/shared/external/unknown addresses are described honestly.
+   GUI, Linux and decoded bit-field values use the same cached inventory;
+   YAML/forms and binary cells retain their existing interaction. Tooltip bounds
+   follow popup scrolling and teardown removes its portal. Continuous address
+   targets and an overlaid route legend prevent hover/layout shifts.
+   Pure ownership tests and Chrome at 1280×900/390×844 verify hints, highlights,
+   route/kernel/packet interaction, keyboard focus and dismissal. The full
+   configuration/layout/teardown walkthrough passes at 128 devices/1040 sessions
+   with no browser errors; maximum load/calculation measured 2.57 seconds locally.
+   Host/kernel route inspection and preset packet playback pass at both widths;
+   screenshots reviewed. Go tests/build/vet and module syntax checks pass.
    Commit: the commit containing this checkpoint.
-4. Address purpose/ownership hover: pending.
+
+No pending D26 work. Preview: http://127.0.0.1:8099/topologie/dc/.
