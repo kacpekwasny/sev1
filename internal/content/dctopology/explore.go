@@ -199,7 +199,11 @@ func InspectPacket(model Model, from, to, family string) PacketInspection {
 func InspectTrafficPacket(model Model, id string) PacketInspection {
 	for _, flow := range model.Routes.Traffic {
 		if flow.ID == id {
-			return inspectPacket(model, flow.SourceVMID, flow.DestinationID, "ipv4", &flow)
+			family := "ipv4"
+			if prefix, err := netip.ParsePrefix(flow.DestinationPrefix); err == nil && prefix.Addr().Is6() {
+				family = "ipv6"
+			}
+			return inspectPacket(model, flow.SourceVMID, flow.DestinationID, family, &flow)
 		}
 	}
 	return PacketInspection{Reason: "configured-flow-not-found"}

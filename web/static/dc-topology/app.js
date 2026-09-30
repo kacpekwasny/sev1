@@ -791,7 +791,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
 
   function exampleLabel(route) {
     const family=route.ip_family==="ipv6"?"IPv6":"IPv4";
-    const type=route.safi==="evpn"?`EVPN typ ${route.route_type}`:route.origin_kind==="customer"?"Klient → RS User":"Underlay";
+    const type=route.safi==="evpn"?`EVPN typ ${route.route_type}`:route.origin_kind==="customer"?"Klient → RS User":route.origin_kind==="border-default"?"Trasa domyślna z border":"Underlay";
     return displayNames(`${type} · ${family} · ${route.prefix} · ${route.origin_id}${route.vpc_id?` · VPC ${route.vpc_id}`:(route.origin_kind==="customer"||route.vni===3?" · default/public VRF":"")}`);
   }
 
@@ -1515,6 +1515,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const context = document.createElement("p");
       context.textContent = route.vpc_id
         ? `VPC ${route.vpc_id} · RD ${route.rd} · RT ${route.route_target} · VNI ${route.vni}`
+        : route.origin_kind==="border-default"?"Default/public VRF · trasa domyślna z border · underlay bez VXLAN"
         : route.vni===3||route.origin_kind==="customer"?`Default/public VRF · VNI 3${route.rd?` · RD ${route.rd}`:""}`:"Underlay · bez kontekstu VPC/VNI";
       detailsEl.append(identity, context);
       const recursive=(state.model.route_state.forwarding??[]).find(f=>f.owner_id===paths.owner&&f.route_id===route.id&&f.resolved_route_id);
@@ -1550,7 +1551,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const physical = document.createElement("p");
       physical.textContent = `Warstwa fizyczna: ${flow.physical_node_ids.join(" → ") || "brak ścieżki"}`;
       const detail = document.createElement("p");
-      detail.textContent = `${flow.vxlan ? `VXLAN VNI ${flow.vni}` : "Dostarczenie lokalne"} · ${flow.underlay_cost} hopów · ${flow.equal_cost_path_count} równokosztowych ścieżek · wybrano ${flow.selected_path_index + 1}`;
+      detail.textContent = `${flow.vxlan ? `VXLAN VNI ${flow.vni}` : flow.local_delivery?"Dostarczenie lokalne":"Underlay bez VXLAN"} · ${flow.underlay_cost} hopów · ${flow.equal_cost_path_count} równokosztowych ścieżek · wybrano ${flow.selected_path_index + 1}`;
       detailsEl.append(status, hops, physical, detail);
       if (flow.ecmp_next_hops?.length) {
         const choices = document.createElement("p"); choices.textContent = `ECMP next hops: ${flow.ecmp_next_hops.join(", ")}`; detailsEl.append(choices);
@@ -1869,7 +1870,7 @@ function appendRouteRows(container, entries, simple = false, ownerID = "") {
     identifyRoute(row, route, ownerID);
     row.setAttribute("aria-label", `Wybierz trasę ${route.prefix}`);
     const prefix = route.prefix;
-    const vpc = route.vpc_id ? ` · VPC ${route.vpc_id}` : (route.vni===3||route.vrf==="default"||route.origin_kind==="customer"?" · default VRF":"");
+    const vpc = route.vpc_id ? ` · VPC ${route.vpc_id}` : (route.vni===3||route.vrf==="default"||route.origin_kind==="customer"||route.origin_kind==="border-default"?" · default VRF":"");
     const nextHop = route.next_hop ? ` · NH ${route.next_hop}` : "";
     const nextHopInterface = route.next_hop_interface_id ? ` (${route.next_hop_interface_id})` : "";
     const family = route.route_type ? ` · EVPN Type ${route.route_type}` : (route.afi && route.safi ? ` · ${route.afi}/${route.safi}` : "");
@@ -1891,6 +1892,14 @@ function appendRouteRows(container, entries, simple = false, ownerID = "") {
     if(route.kernel_device)info.textContent+=` · jądro: ${route.kernel_next_hop?`via ${route.kernel_next_hop} `:""}dev ${route.kernel_device} · ${route.protocol} · table ${route.kernel_table}`;
     if(route.encapsulate_vxlan)info.textContent+=` · VXLAN przez ${route.tunnel_device||`vxlan${route.vni}`}`;
     else if(route.ecmp_next_hops?.length)info.textContent+=` · underlay ECMP: ${route.ecmp_next_hops.join(", ")}`;
+    if(route.owner_id) {
+      info.textContent=route.kernel_device
+        ? `${route.kernel_next_hop?`via ${route.kernel_next_hop} `:""}dev ${route.kernel_device}`
+        : `Underlay ECMP: ${(route.ecmp_next_hops??[]).join(", ")||"brak"}`;
+      if(route.encapsulate_vxlan)info.textContent+=` · VXLAN przez ${route.tunnel_device} · VNI ${route.vni}`;
+      info.textContent+=` · ${route.protocol} · table ${route.kernel_table}`;
+      if(route.resolved_route_id)info.textContent+=` · BGP NH ${route.next_hop} → EVPN → VTEP IPv4 ${route.resolved_next_hop}`;
+    }
     row.append(label, info);
     container.append(row);
     if (route.from_id && route.to_id) {

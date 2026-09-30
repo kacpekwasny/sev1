@@ -20,7 +20,7 @@ func TestDefaultRouteStateAndForwarding(t *testing.T) {
 	}
 	underlayOrigins, tenantOrigins := 0, 0
 	for _, route := range state.Origins {
-		if route.Protocol == "static" {
+		if route.Protocol == "static" || route.OriginKind == "border-default" {
 			continue
 		}
 		if route.OriginKind == "underlay" {
@@ -42,7 +42,7 @@ func TestDefaultRouteStateAndForwarding(t *testing.T) {
 			if route.SAFI != "evpn" || route.RouteType != 5 || route.RouteTarget != "target:64512:1" || route.VNI != 10001 {
 				t.Errorf("route is missing Type-5/VPC encapsulation context: %+v", route)
 			}
-		} else if route.OriginKind == "underlay" {
+		} else if route.OriginKind == "underlay" || route.OriginKind == "border-default" {
 			if route.SAFI != "unicast" || route.VPCID != 0 || route.RouteTarget != "" || route.VNI != 0 {
 				t.Errorf("underlay identity route acquired tenant forwarding context: %+v", route)
 			}
@@ -141,7 +141,7 @@ func TestDefaultRouteStateAndForwarding(t *testing.T) {
 		}
 		route := routes[advertisement.RouteID]
 		if !((advertisement.RouteType == 5 && advertisement.AFI == "l2vpn" && advertisement.SAFI == "evpn") ||
-			(route.OriginKind == "underlay" && advertisement.RouteType == 0 && (advertisement.AFI == "ipv4" || advertisement.AFI == "ipv6") && advertisement.SAFI == "unicast") ||
+			((route.OriginKind == "underlay" || route.OriginKind == "border-default") && advertisement.RouteType == 0 && (advertisement.AFI == "ipv4" || advertisement.AFI == "ipv6") && advertisement.SAFI == "unicast") ||
 			(route.OriginKind == "customer" && advertisement.RouteType == 0 && (advertisement.AFI == "ipv4" || advertisement.AFI == "ipv6") && advertisement.SAFI == "unicast")) {
 			t.Errorf("unexpected advertised family: %+v", advertisement)
 		}
@@ -280,7 +280,7 @@ func TestRouteContextsKeepOverlappingPrefixesIsolated(t *testing.T) {
 	}
 	for _, host := range []string{"host-b1-h1", "host-b2-h1"} {
 		for _, entry := range model.Routes.Forwarding {
-			if entry.OwnerID == host && entry.VPCID == 0 && entry.Protocol != "static" && !strings.HasPrefix(entry.RouteID, "underlay") {
+			if entry.OwnerID == host && entry.VPCID == 0 && entry.Protocol != "static" && !strings.HasPrefix(entry.RouteID, "underlay") && !strings.HasPrefix(entry.RouteID, "default/") {
 				t.Errorf("host forwarding entry lost VPC context: %+v", entry)
 			}
 		}
@@ -354,7 +354,7 @@ func TestStaticBorderPrefixesNeverEnterBGP(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, ad := range model.Routes.Advertisements {
-		if strings.HasPrefix(ad.FromID, "border-") {
+		if strings.HasPrefix(ad.FromID, "border-") && ad.Prefix != "0.0.0.0/0" && ad.Prefix != "::/0" {
 			t.Fatalf("border exported a route: %+v", ad)
 		}
 	}
@@ -817,5 +817,150 @@ func TestKernelForwardingSeparatesUnderlayAndVXLAN(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("customer network prefix missing from kernel FIB")
+	}
+}
+
+func TestBordersAdvertisePublicDefaults(t *testing.T) {
+	data, err := os.ReadFile("../../../content/dc-topology/default.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	config, err := ParseYAML(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	model, err := BuildTopology(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	origins := map[string]Route{}
+	count := 0
+	for _, origin := range model.Routes.Origins {
+		origins[origin.ID] = origin
+		if origin.OriginKind == "border-default" {
+			count++
+			if origin.VPCID != 0 || origin.VNI != 0 || origin.RouteType != 0 || origin.SAFI != "unicast" {
+				t.Fatalf("default acquired EVPN/private context: %+v", origin)
+			}
+		}
+	}
+	if count != 4 {
+		t.Fatalf("got %d defaults, want both families from both borders", count)
+	}
+	for _, border := range []string{"border-1", "border-2"} {
+		for _, family := range []string{"ipv4", "ipv6"} {
+			fabric, ctrl := false, false
+			for _, ad := range model.Routes.Advertisements {
+				if ad.FromID != border || ad.AFI != family {
+					continue
+				}
+				if origins[ad.RouteID].OriginKind != "border-default" {
+					t.Fatalf("border exported non-default NLRI: %+v", ad)
+				}
+				if len(ad.ASPath) != 1 || ad.ASPath[0] != origins[ad.RouteID].OriginASN {
+					t.Fatalf("bad originating AS_PATH: %+v", ad)
+				}
+				fabric = fabric || strings.HasPrefix(ad.ToID, "stem-")
+				if strings.HasPrefix(ad.ToID, "rs-ctrl-") {
+					ctrl = true
+					if ad.NextHop != origins[ad.RouteID].NextHop {
+						t.Fatalf("border/Ctrl changed default next hop: %+v", ad)
+					}
+				}
+			}
+			if !fabric || !ctrl {
+				t.Fatalf("%s/%s default must reach fabric and Ctrl", border, family)
+			}
+		}
+	}
+	for _, table := range model.Routes.Tables {
+		if table.Kind == string(VMCustomer) {
+			for _, r := range table.Selected {
+				if r.OriginKind == "border-default" {
+					t.Fatal("RS User advertised a default back to VM")
+				}
+			}
+			continue
+		}
+		defaults := 0
+		for _, r := range table.Selected {
+			if r.OriginKind == "border-default" {
+				defaults++
+				if len(r.ASPath) != len(r.Path)-1 {
+					t.Fatalf("AS_PATH lost an RS hop: %+v", r)
+				}
+			}
+		}
+		if defaults != 2 {
+			t.Fatalf("%s selected %d defaults, want one per family", table.SpeakerID, defaults)
+		}
+	}
+	for _, host := range model.Nodes {
+		if host.Kind != NodeHost {
+			continue
+		}
+		defaults := 0
+		for _, f := range model.Routes.Forwarding {
+			if f.OwnerID == host.ID && origins[f.RouteID].OriginKind == "border-default" {
+				defaults++
+				if f.EncapsulateVXLAN || f.VNI != 0 || f.KernelTable != "main" || f.Protocol != "bgp" || !strings.HasPrefix(f.NextHopNodeID, "border-") || len(f.ECMPNextHops) != 2 {
+					t.Fatalf("default not resolved through fabric: %+v", f)
+				}
+			}
+		}
+		if defaults != 2 {
+			t.Fatalf("%s has %d kernel defaults", host.ID, defaults)
+		}
+	}
+	for _, family := range []string{"ipv4", "ipv6"} {
+		prefix := "8.8.8.8/32"
+		if family == "ipv6" {
+			prefix = "2001:4860:4860::8888/128"
+		}
+		scenario := model
+		scenario.Config.Traffic = []TrafficRequest{{ID: "outside", SourceVMID: 1, DestinationPrefix: prefix}}
+		traffic := resolveTrafficInFamily(scenario, model.Routes.Forwarding, newUnderlay(model), family)[0]
+		if !traffic.Reachable || traffic.VXLAN || !strings.HasPrefix(traffic.RouteID, "default/") || !strings.HasPrefix(traffic.DestinationID, "border-") || traffic.DestinationPrefix != prefix {
+			t.Fatalf("default egress lost target or border: %+v", traffic)
+		}
+		scenario.Routes.Traffic = []ResolvedTraffic{traffic}
+		packet := InspectTrafficPacket(scenario, "outside")
+		if !packet.Reachable || packet.Family != family || packet.Destination != netip.MustParsePrefix(prefix).Addr().String() || packet.VXLAN {
+			t.Fatalf("default packet lost its destination/family: %+v", packet)
+		}
+	}
+	// Specific EVPN and configured egress routes must win over a new default.
+	for _, f := range model.Routes.Traffic {
+		if strings.HasPrefix(f.RouteID, "default/") {
+			t.Fatalf("default overrode a specific route: %+v", f)
+		}
+	}
+	private, err := BuildTopology(exampleConfig(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	borderMACs := map[string]string{}
+	for _, f := range private.Routes.Forwarding {
+		if f.OwnerType == "vpc-view" && strings.HasPrefix(f.RouteID, "default/") {
+			t.Fatalf("public default leaked into private guest view: %+v", f)
+		}
+		if f.OwnerID == "host-b1-h1" && f.EncapsulateVXLAN && strings.HasPrefix(f.NextHopNodeID, "border-") {
+			if previous := borderMACs[f.RouterMAC]; f.RouterMAC == "" || (previous != "" && previous != f.NextHopNodeID) {
+				t.Fatalf("private border FDB maps two VTEPs to the same router MAC: %+v", f)
+			}
+			borderMACs[f.RouterMAC] = f.NextHopNodeID
+		}
+	}
+	if len(borderMACs) != 2 {
+		t.Fatalf("missing distinct private border neighbor/FDB entries: %v", borderMACs)
+	}
+	examples := 0
+	for _, e := range model.Routes.FlowExamples {
+		if e.Route.OriginKind == "border-default" {
+			examples++
+		}
+	}
+	if examples != 2 {
+		t.Fatalf("want IPv4/IPv6 default flow examples, got %d", examples)
 	}
 }

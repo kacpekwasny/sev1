@@ -30,6 +30,11 @@ BGP RIBs; private forwarding remains scoped to its VPC. Default-VRF unicast rout
 resolve VM next hops through the imported VM EVPN route and its IPv4 VTEP; they
 are not converted into EVPN at Ctrl. GUI/Linux forwarding and route details show
 that recursive resolution. Default-VRF border egress uses table main without VXLAN.
+Each border originates public IPv4/IPv6 defaults through fabric and Ctrl sessions.
+Expected BGP selection retains one default per family, with physical underlay
+ECMP to the selected border; specific VM and configured static egress routes take
+precedence. Public defaults do not enter private guest VRFs. External uplinks are
+outside the drawn fabric; the model ends the default's packet path at the border.
 Kernel views show the resolved dataplane: local VM /32 and /128 static routes
 use unnumbered TAPs; remote VM and recursive customer routes use an illustrative
 L3-SVI (`br<VNI>`) backed by `vxlan<VNI>`, with neighbor/router-MAC/FDB context.
@@ -220,6 +225,7 @@ TOPOLOGY_URL=http://127.0.0.1:8081/topologie/dc/ \
 node topology-vis/tests/refinements.mjs
 node topology-vis/tests/playback.mjs
 node topology-vis/tests/route-flow.mjs
+node topology-vis/tests/kernel-routes.mjs
 ```
 
 The walkthrough checks desktop/narrow popup behavior, stale responses, mouse/touch

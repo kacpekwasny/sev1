@@ -187,6 +187,18 @@ func BuildExpectedRouteState(model Model) RouteState {
 		vpcByID[vpc.ID] = vpc
 	}
 	for _, node := range model.Nodes {
+		if node.Kind == NodeBorder {
+			for _, family := range []string{"ipv4", "ipv6"} {
+				prefix, nextHop := "0.0.0.0/0", node.IPv4
+				if family == "ipv6" {
+					prefix, nextHop = "::/0", node.IPv6
+				}
+				state.Origins = append(state.Origins, Route{ID: fmt.Sprintf("default/%s/%s", node.ID, family),
+					Protocol: "bgp", Prefix: prefix, IPFamily: family, AFI: family, SAFI: "unicast",
+					OriginID: node.ID, OriginLabel: node.Label, OriginKind: "border-default", OriginASN: node.ASN,
+					NextHop: nextHop, NextHopNodeID: node.ID, LocalPreference: 100})
+			}
+		}
 		for _, item := range []struct{ family, address string }{{"ipv4", node.IPv4}, {"ipv6", node.IPv6}} {
 			bits := 128
 			if item.family == "ipv4" {
@@ -363,6 +375,7 @@ func BuildExpectedRouteState(model Model) RouteState {
 		}
 	}
 	underlay := newUnderlay(model)
+	defaultPeers := mergeRoutePeers(peersByEntity, underlayPeersByEntity)
 
 	allCandidates := make(map[string][]RouteCandidate)
 	candidateBySpeakerAndRoute := make(map[string]map[string]RouteCandidate)
@@ -370,10 +383,13 @@ func BuildExpectedRouteState(model Model) RouteState {
 		if route.Protocol == "static" {
 			continue
 		}
-		physicalTransit := route.OriginKind == "underlay"
+		physicalTransit := route.OriginKind == "underlay" || route.OriginKind == "border-default"
 		peers := peersByEntity
 		if physicalTransit {
 			peers = underlayPeersByEntity
+		}
+		if route.OriginKind == "border-default" {
+			peers = defaultPeers
 		}
 		start := route.OriginID
 		if route.OriginKind == "host" {
@@ -398,7 +414,7 @@ func BuildExpectedRouteState(model Model) RouteState {
 				fromID = path[len(path)-2]
 				if physicalTransit {
 					for _, peer := range peers[speakerID] {
-						if peer.Endpoint.EntityID == fromID {
+						if peer.Endpoint.EntityID == fromID && !overlaySession(peer.Session.Kind) {
 							nextHop, nextHopNodeID, nextHopInterfaceID = peer.Endpoint.Address, fromID, peer.Endpoint.InterfaceID
 							break
 						}
@@ -507,6 +523,21 @@ func overlaySession(kind string) bool {
 	}
 }
 
+// Defaults can enter through border/fabric and border/Ctrl sessions. Other
+// origins keep their separate underlay and overlay export policies.
+func mergeRoutePeers(a, b map[string][]routePeer) map[string][]routePeer {
+	result := map[string][]routePeer{}
+	for _, peers := range []map[string][]routePeer{a, b} {
+		for id, neighbors := range peers {
+			result[id] = append(result[id], neighbors...)
+		}
+	}
+	for id := range result {
+		sort.Slice(result[id], func(i, j int) bool { return result[id][i].Session.ID < result[id][j].Session.ID })
+	}
+	return result
+}
+
 func routeFamilySupported(session BGPSession, route Route) bool {
 	for _, family := range session.Families {
 		if family.AFI == route.AFI && family.SAFI == route.SAFI {
@@ -524,7 +555,7 @@ func reachableRouteSpeakers(start string, route Route, peers map[string][]routeP
 	for len(queue) > 0 {
 		current := queue[0]
 		queue = queue[1:]
-		if entities[current].Kind == "border" {
+		if entities[current].Kind == "border" && !(current == start && route.OriginKind == "border-default") {
 			continue
 		}
 		if !physicalTransit && current != start && !isRouteServerEntity(current) {
@@ -636,12 +667,13 @@ func buildRouteTables(model Model, received, selected map[string][]RouteCandidat
 func buildRouteAdvertisements(model Model, selected map[string][]RouteCandidate, reachable map[string]map[string]RouteCandidate, entities map[string]SessionEndpoint, overlayPeers, underlayPeers map[string][]routePeer) []RouteAdvertisement {
 	var result []RouteAdvertisement
 	seen := map[string]bool{}
+	defaultPeers := mergeRoutePeers(overlayPeers, underlayPeers)
 	for speakerID, candidates := range selected {
-		if entities[speakerID].Kind == "border" {
-			continue
-		}
 		for _, candidate := range candidates {
-			physicalTransit := candidate.OriginKind == "underlay"
+			if entities[speakerID].Kind == "border" && (candidate.OriginKind != "border-default" || candidate.OriginID != speakerID) {
+				continue
+			}
+			physicalTransit := candidate.OriginKind == "underlay" || candidate.OriginKind == "border-default"
 			if physicalTransit && entities[speakerID].Kind == "host" && candidate.OriginID != speakerID {
 				continue // Hosts advertise local/service prefixes, not fabric transit.
 			}
@@ -650,6 +682,9 @@ func buildRouteAdvertisements(model Model, selected map[string][]RouteCandidate,
 				peers = underlayPeers
 			} else if !isRouteServerEntity(speakerID) && speakerID != candidate.OriginID {
 				continue
+			}
+			if candidate.OriginKind == "border-default" {
+				peers = defaultPeers
 			}
 			for _, peer := range peers[speakerID] {
 				recipient := peer.Endpoint.EntityID
@@ -675,7 +710,7 @@ func buildRouteAdvertisements(model Model, selected map[string][]RouteCandidate,
 				seen[key] = true
 				asPath := append([]uint32{entities[speakerID].ASN}, candidate.ASPath...)
 				nextHop, nextHopNodeID, nextHopInterfaceID := candidate.NextHop, candidate.NextHopNodeID, candidate.NextHopInterfaceID
-				if physicalTransit {
+				if physicalTransit && !overlaySession(peer.Session.Kind) {
 					for _, endpoint := range []SessionEndpoint{peer.Session.A, peer.Session.B} {
 						if endpoint.EntityID == speakerID {
 							nextHop, nextHopNodeID, nextHopInterfaceID = endpoint.Address, speakerID, endpoint.InterfaceID
@@ -714,9 +749,17 @@ func buildForwarding(model Model, selected map[string][]RouteCandidate, origins 
 	var result []ForwardingEntry
 	for _, node := range model.Nodes {
 		for _, candidate := range selected[node.ID] {
-			if candidate.OriginKind == "underlay" {
+			if candidate.OriginKind == "underlay" || candidate.OriginKind == "border-default" {
+				if candidate.OriginKind == "border-default" && node.Kind == NodeBorder {
+					continue // The external uplink is outside the illustrated fabric.
+				}
 				entry := forwardingEntry(node.ID, string(node.Kind), node.ID, candidate)
 				entry.VRF, entry.EncapsulateVXLAN = "default", false
+				if candidate.OriginKind == "border-default" {
+					// The kernel uses physical first hops, while packet inspection
+					// follows the complete path to the originating egress border.
+					entry.NextHopNodeID = candidate.OriginID
+				}
 				result = append(result, entry)
 			}
 		}
@@ -731,6 +774,11 @@ func buildForwarding(model Model, selected map[string][]RouteCandidate, origins 
 		}
 	}
 	hostEntries := map[string][]ForwardingEntry{}
+	for _, entry := range result {
+		if entry.OwnerType == "host" && entry.VPCID == 0 && (entry.Prefix == "::/0" || entry.Prefix == "0.0.0.0/0") {
+			hostEntries[entry.OwnerID] = append(hostEntries[entry.OwnerID], entry)
+		}
+	}
 	for _, node := range model.Nodes {
 		if node.Kind != NodeHost {
 			continue
@@ -897,7 +945,11 @@ func buildForwarding(model Model, selected map[string][]RouteCandidate, origins 
 				// the VXLAN outer destination remains the IPv4 VTEP.
 				entry.KernelNextHop = "::ffff:" + vtep
 			}
-			nve := nveID(nodes[entry.NextHopNodeID])
+			target := nodes[entry.NextHopNodeID]
+			nve := nveID(target)
+			if target.Kind == NodeBorder {
+				nve = uint16(0xf000 + target.RoleIndex)
+			}
 			entry.RouterMAC = fmt.Sprintf("02:00:00:00:%02x:%02x", nve>>8, nve&255)
 		} else if entry.SourceNVE == entry.NextHopNodeID {
 			entry.KernelDevice = "lo"
@@ -1132,7 +1184,7 @@ func resolveTrafficInFamily(model Model, forwarding []ForwardingEntry, underlay 
 		result.NextHopNodeID = entry.NextHopNodeID
 		result.VNI = entry.VNI
 		result.VXLAN = entry.EncapsulateVXLAN
-		result.DestinationPrefix = entry.Prefix
+		result.DestinationPrefix = prefix.String()
 		if destination != nil {
 			result.DestinationLabel = destination.Label
 		}

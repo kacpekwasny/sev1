@@ -373,7 +373,7 @@ collapsed-list cleanup and Escape dismissal. Desktop/narrow screenshots reviewed
 Go tests and embedded production build pass.
 Commit: the commit containing this checkpoint.
 
-## D24 — kernel review complete; border defaults next
+## D24 — complete
 
 RIB next hops remain unchanged; kernel FIB entries resolve remote customer routes
 through EVPN to an IPv4 VTEP and L3-SVI/VXLAN, with neighbor/FDB context. Local
@@ -382,6 +382,19 @@ loopbacks/IPv6-only RS service addresses use underlay ECMP. GUI includes these
 kernel classes; Linux uses the same snapshot and preserves route inspection.
 Tests cover network-prefix recursion, unresolved-route exclusion and VM/underlay
 separation. Chrome checks GUI/Linux, hover/click/back and fabric FIBs at desktop
-and narrow widths. Go tests/build/vet pass. Commit: this checkpoint.
+and narrow widths. Go tests/build/vet pass. Commit: `1d78b5c`.
 
-Next: add and verify border-advertised defaults in a separate commit.
+Borders originate public IPv4/IPv6 defaults through fabric and Ctrl sessions.
+Hosts select one per family and install physical underlay ECMP; specific VM/static
+routes win, private guest views remain isolated, and RS User exports nothing to
+customer VMs. External targets retain their requested address while packet paths
+end at the chosen border. Defaults have labeled IPv4/IPv6 flow examples.
+Domain tests verify both borders/families, propagation and AS_PATH, host kernel
+resolution, longest-prefix choice, external targets and private isolation.
+Chrome checks kernel GUI/Linux and border origins at both widths, plus default
+flow selection, complete end-device waves and packet/UPDATE inspection.
+The full walkthrough passes at 128 devices/1,040 sessions (about 2.6 s capped load).
+Final embedded assets pass kernel inspection, refinements and packet playback at
+both widths; screenshots reviewed. Go tests/build/vet pass, including IPv4/IPv6
+external-packet destinations and distinct private border FDB mappings.
+Commit: the commit containing this checkpoint.

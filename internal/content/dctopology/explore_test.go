@@ -61,8 +61,8 @@ func TestUpdateInspectionUsesDirectedExports(t *testing.T) {
 		t.Fatal("fabricated an export of a remotely learned route from host")
 	}
 	auto := InspectUpdateFlow(model, "border-1", "host-b1-h1", "")
-	if auto.Reachable {
-		t.Fatal("border must not advertise any BGP routes")
+	if !auto.Reachable || auto.Route.OriginKind != "border-default" {
+		t.Fatalf("border should advertise its default to the host: %+v", auto)
 	}
 	for _, ad := range model.Routes.Advertisements {
 		for _, node := range model.Nodes {
@@ -182,7 +182,7 @@ func TestBorderReachabilityDoesNotRequireBorderAdvertisements(t *testing.T) {
 		}
 	}
 	for _, ad := range model.Routes.Advertisements {
-		if strings.HasPrefix(ad.FromID, "border-") {
+		if strings.HasPrefix(ad.FromID, "border-") && ad.Prefix != "0.0.0.0/0" && ad.Prefix != "::/0" {
 			t.Fatalf("border exported: %+v", ad)
 		}
 	}

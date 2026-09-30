@@ -416,11 +416,15 @@ resolved dataplane, including underlay ECMP and an illustrative traditional
 L3-SVI/VXLAN neighbor/router-MAC/FDB mapping. IPv4-mapped IPv6 overlay neighbors
 do not change the IPv4 outer VTEP. VM inspectors remain host-VRF projections.
 
-Next, borders should originate default routes. This supersedes the blanket
+Borders originate default routes. This supersedes the blanket
 no-border-export rule for defaults; configured static egress examples remain
 static. Use IPv4/IPv6 public defaults from each border, preserving private VRF
-isolation and RS User's import-only customer sessions. Commit the review first,
-then the default-route feature.
+isolation and RS User's import-only customer sessions. Defaults enter through
+fabric and Ctrl sessions; the kernel uses underlay ECMP to the selected border.
+Retain one expected BGP best path per family and its received alternatives.
+Specific routes take precedence. The external uplink is not a drawn device, so
+default packet paths end at their border and preserve the requested destination.
+The review and default-route feature are committed separately.
 
 ## Recording an answer
 

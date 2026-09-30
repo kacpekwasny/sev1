@@ -82,7 +82,8 @@ export function appendRIB(container, model, speakerID, mode, appendRows) {
 // Render the resolved kernel nexthop, keeping BGP recursion in explanatory comments.
 export function kernelRouteLine(model, route) {
   const table=route.kernel_table||'main', protocol=route.protocol||'bgp';
-  const prefix=route.kernel_device==='lo'&&table==='local'?`local ${route.prefix}`:route.prefix;
+  const network=route.prefix==='0.0.0.0/0'||route.prefix==='::/0'?'default':route.prefix;
+  const prefix=route.kernel_device==='lo'&&table==='local'?`local ${network}`:network;
   let line;
   if(route.kernel_device) {
     line=`${prefix}${route.kernel_next_hop?` via ${route.kernel_next_hop}`:''} dev ${route.kernel_device} proto ${protocol}${route.encapsulate_vxlan?' onlink':route.kernel_device==='lo'?' scope host':' scope link'}\n`;
@@ -119,7 +120,7 @@ export function appendFIB(container, model, ownerID, title, mode, appendRows) {
   if(mode!=='linux') {
     for(const [key,routes] of groups) {
       const label=key==='local'?'Adresy lokalne · table local':key==='underlay'?'Underlay · loopbacki i IPv6 usług RS · table main':key==='public'?'Default/public VRF · table main':`Prywatny VRF ${key}`;
-      const group=section(parent,`${label} · ${routes.length}`,true);
+      const group=section(parent,`${label} · ${routes.length}`,key!=='underlay'&&key!=='local');
       group.dataset.fibGroup=key;
       appendRows(group,routes,true,ownerID);
     }

@@ -11,9 +11,10 @@ try {
   const api=new URL(await page.locator('#dc-topology-app').getAttribute('data-api-base'),target).href;
   const model=await (await page.request.get(`${api}/model`)).json();
   const vtep=model.nodes.find(node=>node.id==='host-b2-h1').ipv4;
+  assert.equal(model.route_state.origins.filter(r=>r.origin_kind==='border-default').length,4);
   assert(model.route_state.origins.filter(r=>r.origin_kind==='underlay'&&r.source_vm_id).every(r=>r.ip_family==='ipv6'));
   await page.locator('.dc-node[data-entity-id="host-b1-h1"] .dc-node-label').click();
-  await page.locator('#dc-inspector-grip').click();
+  await page.locator('#dc-device-actions-close').click();
   await page.locator('.dc-fib').waitFor({state:'attached'});
   await page.locator('.dc-fib > summary').click();
   assert.equal(await page.locator('.dc-fib [data-fib-group="underlay"]').count(),1);
@@ -25,6 +26,9 @@ try {
   assert((await fib.textContent()).includes(`10.64.0.3/32 via ${vtep} dev br3 proto bgp onlink`));
   assert((await fib.textContent()).includes(`2001:db8:6::3:0:1/128 via ::ffff:${vtep} dev br3 proto bgp onlink`));
   assert.match(await fib.textContent(),/nexthop via inet6 fe80::\w+ dev to-tor-[\w-]+ weight 1/);
+  assert.equal(await fib.locator('[data-route-id^="default/"]').count(),2);
+  const defaults=await fib.locator('[data-route-id^="default/"]').allTextContents();
+  assert(defaults.every(line=>line.startsWith('default proto bgp\n')&&line.includes('nexthop via')&&!line.includes('vxlan')));
   assert.match(await fib.textContent(),/bridge fdb show dev vxlan3/);
   assert((await fib.textContent()).includes(`dst ${vtep} self extern_learn`));
   const route=fib.locator('[data-route-id="customer/customer-3/ipv4/10.64.0.3"]').filter({hasText:'proto bgp onlink'});
@@ -38,10 +42,15 @@ try {
   await page.screenshot({path:`/tmp/kernel-routes-${viewport.width}.png`});
   await page.keyboard.press('Escape');
   await page.locator('.dc-node[data-entity-id="tor-b1-r1-1"] .dc-node-label').click();
-  await page.locator('#dc-inspector-grip').click();await page.locator('.dc-fib').waitFor({state:'attached'});
+  await page.locator('#dc-device-actions-close').click();await page.locator('.dc-fib').waitFor({state:'attached'});
   await page.locator('.dc-fib > summary').click();await page.locator('#dc-rib-view').selectOption('linux');
   assert.match(await page.locator('.dc-fib').textContent(),/2001:db8:5::1:0:1\/128 proto bgp/);
   assert.doesNotMatch(await page.locator('.dc-fib').textContent(),/10\.64\.0\.[123]\/32/);
+  await page.keyboard.press('Escape');
+  await page.locator('.dc-node[data-entity-id="border-1"] .dc-node-label').click();
+  await page.locator('#dc-device-actions-close').click();
+  await page.locator('.dc-originated-routes > summary').click();
+  assert.equal(await page.locator('.dc-originated-routes [data-route-id^="default/"]').count(),2);
   assert.deepEqual(errors,[]);await page.close();
  }
  console.log('Resolved kernel routes in GUI/Linux at desktop and narrow widths: passed');
