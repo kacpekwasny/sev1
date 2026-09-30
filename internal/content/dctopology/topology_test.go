@@ -196,7 +196,7 @@ func TestBuildDefaultVMPlacementsAndBGPSessions(t *testing.T) {
 	if vmByID["customer-1"].HostID != "host-b1-h1" || vmByID["customer-2"].HostID != "host-b1-h1" || vmByID["customer-3"].HostID != "host-b2-h1" {
 		t.Errorf("explicit customer placements were not preserved: %+v %+v %+v", vmByID["customer-1"], vmByID["customer-2"], vmByID["customer-3"])
 	}
-	if vm := vmByID["rs-bolt-b1-m1"]; vm.HostID != "host-b2-h2" || !vm.ExplicitPlace || vm.ServedBolt != 1 {
+	if vm := vmByID["rs-bolt-b1-m1"]; vm.HostID != "host-b1-h2" || !vm.ExplicitPlace || vm.ServedBolt != 1 {
 		t.Errorf("explicit RS Bolt placement/served bolt not preserved: %+v", vm)
 	}
 	for _, cluster := range []string{"rs-bolt-b1", "rs-bolt-b2", "rs-ctrl", "rs-user"} {
@@ -341,4 +341,46 @@ func baseInterface(model Model, id string) Interface {
 		}
 	}
 	panic(fmt.Sprintf("interface %s not found", id))
+}
+
+func TestRouteServerPlacementPolicies(t *testing.T) {
+	for bolts := 1; bolts <= 4; bolts++ {
+		for _, hostCount := range []int{1, 4} {
+			config := exampleConfig(t)
+			config.Topology.Bolts = bolts
+			config.Topology.RacksPerBolt = 1
+			config.Topology.HostsPerRack = hostCount
+			config.RouteServers.Placements = nil
+			config.CustomerVMs.Overrides = nil
+			model, err := BuildTopology(config)
+			if err != nil {
+				t.Fatal(err)
+			}
+			counts := map[int]int{}
+			for _, vm := range model.VMs {
+				if vm.Role == VMBoltRS && vm.HostBoltID != vm.ServedBolt {
+					t.Fatalf("RS Bolt outside served bolt: %+v", vm)
+				}
+				if vm.Role == VMCtrlRS {
+					counts[vm.HostBoltID]++
+				}
+			}
+			for bolt := 1; bolt <= bolts; bolt++ {
+				if counts[bolt] == 0 {
+					t.Fatalf("bolt %d has no controller with %d bolts", bolt, bolts)
+				}
+			}
+		}
+	}
+	config := exampleConfig(t)
+	config.RouteServers.Placements = []RouteServerPlacement{{Role: "controller", Member: 1, Host: HostRef{BoltID: 2, HostID: 4}}, {Role: "controller", Member: 2, Host: HostRef{BoltID: 2, HostID: 3}}}
+	model, err := BuildTopology(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, vm := range model.VMs {
+		if vm.ID == "rs-ctrl-m1" && (vm.HostID != "host-b2-h4" || !vm.ExplicitPlace) {
+			t.Fatal("compatible explicit placement lost")
+		}
+	}
 }

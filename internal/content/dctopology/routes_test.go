@@ -2,6 +2,7 @@ package dctopology
 
 import (
 	"fmt"
+	"net/netip"
 	"reflect"
 	"strings"
 	"testing"
@@ -31,6 +32,9 @@ func TestDefaultRouteStateAndForwarding(t *testing.T) {
 	for _, route := range state.Origins {
 		routes[route.ID] = route
 		if route.AFI == "l2vpn" {
+			if !netip.MustParseAddr(route.NextHop).Is4() {
+				t.Errorf("EVPN next hop must be IPv4: %+v", route)
+			}
 			if route.SAFI != "evpn" || route.RouteType != 5 || route.RouteTarget != "target:64512:1" || route.VNI != 10001 {
 				t.Errorf("route is missing Type-5/VPC encapsulation context: %+v", route)
 			}

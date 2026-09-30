@@ -102,6 +102,7 @@ func buildVMs(config Config, nodes []Node) ([]VM, error) {
 			clusterID += fmt.Sprintf("-b%d", servedBolt)
 		}
 		used := map[string]bool{}
+		boltCounts := map[int]int{}
 		chosen := make(map[int]Node, 4)
 		for member := 1; member <= 4; member++ {
 			if hostRef, explicit := placements[routePlacementKey(string(role), servedBolt, member)]; explicit {
@@ -111,12 +112,40 @@ func buildVMs(config Config, nodes []Node) ([]VM, error) {
 				}
 				chosen[member] = host
 				used[host.ID] = true
+				boltCounts[host.BoltID]++
 			}
 		}
 		for member := 1; member <= 4; member++ {
 			host, explicit := chosen[member]
 			if !explicit {
-				host = placeNext(used)
+				if role == VMUserRS {
+					host = placeNext(used)
+				} else {
+					bolt := servedBolt
+					if role == VMCtrlRS {
+						bolt = 1
+						for candidate := 2; candidate <= config.Topology.Bolts; candidate++ {
+							if boltCounts[candidate] < boltCounts[bolt] {
+								bolt = candidate
+							}
+						}
+					}
+					// Prefer different hosts inside the selected bolt; co-locate only
+					// when its host count is smaller than the cluster membership.
+					for _, candidate := range hosts {
+						if candidate.BoltID != bolt {
+							continue
+						}
+						if host.ID == "" {
+							host = candidate
+						}
+						if !used[candidate.ID] {
+							host = candidate
+							break
+						}
+					}
+				}
+				boltCounts[host.BoltID]++
 				chosen[member] = host
 				used[host.ID] = true
 			}

@@ -20,9 +20,53 @@ try {
    await page.locator(`#dc-${kind}-form [name="from"]`).selectOption(from);
    await page.locator(`#dc-${kind}-form [name="to"]`).selectOption(to);
    if(family)await page.locator(`#dc-${kind}-form [name="family"]`).selectOption(family);
-   await page.locator(`#dc-${kind}-form button`).click();
-   await page.waitForFunction((kind)=>!document.querySelector(`#dc-${kind}-form button`).disabled,kind);
+   await page.locator(`#dc-${kind}-form button[type=submit]`).click();
+   await page.waitForFunction((kind)=>!document.querySelector(`#dc-${kind}-form button[type=submit]`).disabled,kind);
  };
+ // Placement policies and click-selected packet endpoints.
+ for(const vm of model.vms.filter(v=>v.role==='rs_bolt'))assert.equal(vm.host_bolt_id,vm.served_bolt);
+ assert.deepEqual([...new Set(model.vms.filter(v=>v.role==='rs_ctrl').map(v=>v.host_bolt_id))].sort(),[1,2]);
+ await page.locator('[data-pick-endpoint="pair"]').click();
+ await page.locator('.dc-vm[data-entity-id="customer-1"]').click();
+ assert.match(await page.locator('#dc-pick-banner').textContent(),/docelowe/);
+ await page.locator('.dc-vm[data-entity-id="customer-3"]').click();
+ await page.waitForFunction(()=>!document.querySelector('#dc-packet-form button[type=submit]').disabled);
+ assert.equal(await page.locator('#dc-pick-banner').isHidden(),true);
+ assert.equal(await page.locator('#dc-packet-form [name="from"]').inputValue(),'customer-1');
+ assert.equal(await page.locator('#dc-packet-form [name="to"]').inputValue(),'customer-3');
+ const vni=page.locator('.dc-bit-field[data-field="VNI"]').first();await vni.click();
+ assert.match(await page.locator('.dc-bit-info').textContent(),/24 bitów · 10001/);
+ await page.locator('.dc-bit-field[data-layer="UDP"][data-field="Destination Port"]').click();
+ assert.match(await page.locator('.dc-bit-info').textContent(),/16 bitów · 4789/);
+ await page.screenshot({path:`${output}/packet-bits.png`,fullPage:true,animations:'disabled'});
+ // A popup can be moved without dragging any topology device.
+ const before=await page.locator('#dc-inspector').boundingBox();
+ const grip=await page.locator('#dc-inspector-grip').boundingBox();
+ await page.mouse.move(grip.x+grip.width/2,grip.y+grip.height/2);await page.mouse.down();
+ await page.mouse.move(grip.x+grip.width/2-180,grip.y+grip.height/2+10,{steps:6});await page.mouse.up();
+ const after=await page.locator('#dc-inspector').boundingBox();assert(before.x-after.x>150);
+ await page.locator('#dc-inspector-grip').press('Home');
+ await page.keyboard.press('Escape');
+ // GUI and terminal rows retain the inspected speaker and allow going back.
+ await page.locator('.dc-node[data-entity-id="host-b1-h1"] .dc-node-label').click();
+ const remote='vm/customer-3/ipv4/10.64.0.3';
+ await page.locator(`[data-family="l2vpn"] .dc-route-row[data-route-id="${remote}"]`).first().click();
+ await page.waitForFunction(()=>document.querySelectorAll('.dc-route-learned').length>0);
+ assert.equal(await page.locator('.dc-route-learned').last().getAttribute('data-to'),'host-b1-h1');
+ assert.equal(await page.locator('.dc-route-points-to').last().getAttribute('data-to'),'customer-3');
+ assert.match(await page.locator('.dc-route-provenance').textContent(),/RIB host-b1-h1/);
+ await page.screenshot({path:`${output}/route-provenance.png`,fullPage:true,animations:'disabled'});
+ await page.locator('#dc-inspector-back').click();
+ assert.match(await page.locator('#dc-inspector-heading').textContent(),/h1001/);
+ assert.equal(await page.locator('.dc-rib-family').count(),3);
+ assert.equal(await page.locator('.dc-route-learned').count(),0);
+ await page.locator('#dc-rib-view').selectOption('linux');
+ await page.locator(`[data-family="l2vpn"] .dc-cli-route[data-route-id="${remote}"]`).click();
+ assert((await page.locator('.dc-route-learned').count())>0);
+ await page.locator('#dc-inspector-back').click();
+ assert.equal(await page.locator('#dc-rib-view').inputValue(),'linux');
+ assert.equal(await page.locator('#dc-inspector-back').isDisabled(),true);
+ await page.locator('#dc-rib-view').selectOption('gui');await page.keyboard.press('Escape');
  await choose('update','host-b1-h1','host-b2-h1');
  assert.equal(await page.locator('.dc-update-step').count(),4);
  assert.equal(await page.locator('.dc-session.illustrative').count(),4);
@@ -78,10 +122,10 @@ try {
  await page.locator('#dc-packet-form [name="from"]').selectOption('customer-1');
  await page.locator('#dc-packet-form [name="to"]').selectOption('customer-3');
  await page.locator('#dc-packet-form [name="family"]').selectOption('ipv4');
- await page.locator('#dc-packet-form button').click();
+ await page.locator('#dc-packet-form button[type=submit]').click();
  await page.locator('#dc-packet-form [name="family"]').selectOption('ipv6');
- await page.locator('#dc-packet-form button').click();
- await page.waitForFunction(()=>!document.querySelector('#dc-packet-form button').disabled);
+ await page.locator('#dc-packet-form button[type=submit]').click();
+ await page.waitForFunction(()=>!document.querySelector('#dc-packet-form button[type=submit]').disabled);
  assert.match(await page.locator('#dc-details').textContent(),/ICMPv6/);
  const delayed=page.waitForResponse(response=>response.url().includes('/explore?')&&response.url().includes('family=ipv4'));
  release();await delayed;
@@ -98,12 +142,14 @@ try {
  assert.match(await page.locator('#dc-details').textContent(),/TCP 49152 → 179/);
  await page.locator('#dc-details > .dc-interface-details > summary').first().click();
  await page.locator('.dc-update-inspect:visible').first().click();
- await page.waitForFunction(()=>!document.querySelector('#dc-update-form button').disabled);
+ await page.waitForFunction(()=>!document.querySelector('#dc-update-form button[type=submit]').disabled);
  assert.equal(await page.locator('.dc-update-step').count(),1);
  await page.keyboard.press('Escape');
 
  await page.setViewportSize({width:390,height:844});
  await choose('packet','customer-1','customer-3','ipv6');
+ await page.locator('.dc-bit-field[data-field="VNI"]').first().click();
+ assert.match(await page.locator('.dc-bit-info').textContent(),/10001/);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);
  const box=await page.locator('#dc-inspector').boundingBox(), canvas=await page.locator('#dc-graph').boundingBox();
  assert(box.x>=canvas.x&&box.x+box.width<=canvas.x+canvas.width+1);
@@ -114,6 +160,27 @@ try {
  await choose('update','host-b1-h1','host-b2-h1');
  await page.screenshot({path:`${output}/mobile-update.png`,fullPage:true,animations:'disabled'});
  assert.equal(await (await context.request.get(`${api}/config.yaml`)).text(),yaml);
+ // Real touch input moves the common inspector handle; cancellation restores it.
+ const touchContext=await browser.newContext({viewport:{width:1280,height:900},hasTouch:true});
+ const touchPage=await touchContext.newPage();touchPage.on('pageerror',error=>errors.push(error.message));
+ await touchPage.goto(target);await touchPage.locator('.dc-node').first().waitFor();
+ await touchPage.locator('#dc-packet-form button[type=submit]').click();
+ await touchPage.waitForFunction(()=>!document.querySelector('#dc-packet-form button[type=submit]').disabled);
+ const touchPopup=await touchPage.locator('#dc-inspector').boundingBox();
+ const tg=await touchPage.locator('#dc-inspector-grip').boundingBox();
+ const cdp=await touchContext.newCDPSession(touchPage), tx=tg.x+tg.width/2,ty=tg.y+tg.height/2;
+ const moveTouch=async(end)=>{
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:tx,y:ty}]});
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:tx-130,y:ty+10}]});
+  await cdp.send('Input.dispatchTouchEvent',{type:end,touchPoints:[]});
+ };
+ await moveTouch('touchCancel');
+ assert(Math.abs((await touchPage.locator('#dc-inspector').boundingBox()).x-touchPopup.x)<2);
+ await moveTouch('touchEnd');assert(touchPopup.x-(await touchPage.locator('#dc-inspector').boundingBox()).x>100);
+ await touchPage.setViewportSize({width:390,height:844});
+ const resized=await touchPage.locator('#dc-inspector').boundingBox(), workspace=await touchPage.locator('.dc-workspace').boundingBox();
+ assert(resized.x>=workspace.x&&resized.x+resized.width<=workspace.x+workspace.width+1);
+ await touchContext.close();
  assert.deepEqual(errors,[]);
  console.log('Endpoint UPDATE/packet inspection, TAP paths, stale results, and narrow layouts: passed');
 } finally {await browser.close();}

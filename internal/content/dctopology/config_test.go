@@ -135,3 +135,18 @@ func validConfig() Config {
 }
 
 func uint32ptr(value uint32) *uint32 { return &value }
+
+func TestValidationEnforcesRouteServerBoltPlacement(t *testing.T) {
+	config := validConfig()
+	config.RouteServers.Placements = []RouteServerPlacement{{Role: "bolt", ServedBolt: 1, Member: 1, Host: HostRef{BoltID: 2, HostID: 1}}}
+	if err := config.Validate(); err == nil || !strings.Contains(err.Error(), "host.bolt_id") {
+		t.Fatalf("cross-bolt RS placement accepted: %v", err)
+	}
+	config.RouteServers.Placements = nil
+	for member := 1; member <= 4; member++ {
+		config.RouteServers.Placements = append(config.RouteServers.Placements, RouteServerPlacement{Role: "controller", Member: member, Host: HostRef{BoltID: 1, HostID: 1}})
+	}
+	if err := config.Validate(); err == nil || !strings.Contains(err.Error(), "RS Ctrl") {
+		t.Fatalf("controllers may omit a bolt: %v", err)
+	}
+}

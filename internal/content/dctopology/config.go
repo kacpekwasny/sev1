@@ -283,6 +283,8 @@ func (c Config) Validate() error {
 	}
 
 	placementKeys := map[string]bool{}
+	controllerBolts := map[int]bool{}
+	controllerMembers := map[int]bool{}
 	for i, placement := range c.RouteServers.Placements {
 		path := fmt.Sprintf("route_servers.placements[%d]", i)
 		role := strings.ToLower(strings.TrimSpace(placement.Role))
@@ -292,10 +294,17 @@ func (c Config) Validate() error {
 		checkRange(path+".member", placement.Member, 1, 4)
 		if role == "bolt" {
 			checkRange(path+".served_bolt", placement.ServedBolt, 1, t.Bolts)
+			if placement.Host.BoltID != placement.ServedBolt {
+				add(path+".host.bolt_id", "RS Bolt musi mieszkać w obsługiwanym bolcie")
+			}
 		} else if role == "controller" || role == "user" {
 			if placement.ServedBolt != 0 {
 				add(path+".served_bolt", "pole dotyczy wyłącznie serwera RS Bolt")
 			}
+		}
+		if role == "controller" {
+			controllerBolts[placement.Host.BoltID] = true
+			controllerMembers[placement.Member] = true
 		}
 		key := fmt.Sprintf("%s/%d/%d", role, placement.ServedBolt, placement.Member)
 		if placementKeys[key] {
@@ -303,6 +312,10 @@ func (c Config) Validate() error {
 		}
 		placementKeys[key] = true
 		validateHostRef(path+".host", placement.Host, t.Bolts, maxHostsPerBolt, add)
+	}
+
+	if t.Bolts-len(controllerBolts) > 4-len(controllerMembers) {
+		add("route_servers.placements", "jawne rozmieszczenie RS Ctrl musi pozostawić członka dla każdego bolta")
 	}
 
 	checkRange("route_origins.count", len(c.RouteOrigins), 0, 256)

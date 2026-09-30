@@ -1,3 +1,4 @@
+import { appendPacketBits } from "./packet-bits.js";
 const text = (container, value, className = "") => {
   const p = document.createElement("p"); p.className = className; p.textContent = value; container.append(p);
 };
@@ -18,14 +19,15 @@ export const explorerMarkup = `
         <h3>Ogłoszenie trasy · BGP UPDATE</h3>
         <div class="dc-endpoints"><label>Od <select name="from" required></select></label><label>Do <select name="to" required></select></label></div>
         <label>Trasa <select name="route"><option value="">Dobierz zgodną trasę</option></select></label>
-        <button class="dc-button secondary" type="submit">Pokaż przepływ i UPDATE</button>
+        <button class="dc-button secondary" data-explore-submit type="submit">Pokaż przepływ i UPDATE</button>
         <p id="dc-update-status" class="dc-explore-status" role="status">Wybierz końce ogłoszenia. Przepływ korzysta z oczekiwanych eksportów BGP.</p>
       </form>
       <form id="dc-packet-form" class="dc-explorer-form">
         <h3>Droga pakietu · ICMP Echo</h3>
         <div class="dc-endpoints"><label>Od <select name="from" required></select></label><label>Do <select name="to" required></select></label></div>
+        <div class="dc-pick-actions"><button type="button" data-pick-endpoint="from" class="dc-button secondary">Kliknij źródło</button><button type="button" data-pick-endpoint="to" class="dc-button secondary">Kliknij cel</button><button type="button" data-pick-endpoint="pair" class="dc-button secondary">Wybierz oba na topologii</button></div>
         <label>Pakiet <select name="family"><option value="ipv4">IPv4 · ICMP</option><option value="ipv6">IPv6 · ICMPv6</option></select></label>
-        <button class="dc-button secondary" type="submit">Pokaż drogę i pakiet</button>
+        <button class="dc-button secondary" data-explore-submit type="submit">Pokaż drogę i pakiet</button>
         <p id="dc-packet-status" class="dc-explore-status" role="status">VM klienta → VM w tej samej VPC lub prefiks border; urządzenia i VM infra → underlay.</p>
       </form>
     </div>
@@ -55,10 +57,11 @@ export function appendPacketInspection(container, packet, reasonText, highlighte
   text(container, `${packet.from_id} → ${packet.to_id} · ${packet.physical_link_ids.length} łączy fabric · ${packet.equal_cost_path_count} ścieżek ECMP · wybrano ${packet.selected_path_index + 1}.`);
   fields(container, [["Pakiet", packet.protocol], ["Wersja / protokół IP", packet.family === "ipv6" ? "6 / 58 (ICMPv6)" : "4 / 1 (ICMP)"], ["IP źródłowy", packet.source], ["IP docelowy", packet.destination], ["TTL / Hop Limit początkowy", packet.ttl], ["ICMP typ / kod", packet.family === "ipv6" ? "128 / 0" : "8 / 0"], ["ICMP identyfikator / sekwencja", "1 / 1"], ["Payload", packet.payload], ["VPC", packet.vpc_id || "underlay"], ["Trasa", packet.route_id || "underlay"]]);
   if (packet.vxlan) {
-    text(container, "Enkapsulacja: wewnętrzny IP w Ethernet → VXLAN → UDP → zewnętrzny IPv6.");
+    text(container, "Enkapsulacja: wewnętrzny IP w Ethernet → VXLAN → UDP → zewnętrzny IPv4.");
     fields(container, [["VTEP źródłowy", packet.outer_source], ["VTEP docelowy", packet.outer_destination], ["UDP źródło / cel", `${packet.udp_source_port} / ${packet.udp_destination_port}`], ["VNI", packet.vni]]);
   } else text(container, packet.physical_link_ids.length ? "Pakiet IP bez VXLAN." : "Dostarczenie lokalne przez TAP; bez ruchu w fabric.");
   text(container, "Nagłówki przykładowego Echo Request. TTL początkowy 64 i payload są poglądowe; adresy, interfejsy i droga pochodzą z konfiguracji.");
+  appendPacketBits(container, packet);
   for (const [index, hop] of packet.hops.entries()) {
     const details = document.createElement("details"); details.className = "dc-interface-details dc-packet-hop"; details.open = highlightedHop === index || index === 0;
     details.dataset.hopIndex = index;

@@ -4,7 +4,7 @@ Updated: 2026-09-30
 
 ## Current status
 
-R00–R08 and the revised Steps 00–13 are implemented and verified. The explorer is
+R00–R09 and the revised Steps 00–13 are implemented and verified. The explorer is
 integrated at `/topologie/dc/`, linked from Topologie, and shares its source with
 the standalone harness. Git and parent-site writes are available. D03 remains
 absent; the original `TODO.md` is unchanged.
@@ -16,7 +16,8 @@ Baseline: user commit `9c50463`. Working rework commits:
 - `d8b54dd` — expected route snapshots and optional illustrative route flow.
 - `295c4dd` — site integration, source relocation, and browser isolation.
 - `993aeba` — D12/R07 RS tiers, contained host badges, and separated outlines.
-- D13/R08 endpoint/message/table inspection is in the commit containing this checkpoint.
+- `252c732` — D13/R08 endpoint/message/table inspection.
+- D14/R09 placement and interactive inspection is in the commit containing this checkpoint.
 
 ## Delivered behavior
 
@@ -55,6 +56,19 @@ cannot be fabric transit. Underlay AS_PATH ordering is corrected. Host inspectio
 opens EVPN separately and offers concise GUI cards or Linux/FRR-style text for
 the same expected tables. Packet headers and CLI output are educational views.
 
+RS Bolt members now stay in their served bolt and RS Ctrl spans all configured
+bolts, with compatible explicit placements retained and invalid placements rejected.
+EVPN Type-5 next hops and VXLAN outer endpoints use IPv4; BGP transport stays IPv6.
+Packet endpoints can be picked directly on devices/individual VMs. Inspector popups
+support mouse/touch/keyboard movement with cancellation, reset and resize bounds.
+Binary packet maps expose clickable Ethernet/IP/ICMP/UDP/VXLAN fields, including
+lengths/checksums computed from the sample bytes and documented sample defaults.
+Session inspection includes a separately labeled TCP/BGP KEEPALIVE bit map.
+Back navigation restores table mode, open sections and scroll. AFI/SAFI sections
+have visible nesting; GUI and CLI routes retain their speaker/candidate context.
+Purple arrows show that RIB's expected learning path; yellow arrows show its
+next-hop path and target VM attachment. Path overlays follow display anchors.
+
 Domain: `internal/content/dctopology/`. Presentation: `web/static/dc-topology/`.
 Site adapter: `internal/web/dc_topology.go`. Fixture: `content/dc-topology/default.yaml`.
 Run `go run . -dev` and open `/topologie/dc/`, or `go run ./cmd/dc-topology` on 8084.
@@ -78,13 +92,21 @@ Run `go run . -dev` and open `/topologie/dc/`, or `go run ./cmd/dc-topology` on 
   sibling outlines, badge/host tracking, immediate movement away from cell limits,
   and small/co-located/mixed host counts, across all four RS display combinations.
   R08 additionally checks host TAPs, visible EVPN, and Linux/FRR formatting.
+  R09 rechecks containment with the revised RS placement policies.
 - `tests/exploration.mjs` — passed: selectable directional updates, decoded
   attributes, route choices, collapsed projections, IPv4/IPv6/VXLAN/local/fabric
   packets, BGP transport headers, TAP paths, playback/reopening, out-of-order responses, immutable YAML,
-  and narrow popup/control layout. New Go tests cover endpoint/API validation,
-  read-only exploration, border prefixes, VPC rejection, and host transit exclusion.
-- Latest local measurement: default page load 212 ms; capped scenario load and
-  initial calculation 2,509 ms. Capped model: 128 devices, 432 cables, 88 VMs,
+  and narrow popup/control layout. R09 adds click-picked endpoints, binary field
+  explanations, GUI/Linux back navigation, purple/yellow provenance, and mouse/
+  touch/keyboard popup movement, cancellation and viewport clamping. New Go tests
+  cover placement policies with 1–4 bolts/small host counts, compatible explicit
+  placement, invalid coverage, IPv4 EVPN next hops and IPv4 VXLAN outer headers.
+- `tests/packet-bits.mjs` — passed: every serialized bit belongs to a field, IPv4/
+  IPv6 and UDP lengths/checksums agree with the bytes, UTF-8 Echo payloads encode
+  correctly, VXLAN VNI fields match, and next-hop highlights cannot use unrelated
+  hosts as transit.
+- Latest local measurement: default page load 231 ms; capped scenario load and
+  initial calculation 2,612 ms. Capped model: 128 devices, 432 cables, 88 VMs,
   1,040 sessions. These are local observations, not an SLA.
 - Embedded production page checked from `/tmp` with an absolute `-content` path;
   standalone harness checked with shared assets at desktop/narrow widths.

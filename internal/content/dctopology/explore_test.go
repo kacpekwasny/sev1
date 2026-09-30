@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -54,7 +55,7 @@ func TestPacketInspectionEncapsulationAndTAPs(t *testing.T) {
 	}
 	for _, family := range []string{"ipv4", "ipv6"} {
 		p := InspectPacket(model, "customer-1", "customer-3", family)
-		if !p.Reachable || !p.VXLAN || p.VNI != 10001 || p.UDPDestinationPort != 4789 || p.OuterSource == p.OuterDestination {
+		if !p.Reachable || !p.VXLAN || p.VNI != 10001 || p.UDPDestinationPort != 4789 || p.OuterSource == p.OuterDestination || strings.Contains(p.OuterSource, ":") || strings.Contains(p.OuterDestination, ":") {
 			t.Fatalf("invalid VXLAN packet: %+v", p)
 		}
 		if p.Hops[0].Egress != "eth0" || p.Hops[1].Ingress != "tap-c1" || p.Hops[len(p.Hops)-2].Egress != "tap-c3" || p.Hops[len(p.Hops)-1].Ingress != "eth0" {

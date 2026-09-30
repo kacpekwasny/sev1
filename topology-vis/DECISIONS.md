@@ -1,6 +1,6 @@
 # Decisions and implementation defaults
 
-Status on 2026-09-30: **D11 is the latest authoritative direction and supersedes earlier simulator fidelity and inspector-layout requirements.** The user requests an engaging JavaScript frontend, popup inspectors over the topology, initial expected-table calculation, optional illustrative route flow, and small device drag adjustments. The user resumed implementation after committing baseline `9c50463`; the rework and site integration are now implemented. Earlier cabling, peering, placement, synthetic addressing, counts, and integration decisions remain applicable.
+Status on 2026-09-30: **D14 is the latest direction.** It refines RS placement, EVPN IPv4 next hops, packet fields and click selection, popup movement, and route provenance/navigation. D11–D13 continue to define the JavaScript workspace, static expected-state model, and optional illustrative flow. Earlier decisions apply only where they do not conflict with these updates.
 
 The user approved defaults and authorized reasonable assumptions and autonomous work while unavailable. Git/parent-site writes are available, and desktop/narrow browser acceptance has run; see progress for actual checks.
 
@@ -29,7 +29,7 @@ Retained expected-state context: EVPN Type 5, VXLAN encapsulation, VPCs with dis
 Approved defaults, 2026-09-29, after the user replied **“Approve”**:
 
 - Start from a deterministic, preconverged underlay snapshot. Compute physical-link BGP reachability first; only establish RS/customer sessions after their IPv6 transport endpoints resolve through that underlay. Give each RS VM a synthetic service address reachable through its hosting host, without requiring EVPN/VXLAN to bootstrap the session. Do not animate a cold-start or withdrawal sequence in v1.
-- Treat each host as an NVE for the VMs placed on it. Originate Type-5 routes only for configured VM prefixes in their attached VPC; require explicit YAML route origins for other prefixes. Use the interface-less IP-VRF-to-IP-VRF model: no overlay index and no dependency on Type 2/3. The route's BGP next hop is the source host's synthetic VTEP address, resolved by IPv6 underlay reachability; the VPC VNI supplies the VXLAN context. RFC 9136 describes this no-overlay-index case for IP NVO tunnels and uses the Type-5 BGP next hop as the forwarding endpoint.
+- Treat each host as an NVE for the VMs placed on it. Originate Type-5 routes only for configured VM prefixes in their attached VPC; require explicit YAML route origins for other prefixes. Use the interface-less IP-VRF-to-IP-VRF model: no overlay index and no dependency on Type 2/3. The route's BGP next hop is the source host's synthetic VTEP address, resolved by underlay reachability (IPv4 VTEP/next hop per D14); the VPC VNI supplies the VXLAN context. RFC 9136 describes this no-overlay-index case for IP NVO tunnels and uses the Type-5 BGP next hop as the forwarding endpoint.
 - Give every VPC a positive 16-bit `vpc_id`. Use RT `target:64512:<vpc_id>`, VNI `10000 + vpc_id`, and an RD unique per `(vpc_id, NVE)`: `64512:(65536 * vpc_id + nve_id)`, where `nve_id` is a stable, globally unique 16-bit host/NVE ID. Validate the packed value and reject duplicate IDs, RDs, RTs, or VNIs. Import only routes whose RT matches the receiving VPC; export only within that VPC. No route leaking or default/shared VPC is enabled by default. Separate VPCs retain separate route keys even when their IP prefixes overlap. The proposed RT encoding uses the two-octet-AS-specific Route Target format; the RD distinguishes origins as well as VPCs.
 - Apply family and VPC import checks before selection. Discard routes with an unresolved next hop or an AS-path loop. For eligible alternatives, use a small deterministic profile: local preference 100 by default (internal policy metadata, not sent over eBGP), shorter AS_PATH, lower ORIGIN code, lower MED when neighboring ASNs match (missing MED treated as zero), lower underlay cost to the resolved next hop, then stable route-origin ID. Keep one BGP best path per destination; underlay ECMP remains a separate next-hop-resolution result and retains all equal-cost physical paths. Do not enable BGP multipath or ADD-PATH.
 - Treat the RS tiers as control-plane brokers only. A route server preserves the learned NEXT_HOP and AS_PATH, does not prepend its ASN, and never becomes a data-packet hop. Filter routes by recipient policy before selecting one best advertisement per recipient, so a route filtered for one client does not hide an eligible alternative from it. Suppress reflection to the ingress peer and reject detected loops. This follows RFC 7947's route-server attribute transparency for the expected snapshot. No temporal propagation simulation is required.
@@ -119,7 +119,7 @@ Confirmed: honor explicit YAML placement for both RS and customer VMs; generate 
 
 Follow-up answer, 2026-09-29: **“ok; only customer;”** — use deterministic round-robin across hosts, preserve explicit placements, spread members of each RS cluster across different hosts where possible, and count only customer VMs in V.
 
-The fallback places VMs across the available hosts. The selected rule is host diversity within an RS cluster where possible; it does not require rack/bolt anti-affinity. A served bolt and the bolt containing an RS VM are separate concepts. Explicit placements remain authoritative, including co-location; when there are fewer than four hosts, generated RS members may reuse hosts after using the available distinct hosts. No additional infrastructure VM roles have been requested.
+The original fallback used all available hosts without bolt affinity. **D14 supersedes that rule:** RS Bolt members stay in their served bolt; RS Ctrl spans all configured bolts. Compatible explicit placements remain authoritative, including co-location. Generated members prefer different hosts within the required bolt, reusing hosts only when necessary. No additional infrastructure VM roles have been requested.
 
 Status: **placement and V semantics answered**. Use stable host/VM ordering, deterministic round-robin, and generated-placement tests in Step 04.
 
@@ -231,6 +231,50 @@ Implemented defaults under the existing autonomy authorization:
 
 Status: **implemented and verified**. D13 extends R08 and the earlier static
 route/packet inspection steps without introducing a BGP convergence simulator.
+
+### D14 — Placement policies and interactive packet/route inspection
+
+User direction, 2026-09-30: keep every RS Bolt in its bolt; distribute RS Ctrl
+across all bolts; show packet bits with clickable field information; pick packet
+endpoints on the topology; drag packet/route popups; use IPv4 EVPN next hops;
+repair GUI back navigation and AFI hierarchy; make Linux routes clickable with
+purple learned paths and yellow next-hop paths.
+
+Implemented defaults:
+
+- Four RS members per cluster remain unchanged (at most four bolts). Generated
+  RS Bolt members use hosts in their served bolt, preferring distinct hosts.
+  RS Ctrl fills the least represented bolt first, including explicit placements
+  when counting coverage. Validation rejects cross-bolt RS Bolt placement or
+  explicit controller placement that cannot cover every bolt. The default YAML's
+  former cross-bolt example is corrected to host b1/h2.
+- Host/border Type-5 next hops and VXLAN outer endpoints use IPv4 identities,
+  including for inner IPv6 traffic. BGP sessions retain their IPv6 transport.
+- Packet forms retain selectors and add source, destination, and paired picking
+  from device/individual-VM clicks. Paired selection opens the sample after the
+  second click. Grouped RSs expand so a concrete member can be selected; Escape
+  cancels picking. Picking does not start a device drag.
+- The inspector handle supports mouse/touch dragging and arrow keys, with Home
+  restoring its position. Bounds keep the popup inside the canvas; resize/rebuild
+  clamps or resets its position. All inspector types share this behavior.
+- Sample packets show serialized Ethernet, IPv4/IPv6, ICMP/ICMPv6, UDP and VXLAN
+  fields as 32-bit rows. Field clicks show values, widths, absolute/relative bit
+  offsets and Polish explanations. Lengths and checksums are computed from the
+  sample bytes. MACs, payload, ports and other unspecified header defaults are
+  labeled illustrative. The VXLAN view is taken at the source VTEP; BGP session
+  inspection has a separately labeled sample IPv6/TCP/KEEPALIVE, not a capture.
+- Inspector history restores the previous table, format, expanded sections and
+  scroll position. AFI/SAFI sections have visible tree indentation and badges.
+  Both GUI and Linux/FRR/kernel rows carry the inspected speaker/candidate context.
+- Purple arrows follow that candidate's expected learning path into the inspected
+  RIB. Yellow arrows resolve its next-hop node through a valid physical path, then
+  the local VM attachment when the route targets one. These paths follow displayed
+  anchors, work across RS projections, and never highlight all exports as if they
+  were the inspected device's single learned path. Local routes have no remote
+  learned segment; unresolved paths are stated in the inspector.
+
+Status: **implemented and verified** as R09. These defaults supersede conflicting
+placement and IPv6-VTEP wording in earlier decisions without adding simulation.
 
 ## Recording an answer
 

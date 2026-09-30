@@ -288,8 +288,8 @@ func InspectPacket(model Model, from, to, family string) PacketInspection {
 		return result
 	}
 	if result.VXLAN {
-		result.OuterSource = nodes[underlayID(from)].IPv6
-		result.OuterDestination = nodes[result.PhysicalNodeIDs[len(result.PhysicalNodeIDs)-1]].IPv6
+		result.OuterSource = nodes[underlayID(from)].IPv4
+		result.OuterDestination = nodes[result.PhysicalNodeIDs[len(result.PhysicalNodeIDs)-1]].IPv4
 		result.UDPSourcePort = 49152
 		result.UDPDestinationPort = 4789
 	}
@@ -319,7 +319,7 @@ func InspectPacket(model Model, from, to, family string) PacketInspection {
 			hop.TTL--
 		}
 		if result.VXLAN {
-			hop.Stage = "underlay IPv6 / VXLAN"
+			hop.Stage = "underlay IPv4 / VXLAN"
 			if index == 0 {
 				hop.Stage = "enkapsulacja VXLAN"
 			}

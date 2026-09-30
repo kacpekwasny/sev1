@@ -30,7 +30,7 @@ route_servers:
     - role: bolt
       served_bolt: 1
       member: 1
-      host: {bolt_id: 2, host_id: 2}
+      host: {bolt_id: 1, host_id: 2}
 
 route_origins:
   - id: przyklad-uplink-v4

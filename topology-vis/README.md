@@ -58,6 +58,10 @@ route from the populated list. Expand each step to inspect NLRI, next hop, AS pa
 and EVPN attributes. Session export rows also have an UPDATE inspection button.
 Custom flow still uses the Przepływ tras switch and does not change routing state.
 
+Use Kliknij źródło / Kliknij cel, or Wybierz oba na topologii, to pick concrete
+devices/VMs on the diagram. Paired selection opens a packet after the second click;
+Escape cancels. Move the popup using its ⠿ handle (also arrow keys; Home resets).
+
 Packet examples use IPv4 ICMP or IPv6 ICMPv6 Echo Request. Customer VM pairs obey
 VPC forwarding/isolation; choosing a border targets a compatible advertised prefix.
 Nodes and infra VMs use underlay paths. Unsupported tenant destinations report why
@@ -66,11 +70,29 @@ ECMP path, and interfaces at each hop. Closing the custom packet popup keeps its
 path for playback; Inspektuj pakiet reopens it. Highlighted steps follow playback.
 TTL, Echo fields, and payload are illustrative; this is not a packet capture.
 
+Pakiet bit po bicie shows the serialized sample in 32-bit rows. Click a field or
+its bits for its value, width, bit offsets and explanation. Packet lengths and
+checksums are computed, including ICMPv6/UDP pseudoheaders. The VXLAN packet view
+shows the source VTEP's egress with outer IPv4; synthetic MACs and sample header
+values are identified. BGP session inspection also has a sample TCP/KEEPALIVE map.
+Wire references: [IPv4](https://www.rfc-editor.org/rfc/rfc791),
+[IPv6](https://www.rfc-editor.org/rfc/rfc8200),
+[ICMPv6](https://www.rfc-editor.org/rfc/rfc4443), and
+[VXLAN](https://www.rfc-editor.org/rfc/rfc7348).
+
 Every VM has eth0 and a local host TAP, listed in inspection and used by packet
 paths. Local attachments remain separate from physical cables. Host RIBs visibly
 separate EVPN Type 5, IPv4, and IPv6; EVPN retention does not imply importing another
 VPC into forwarding. Select GUI or Linux / FRR in the inspector to switch between
 concise cards and command-style expected BGP/kernel output. No commands are run.
+AFI/SAFI sections are visually nested under the expected RIB. Routes in either
+format are clickable. The back arrow restores the previous table and its expanded
+sections. Purple arrows show the route's learned path into that specific RIB;
+yellow arrows show its resolved next-hop path and local target VM when applicable.
+EVPN Type-5 next hops use IPv4; BGP transport remains IPv6. RS Bolt members stay
+inside their served bolt, and RS Ctrl covers all bolts. Explicit YAML placement
+must meet these policies, with host diversity preferred for generated members.
+
 Formatting references: [FRR BGP/EVPN](https://docs.frrouting.org/en/latest/bgp.html),
 [Linux iproute2](https://www.man7.org/linux/man-pages/man8/ip-route.8.html), and
 [Linux TAP](https://docs.kernel.org/networking/tuntap.html).
@@ -106,6 +128,9 @@ node --input-type=module --check < web/static/dc-topology/app.js
 node --input-type=module --check < web/static/dc-topology/dev.js
 node --input-type=module --check < web/static/dc-topology/tables.js
 node --input-type=module --check < web/static/dc-topology/inspection.js
+node --input-type=module --check < web/static/dc-topology/packet-bits.js
+node --input-type=module --check < web/static/dc-topology/route-paths.js
+node topology-vis/tests/packet-bits.mjs
 ```
 
 The optional browser walkthrough in [tests/browser.mjs](tests/browser.mjs) uses an
@@ -127,6 +152,8 @@ and keyboard dragging, invariant tables/export, layers/clusters, reduced motion,
 packet illustration, invalid/zero-count rebuilds, YAML reload, browser isolation,
 capped scale, and teardown. Screenshots default to `/tmp/dc-topology-browser`.
 The endpoint walkthrough adds decoded UPDATE/packet inspection, TAP/VXLAN paths,
-IPv4/IPv6 selection, delayed-query ordering, and narrow control/popup checks.
+IPv4/IPv6 selection, packet bits, click-picked endpoints, popup dragging, table
+back navigation, route provenance, delayed queries, and narrow layout. The pure
+packet test verifies wire lengths/checksums and route-path context without Chrome.
 Measured timings are local observations, not a performance guarantee; see
 [PROGRESS.md](PROGRESS.md) for the latest verification.

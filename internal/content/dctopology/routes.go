@@ -227,7 +227,7 @@ func BuildExpectedRouteState(model Model) RouteState {
 			}
 			route := makeRoute(
 				fmt.Sprintf("vm/%s/%s/%s", vm.ID, family, parsed), netip.PrefixFrom(parsed, prefixBits).String(),
-				family, vm.VPCID, host.ID, vm.Label+" via "+host.Label, "host", host.ASN, nveID(host), host.IPv6, host.ID, 0, vpcByID[vm.VPCID],
+				family, vm.VPCID, host.ID, vm.Label+" via "+host.Label, "host", host.ASN, nveID(host), host.IPv4, host.ID, 0, vpcByID[vm.VPCID],
 			)
 			route.SourceVMID = vm.ID
 			state.Origins = append(state.Origins, route)
@@ -279,7 +279,7 @@ func BuildExpectedRouteState(model Model) RouteState {
 		state.Origins = append(state.Origins, makeRoute(
 			"border/"+origin.ID, prefix.Masked().String(), family, origin.VPCID,
 			border.ID, border.Label, "border", border.ASN, uint16(0xf000+origin.BorderID),
-			border.IPv6, border.ID, 2, vpcByID[origin.VPCID],
+			border.IPv4, border.ID, 2, vpcByID[origin.VPCID],
 		))
 	}
 	sort.Slice(state.Origins, func(i, j int) bool { return state.Origins[i].ID < state.Origins[j].ID })
