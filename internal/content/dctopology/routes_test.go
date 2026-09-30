@@ -19,14 +19,17 @@ func TestDefaultRouteStateAndForwarding(t *testing.T) {
 	}
 	underlayOrigins, tenantOrigins := 0, 0
 	for _, route := range state.Origins {
+		if route.Protocol == "static" {
+			continue
+		}
 		if route.OriginKind == "underlay" {
 			underlayOrigins++
 		} else {
 			tenantOrigins++
 		}
 	}
-	if underlayOrigins != 88 || tenantOrigins != 13 {
-		t.Fatalf("route origins: underlay=%d tenant=%d; want 88 and 13", underlayOrigins, tenantOrigins)
+	if underlayOrigins != 88 || tenantOrigins != 12 {
+		t.Fatalf("BGP route origins: underlay=%d tenant=%d; want 88 and 12", underlayOrigins, tenantOrigins)
 	}
 	routes := map[string]Route{}
 	for _, route := range state.Origins {
@@ -42,7 +45,7 @@ func TestDefaultRouteStateAndForwarding(t *testing.T) {
 			if route.SAFI != "unicast" || route.VPCID != 0 || route.RouteTarget != "" || route.VNI != 0 {
 				t.Errorf("underlay identity route acquired tenant forwarding context: %+v", route)
 			}
-		} else if route.SAFI != "unicast" || route.VPCID != 1 {
+		} else if route.Protocol != "static" && (route.SAFI != "unicast" || route.VPCID != 1) {
 			t.Errorf("customer unicast route lost its family or VPC context: %+v", route)
 		}
 		if route.LocalPreference != 100 || len(route.ID) == 0 || route.NextHop == "" {
@@ -73,7 +76,7 @@ func TestDefaultRouteStateAndForwarding(t *testing.T) {
 		t.Errorf("host without a VPC should retain six EVPN routes in the RIB: got %d", got)
 	}
 	for _, entry := range state.Forwarding {
-		if entry.OwnerID == "host-b1-h2" {
+		if entry.OwnerID == "host-b1-h2" && entry.VPCID != 0 {
 			t.Errorf("host without VPC imported forwarding entry: %+v", entry)
 		}
 	}
@@ -109,8 +112,8 @@ func TestDefaultRouteStateAndForwarding(t *testing.T) {
 			}
 		}
 	}
-	if vmForwarding != 7 {
-		t.Errorf("customer VPC forwarding view has %d entries; want 7", vmForwarding)
+	if vmForwarding != 11 {
+		t.Errorf("customer VPC forwarding view has %d entries; want 11", vmForwarding)
 	}
 	if len(state.Advertisements) == 0 {
 		t.Fatal("expected route advertisements on BGP sessions")
@@ -261,6 +264,12 @@ func TestRouteContextsKeepOverlappingPrefixesIsolated(t *testing.T) {
 		t.Fatalf("overlapping addresses lost their independent VPC identities: vpc1=%+v vpc2=%+v", vpc1, vpc2)
 	}
 	for _, entry := range model.Routes.Forwarding {
+		if entry.Protocol == "static" && entry.VPCID == 0 {
+			if entry.VNI != 0 || entry.EncapsulateVXLAN {
+				t.Errorf("static underlay acquired VPC encapsulation: %+v", entry)
+			}
+			continue
+		}
 		if entry.OwnerID == "customer-1" && entry.VPCID != 1 {
 			t.Errorf("VPC 1 forwarding view contains VPC %d route %s", entry.VPCID, entry.Prefix)
 		}
@@ -270,7 +279,7 @@ func TestRouteContextsKeepOverlappingPrefixesIsolated(t *testing.T) {
 	}
 	for _, host := range []string{"host-b1-h1", "host-b2-h1"} {
 		for _, entry := range model.Routes.Forwarding {
-			if entry.OwnerID == host && entry.VPCID == 0 {
+			if entry.OwnerID == host && entry.VPCID == 0 && entry.Protocol != "static" {
 				t.Errorf("host forwarding entry lost VPC context: %+v", entry)
 			}
 		}

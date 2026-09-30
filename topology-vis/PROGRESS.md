@@ -200,4 +200,8 @@ repeat completed rework milestones.
    VM → RS User → compatible RS Ctrl. Existing IPv4/IPv6 expected exports remain
    canonical; browser checks verify every default customer's VM → RS User export
    and the stream's endpoints. Desktop/narrow checks and Go tests pass.
-10–12. Pending; follow D17's listed order.
+10. Static IPv4/IPv6 routes to each border identity exist in underlay and each VPC,
+    even without configured uplink prefixes. Inspector sections label these routes
+    as static in GUI/Linux modes. Tests cover customer, host, RS and stem packets
+    to both borders in both families, with zero border exports; Go tests/build pass.
+11–12. Pending; follow D17's listed order.

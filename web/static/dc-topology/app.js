@@ -1,5 +1,5 @@
 const NS = "http://www.w3.org/2000/svg";
-import { appendRIB, appendFIB, identifyRoute, appendOriginatedRoutes } from "./tables.js";
+import { appendRIB, appendFIB, identifyRoute, appendOriginatedRoutes, appendBorderRoutes } from "./tables.js";
 import { routeFlowStreams } from "./route-flow.js";
 import { displayNames } from "./labels.js";
 import { routePaths } from "./route-paths.js";
@@ -669,7 +669,10 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   function appendSpeakerTableOrLoading(container, speakerID) {
     appendOriginatedRoutes(container, state.model, speakerID, root.querySelector("#dc-rib-view").value, appendRouteRows);
     const table = state.model?.route_state?.tables?.find((item) => item.speaker_id === speakerID);
-    if (table) appendRIB(container, state.model, speakerID, root.querySelector("#dc-rib-view").value, appendRouteRows);
+    if (table) {
+      appendRIB(container, state.model, speakerID, root.querySelector("#dc-rib-view").value, appendRouteRows);
+      appendBorderRoutes(container,state.model,speakerID,root.querySelector("#dc-rib-view").value,appendRouteRows);
+    }
     else appendInspectorLoading(container, "speaker", speakerID);
   }
 

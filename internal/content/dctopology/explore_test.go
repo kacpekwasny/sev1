@@ -143,3 +143,27 @@ func TestExplorationAPIIsReadOnlyAndValidatesEndpoints(t *testing.T) {
 		t.Fatal("inspection mutated configuration")
 	}
 }
+
+func TestBorderReachabilityDoesNotRequireBorderAdvertisements(t *testing.T) {
+	c := exampleConfig(t)
+	c.RouteOrigins = nil
+	model, err := BuildTopology(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, from := range []string{"customer-1", "host-b1-h1", "rs-user-m1", "stem-1"} {
+		for _, to := range []string{"border-1", "border-2"} {
+			for _, family := range []string{"ipv4", "ipv6"} {
+				p := InspectPacket(model, from, to, family)
+				if !p.Reachable || p.PhysicalNodeIDs[len(p.PhysicalNodeIDs)-1] != to {
+					t.Fatalf("%s to %s (%s): %+v", from, to, family, p)
+				}
+			}
+		}
+	}
+	for _, ad := range model.Routes.Advertisements {
+		if strings.HasPrefix(ad.FromID, "border-") {
+			t.Fatalf("border exported: %+v", ad)
+		}
+	}
+}

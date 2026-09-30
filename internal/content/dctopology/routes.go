@@ -287,6 +287,29 @@ func BuildExpectedRouteState(model Model) RouteState {
 		route.Protocol, route.AFI, route.SAFI, route.RouteType, route.RD, route.OriginASN = "static", family, "unicast", 0, "", 0
 		state.Origins = append(state.Origins, route)
 	}
+	// Border addresses are reachable through static underlay and per-VPC egress
+	// routes, independently of any UPDATE from a border speaker.
+	for _, border := range model.Nodes {
+		if border.Kind != NodeBorder {
+			continue
+		}
+		for _, context := range append([]VPCContext{{}}, state.VPCs...) {
+			for _, item := range []struct{ family, address string }{{"ipv4", border.IPv4}, {"ipv6", border.IPv6}} {
+				bits := 128
+				if item.family == "ipv4" {
+					bits = 32
+				}
+				nextHop := border.IPv4
+				if context.ID == 0 {
+					nextHop = item.address
+				}
+				state.Origins = append(state.Origins, Route{ID: fmt.Sprintf("static/%s/vpc%d/%s", border.ID, context.ID, item.family),
+					Protocol: "static", Prefix: netip.PrefixFrom(netip.MustParseAddr(item.address), bits).String(),
+					IPFamily: item.family, AFI: item.family, SAFI: "unicast", VPCID: context.ID, VNI: context.VNI, RouteTarget: context.RouteTarget,
+					OriginID: border.ID, OriginKind: "border", OriginLabel: border.Label, NextHop: nextHop, NextHopNodeID: border.ID, LocalPreference: 100})
+			}
+		}
+	}
 	sort.Slice(state.Origins, func(i, j int) bool { return state.Origins[i].ID < state.Origins[j].ID })
 
 	entityByID := make(map[string]SessionEndpoint, len(model.Nodes)+len(model.VMs))
@@ -721,7 +744,20 @@ func buildForwarding(model Model, selected map[string][]RouteCandidate, origins 
 				return
 			}
 			candidate := RouteCandidate{Route: route, UnderlayCost: resolved.Cost, UnderlayNextHops: resolved.NextHops}
-			result = append(result, forwardingEntry(owner, kind, host, candidate))
+			entry := forwardingEntry(owner, kind, host, candidate)
+			entry.EncapsulateVXLAN = route.VPCID != 0 && host != route.NextHopNodeID
+			result = append(result, entry)
+		}
+		if route.VPCID == 0 {
+			for _, node := range model.Nodes {
+				add(node.ID, string(node.Kind), node.ID)
+			}
+			for _, vm := range model.VMs {
+				if vm.Role != VMCustomer {
+					add(vm.ID, "infra", vm.HostID)
+				}
+			}
+			continue
 		}
 		for host, vpcs := range hostVPCs {
 			if vpcs[route.VPCID] {

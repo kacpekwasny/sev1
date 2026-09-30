@@ -75,7 +75,7 @@ export function appendRIB(container, model, speakerID, mode, appendRows) {
 }
 
 export function appendFIB(container, model, ownerID, title, mode, appendRows) {
-  const entries = (model.route_state?.forwarding ?? []).filter((item) => item.owner_id === ownerID);
+  const entries = (model.route_state?.forwarding ?? []).filter((item) => item.owner_id === ownerID&&item.vpc_id);
   const parent = section(container, `${title} · ${entries.length} wpisów`);
   if (mode !== "linux") { appendRows(parent, entries, true, ownerID); return; }
   const table = model.route_state?.tables?.find((item) => item.speaker_id === ownerID);
@@ -118,4 +118,13 @@ export function appendFIB(container, model, ownerID, title, mode, appendRows) {
     }
   }
   pre.append(output);
+}
+
+export function appendBorderRoutes(container,model,ownerID,mode,appendRows) {
+  const entries=(model.route_state?.forwarding??[]).filter(r=>r.owner_id===ownerID&&r.protocol==='static'&&r.next_hop_node_id.startsWith('border-'));
+  const parent=section(container,`Trasy do border · statyczne · ${entries.length}`);
+  parent.classList.add('dc-border-routes');
+  if(mode!=='linux') {appendRows(parent,entries,true,ownerID);return;}
+  const pre=document.createElement('pre');pre.className='dc-terminal';parent.append(pre);
+  for(const route of entries)routeLine(pre,route,ownerID,`${route.prefix} via ${route.next_hop} proto static${route.vpc_id?` vrf vpc${route.vpc_id}`:' table main'}\n`);
 }
