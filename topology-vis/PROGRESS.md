@@ -298,7 +298,12 @@ resize), and the commit containing this checkpoint (focused route details).
    without refetching or moving its marker. Desktop/narrow Chrome checks cover
    actual movement, pause, inspection, destination arrival, rewind and reduced
    motion; all existing walkthroughs and Go tests/build pass.
+   Commit: `1d469b3`.
+2. RS fanout uses compact expected-export examples for customer unicast and EVPN
+   IPv4/IPv6. Parallel markers form one prefix wave; collapsed anchors deduplicate
+   overlapping members. The initial snapshot and route tables stay unchanged.
+   Domain tests verify every edge/depth against the canonical export; Chrome checks
+   movement, single-prefix branching, grouping and reduced motion at both widths.
    Commit: the commit containing this checkpoint.
-2. Show RS fanout — pending.
 3. Complete BGP illustrations at end devices — pending.
 4. Default advertisement-explanation sequence — pending.

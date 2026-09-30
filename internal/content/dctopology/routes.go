@@ -146,6 +146,7 @@ type ResolvedControlPath struct {
 }
 
 type RouteState struct {
+	FlowExamples        []FlowExample         `json:"flow_examples"`
 	VPCs                []VPCContext          `json:"vpcs"`
 	Origins             []Route               `json:"origins"`
 	Tables              []BGPSpeakerTable     `json:"tables"`
@@ -445,6 +446,7 @@ func BuildExpectedRouteState(model Model) RouteState {
 
 	state.Tables = buildRouteTables(model, allCandidates, selectedBySpeaker)
 	state.Advertisements = buildRouteAdvertisements(model, selectedBySpeaker, candidateBySpeakerAndRoute, entityByID, peersByEntity, underlayPeersByEntity)
+	state.FlowExamples = buildFlowExamples(state)
 	state.AdvertisementCounts = make(map[string]int, len(model.Sessions))
 	for _, session := range model.Sessions {
 		state.AdvertisementCounts[session.ID] = 0

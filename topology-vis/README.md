@@ -58,10 +58,10 @@ Hosts use slugs such as `h2001`; individual RSs use `rs13001`, `rsctrl4`, and
 `rsuser3`-style labels. Canonical configuration/API IDs stay stable.
 
 Przepływ tras is off initially. Enable it with the BGP layer to show a sequence
-of up to 24 different prefix illustrations through valid RS hierarchy sessions,
-including customer VM exports to RS User.
-One UPDATE marker completes its path before the next prefix starts; its tooltip
-identifies the current prefix. A selected UPDATE adds a focused sequence first.
+of expected-export illustrations through valid RS hierarchy sessions, including
+customer VM exports to RS User and EVPN. Each prefix branches into simultaneous
+UPDATEs at route servers; only one prefix is illustrated at a time. Marker tooltips
+identify the prefix and sender/recipient. A selected UPDATE adds a focused sequence first.
 It does not learn routes or change tables. Reduced-motion settings keep static
 direction arrows. Packet examples use their calculated physical paths separately.
 
@@ -196,6 +196,7 @@ PLAYWRIGHT_MODULE=/absolute/path/to/playwright-core/index.mjs \
 TOPOLOGY_URL=http://127.0.0.1:8081/topologie/dc/ \
 node topology-vis/tests/refinements.mjs
 node topology-vis/tests/playback.mjs
+node topology-vis/tests/route-flow.mjs
 ```
 
 The walkthrough checks desktop/narrow popup behavior, stale responses, mouse/touch

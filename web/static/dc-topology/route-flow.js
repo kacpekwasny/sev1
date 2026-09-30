@@ -1,43 +1,10 @@
-// A bounded stream of independent NLRI illustrations projected onto real sessions.
+// One NLRI at a time, branching along expected exports at each propagation wave.
 // No route tables or convergence state are changed by this view.
 export function routeFlowStreams(model, focused = null) {
   if (!model) return [];
-  const streams = [];
-  if (focused?.reachable) streams.push({route:focused.route,focused:true,steps:focused.steps.map(s=>({sessionID:s.session_id,fromID:s.from_id,toID:s.to_id}))});
-  for(const [index,route] of (model.route_state?.origins??[]).filter(r=>r.origin_kind==='customer').entries()) {
-    if(streams.length>=24)break;
-    const supports=s=>s.families.some(f=>f.afi===route.afi&&f.safi===route.safi);
-    const peers=model.bgp_sessions.filter(s=>s.kind==='customer-rs-user'&&supports(s)&&(s.a.entity_id===route.origin_id||s.b.entity_id===route.origin_id));
-    if(!peers.length)continue;
-    const peer=peers[index%peers.length],user=peer.a.entity_id===route.origin_id?peer.b.entity_id:peer.a.entity_id;
-    const steps=[{sessionID:peer.id,fromID:route.origin_id,toID:user}];
-    const controllers=model.bgp_sessions.filter(s=>s.kind==='rs-ctrl-rs-user'&&supports(s)&&(s.a.entity_id===user||s.b.entity_id===user));
-    if(controllers.length) {
-      const controller=controllers[index%controllers.length];
-      steps.push({sessionID:controller.id,fromID:user,toID:controller.a.entity_id===user?controller.b.entity_id:controller.a.entity_id});
-    }
-    streams.push({route,steps,focused:false});
-  }
-  const origins=(model.route_state?.origins??[]).filter(r=>r.route_type===5);
-  const hosts=model.nodes.filter(n=>n.kind==='host');
-  for (const [index, route] of origins.entries()) {
-    if(streams.length>=24)break;
-    const source=route.next_hop_node_id;
-    const origin=model.nodes.find(n=>n.id===source);
-    const target=hosts.find(n=>n.bolt_id!==origin?.bolt_id&&n.id!==source)??hosts.find(n=>n.id!==source);
-    if(!origin||!target)continue;
-    const steps=[];
-    let from=source;
-    const connect=(kind,predicate=()=>true)=>{
-      const peers=model.bgp_sessions.filter(s=>s.kind===kind&&(s.a.entity_id===from||s.b.entity_id===from)&&s.families.some(f=>f.route_types?.includes(5))).map(s=>({session:s,to:s.a.entity_id===from?s.b.entity_id:s.a.entity_id})).filter(p=>predicate(p.to));
-      if(!peers.length)return false;
-      const peer=peers[index%peers.length];steps.push({sessionID:peer.session.id,fromID:from,toID:peer.to});from=peer.to;return true;
-    };
-    if(origin.kind==='host'&&(!connect('host-rs-bolt')||!connect('rs-bolt-rs-ctrl')))continue;
-    if(origin.kind==='border'&&!connect('border-rs-ctrl'))continue;
-    if(!connect('rs-bolt-rs-ctrl',id=>model.vms.some(v=>v.id===id&&v.served_bolt===target.bolt_id)))continue;
-    if(!connect('host-rs-bolt',id=>id===target.id))continue;
-    streams.push({route,steps,focused:false});
-  }
-  return streams;
+  const streams=(model.route_state?.flow_examples??[]).map(example=>({route:example.route,focused:false,
+    steps:example.steps.map(s=>({sessionID:s.session_id,fromID:s.from_id,toID:s.to_id,wave:s.wave}))}));
+  if(focused?.reachable)streams.unshift({route:focused.route,focused:true,
+    steps:focused.steps.map((s,wave)=>({sessionID:s.session_id,fromID:s.from_id,toID:s.to_id,wave}))});
+  return streams.map(stream=>({...stream,waves:Array.from({length:Math.max(-1,...stream.steps.map(s=>s.wave))+1},(_,wave)=>stream.steps.filter(s=>s.wave===wave))}));
 }

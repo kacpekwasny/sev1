@@ -503,3 +503,41 @@ func TestCrossVPCDataFlowIsRejectedEvenWhenPrefixesOverlap(t *testing.T) {
 }
 
 func intptr(value int) *int { return &value }
+
+func TestFlowExamplesUseExpectedExportWaves(t *testing.T) {
+	model, err := BuildTopology(exampleConfig(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(model.Routes.FlowExamples) != 4 {
+		t.Fatalf("want IPv4/IPv6 customer and EVPN examples, got %d", len(model.Routes.FlowExamples))
+	}
+	exports := map[string]RouteAdvertisement{}
+	for _, ad := range model.Routes.Advertisements {
+		exports[ad.RouteID+"/"+ad.SessionID+"/"+ad.FromID] = ad
+	}
+	fanout := false
+	for _, example := range model.Routes.FlowExamples {
+		recipients := map[string]map[string]bool{}
+		for _, step := range example.Steps {
+			ad, ok := exports[example.Route.ID+"/"+step.SessionID+"/"+step.FromID]
+			if !ok || ad.ToID != step.ToID || step.Wave != len(ad.PropagationPath)-2 {
+				t.Fatalf("invented export/wave: %+v", step)
+			}
+			if isRouteServerEntity(step.FromID) {
+				if recipients[step.FromID] == nil {
+					recipients[step.FromID] = map[string]bool{}
+				}
+				recipients[step.FromID][step.ToID] = true
+			}
+		}
+		for _, peers := range recipients {
+			if len(peers) > 1 {
+				fanout = true
+			}
+		}
+	}
+	if !fanout {
+		t.Fatal("missing route-server fanout")
+	}
+}

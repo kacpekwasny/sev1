@@ -174,19 +174,19 @@ await node.click(); await page.locator("#dc-inspector-close").click();
 await page.locator("#dc-show-route-flow").check();
 assert((await page.locator(".dc-session.illustrative").count()) > 3);
 await page.waitForFunction(() => document.querySelector("#dc-route-marker").getAttribute("visibility") === "visible");
-assert.equal(await page.locator(".dc-route-marker").count(), 1);
-assert.equal(await page.locator(".dc-route-marker[visibility=visible]").count(), 1);
+assert((await page.locator(".dc-route-marker").count()) > 1);
+assert((await page.locator(".dc-route-marker[visibility=visible]").count()) >= 1);
 const firstPrefix = await page.locator("#dc-route-marker").getAttribute("data-route-id");
 const cy = await page.locator("#dc-route-marker").getAttribute("cy");
 await page.waitForFunction((previous) => document.querySelector("#dc-route-marker").getAttribute("cy") !== previous, cy);
 await page.waitForFunction((previous) => document.querySelector("#dc-route-marker").dataset.routeId !== previous, firstPrefix, {timeout:7000});
-assert.equal(await page.locator(".dc-route-marker[visibility=visible]").count(), 1);
+assert((await page.locator(".dc-route-marker[visibility=visible]").count()) >= 1);
 for (const collapsed of [true, false]) {
   await page.locator("#dc-collapse-rs").setChecked(collapsed);
   for (const hosted of [true, false]) {
     await page.locator("#dc-show-infra-hosts").setChecked(hosted);
     assert((await page.locator(".dc-session.illustrative").count()) > 3);
-    assert.equal(await page.locator(".dc-route-marker[visibility=visible]").count(), 1);
+    assert((await page.locator(".dc-route-marker[visibility=visible]").count()) >= 1);
     assert.equal(await page.locator(".dc-vm.cluster").count(), collapsed ? 4 : 0);
     await checkLayout();
   }

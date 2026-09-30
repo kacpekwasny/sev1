@@ -774,7 +774,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       : !showSessions.checked ? "Przepływ poglądowy — włącz warstwę Sesje BGP."
       : !illustration.sequence.length ? "Brak zgodnego przykładu przepływu tras w tej konfiguracji."
       : exploration.update ? `UPDATE: ${exploration.update.from_id} → ${exploration.update.to_id} · ${exploration.update.route.prefix}. Tablice pozostają stałe.`
-      : `Poglądowo: ${illustration.streams.length} ogłoszeń płynie kolejno przez RS, po jednym UPDATE. Tablice pozostają stałe.`;
+      : `Poglądowo: ${illustration.streams.length} ogłoszeń płynie kolejno przez RS, jeden prefiks naraz, z rozgałęzieniami na RS. Tablice pozostają stałe.`;
     if(routeHover||selected?.type==="route")flowNote.textContent="Fioletowa strzałka wskazuje kierunek propagacji oglądanej trasy do tego RIB.";
     flowNote.textContent=displayNames(flowNote.textContent);
     if (!active || reducedMotion.matches) {
@@ -798,28 +798,30 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
 
   function updateIllustrationMarker(now) {
     if (!showRouteFlow.checked || !showSessions.checked || reducedMotion.matches || !illustration.sequence.length) return;
-    const marker = graphEl.querySelector("#dc-route-marker");
-    if (!marker) return;
     const scaled = (Math.max(0, now - illustration.startedAt) % (illustration.sequence.length * 1100)) / 1100;
-    let stepIndex = Math.floor(scaled), streamIndex = 0;
-    while (stepIndex >= illustration.streams[streamIndex].steps.length) {
-      stepIndex -= illustration.streams[streamIndex++].steps.length;
+    let waveIndex=Math.floor(scaled),streamIndex=0;
+    while(waveIndex>=illustration.streams[streamIndex].waves.length)waveIndex-=illustration.streams[streamIndex++].waves.length;
+    const stream=illustration.streams[streamIndex],wave=stream.waves[waveIndex];
+    const markers=graphEl.querySelectorAll(".dc-route-marker"),displayed=new Set();
+    let index=0;
+    for(const step of wave) {
+      const from=currentPositions?.entityPoints.get(step.fromID),to=currentPositions?.entityPoints.get(step.toID);
+      if(!from||!to)continue;
+      // Collapsed cluster members share anchors: draw one copy at that position.
+      const key=`${from.x},${from.y}/${to.x},${to.y}`;
+      if(displayed.has(key))continue;
+      displayed.add(key);
+      const marker=markers[index++],fraction=scaled%1;
+      marker.setAttribute("cx",String(from.x+(to.x-from.x)*fraction));
+      marker.setAttribute("cy",String(from.y+(to.y-from.y)*fraction));
+      marker.setAttribute("visibility","visible");
+      marker.dataset.flowIndex=String(streamIndex);marker.dataset.routeId=stream.route.id;
+      marker.dataset.from=step.fromID;marker.dataset.to=step.toID;marker.dataset.wave=String(waveIndex);
+      marker.style.fill=["#d4b1fc","#82d7e9","#ffd782","#9cdfb2"][streamIndex%4];
+      marker.querySelector("title").textContent=displayNames(`${stream.route.prefix} · ${step.fromID} → ${step.toID}`);
     }
-    const stream = illustration.streams[streamIndex], step = stream.steps[stepIndex];
-    const from = currentPositions?.entityPoints.get(step.fromID), to = currentPositions?.entityPoints.get(step.toID);
-    if (!from || !to) { marker.setAttribute("visibility", "hidden"); return; }
-    const fraction = scaled % 1;
-    marker.setAttribute("cx", String(from.x + (to.x - from.x) * fraction));
-    marker.setAttribute("cy", String(from.y + (to.y - from.y) * fraction));
-    marker.setAttribute("visibility", "visible");
-    marker.setAttribute("r", stream.focused ? "7" : "5");
-    marker.dataset.flowIndex = String(streamIndex);
-    marker.dataset.routeId = stream.route.id;
-    marker.style.fill = ["#d4b1fc", "#82d7e9", "#ffd782", "#9cdfb2"][streamIndex % 4];
-    marker.querySelector("title").textContent = `${stream.route.prefix} · VPC ${stream.route.vpc_id}`;
-    for (const item of detailsEl.querySelectorAll(".dc-update-step")) {
-      item.classList.toggle("is-current", stream.focused && Number(item.dataset.stepIndex) === stepIndex);
-    }
+    for(;index<markers.length;index++)markers[index].setAttribute("visibility","hidden");
+    for(const item of detailsEl.querySelectorAll(".dc-update-step"))item.classList.toggle("is-current",stream.focused&&Number(item.dataset.stepIndex)===waveIndex);
   }
 
   function animationDuration() {
@@ -1073,8 +1075,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     root.querySelector("#dc-route-legend").hidden = !routeHover && selected?.type !== "route";
     illustration.streams = showRouteFlow.checked && !routeHover && selected?.type !== "route" ? routeFlowStreams(model, exploration.update)
       .filter(stream=>stream.steps.every(step=>positions.entityPoints.has(step.fromID)&&positions.entityPoints.has(step.toID))) : [];
-    illustration.sequence = illustration.streams.flatMap(stream=>stream.steps);
-    const illustrationIDs = new Set(illustration.sequence.map((step) => step.sessionID));
+    illustration.sequence = illustration.streams.flatMap(stream=>stream.waves);
+    const illustrationIDs = new Set(illustration.sequence.flat().map((step) => step.sessionID));
     const groupLayer = svgElement("g", { class: "dc-groups", "aria-hidden": "true" });
     const rsLayer = svgElement("g", { class: "dc-rs-tiers", "aria-hidden": "true" });
     for (const group of model.groups) {
@@ -1137,7 +1139,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const sessionLayer = svgElement("g", { class: "dc-sessions" });
       for (const session of model.bgp_sessions) {
         if(!showSessions.checked&&session.id!==sessionHover)continue;
-        const step = illustration.sequence.find((item) => item.sessionID === session.id);
+        const step = illustration.sequence.flat().find((item) => item.sessionID === session.id);
         const a = positions.entityPoints.get(step?.fromID ?? session.a.entity_id);
         const b = positions.entityPoints.get(step?.toID ?? session.b.entity_id);
         if (!a || !b) continue;
@@ -1243,8 +1245,11 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     }
     svg.append(vmLayer,propagationLayer);
     svg.append(svgElement("circle", { id: "dc-packet-marker", class: "dc-packet-marker", r: 7, visibility: "hidden" }));
-    const routeMarker = svgElement("circle", {id:"dc-route-marker",class:"dc-route-marker",r:5,visibility:"hidden"});
-    routeMarker.append(svgElement("title", {})); svg.append(routeMarker);
+    const markerCount=Math.max(1,...illustration.sequence.map(wave=>wave.length));
+    for(let index=0;index<markerCount;index++) {
+      const routeMarker=svgElement("circle",{...(index===0?{id:"dc-route-marker"}:{}),class:"dc-route-marker",r:5,visibility:"hidden"});
+      routeMarker.append(svgElement("title",{}));svg.append(routeMarker);
+    }
     graphEl.replaceChildren(svg);
     updateAnimationMarker();
     updatePlaybackControls();
