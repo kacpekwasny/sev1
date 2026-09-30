@@ -1146,6 +1146,11 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const scroll = keep ? detailsEl.scrollTop : 0;
     renderInspectorContent(nodeByID, interfaceByID);
     for (const item of detailsEl.querySelectorAll("details")) {
+      const body=document.createElement("div");body.className="dc-disclosure-body";
+      for(const child of [...item.childNodes])if(child.nodeName!=="SUMMARY")body.append(child);
+      item.append(body);
+    }
+    for (const item of detailsEl.querySelectorAll("details")) {
       if (sections.has(sectionKey(item))) item.open = sections.get(sectionKey(item));
     }
     detailsEl.scrollTop = scroll;

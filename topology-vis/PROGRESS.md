@@ -177,4 +177,7 @@ repeat completed rework milestones.
 2. Outside pointer presses dismiss the compact send-action popup, including
    presses in the inspector or outside the app. Controls inside it stay usable.
    Desktop/narrow Chrome checks and Go tests pass.
-3–12. Pending; follow D17's listed order.
+3. Every inspector disclosure groups its children with a consistent indented
+   branch and tinted left border, including RIBs, sessions, interfaces and bits.
+   Desktop/narrow Chrome checks and Go tests pass.
+4–12. Pending; follow D17's listed order.

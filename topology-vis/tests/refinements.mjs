@@ -24,6 +24,9 @@ try {
   assert.equal(await page.locator('#dc-device-actions').isVisible(),true);
   await page.locator('#dc-inspector-grip').click();
   assert.equal(await page.locator('#dc-device-actions').isHidden(),true);
+  const branches=await page.locator('#dc-details details').evaluateAll(items=>items.every(item=>
+    item.children.length===2&&item.firstElementChild.tagName==='SUMMARY'&&item.lastElementChild.classList.contains('dc-disclosure-body')));
+  assert.equal(branches,true,'Every disclosure must visibly group its children');
   await page.keyboard.press('Escape');
   assert.equal(await (await page.request.get(`${api}/config.yaml`)).text(),yaml);
   assert.deepEqual(errors,[]);await page.close();
