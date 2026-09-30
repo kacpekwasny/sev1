@@ -12,7 +12,7 @@ async function handleCommand(command) {
       app.setState({ inspectorData: { ...data, kind: command.kind, id: command.id, revision: command.revision } });
     } catch (error) {
       app.setState({
-        inspectorData: { ok: false, kind: command.kind, id: command.id, revision: command.revision },
+        inspectorData: { ok: false, kind: command.kind, id: command.id, revision: command.revision, message: error.message },
         message: `Nie udało się wczytać szczegółów: ${error.message}`,
         error: true,
       });
@@ -77,7 +77,7 @@ async function handleCommand(command) {
         request("/api/model"),
         request("/api/config.yaml", { raw: true }),
       ]);
-      app.setState({ summary: result.summary, model, configYAML: exported, message: "Topologia i symulowany stan tras zostały przebudowane.", error: false });
+      app.setState({ summary: result.summary, model, configYAML: exported, message: "Topologia i oczekiwane tablice tras zostały przeliczone.", error: false });
     } catch (error) {
       app.setState({ message: error.message, error: true });
     }

@@ -247,7 +247,7 @@ func BuildTopology(config Config) (Model, error) {
 	if err := buildSessions(&model); err != nil {
 		return Model{}, err
 	}
-	model.Routes = BuildRouteState(model)
+	model.Routes = BuildExpectedRouteState(model)
 	return model, nil
 }
 

@@ -54,3 +54,11 @@ When asked to execute, follow R00–R06 in the revised plan: commit the existing
 - Added pointer/touch-ready bounded device/VM/cluster offsets, connected-line tracking, pointer-cancel rollback, click/drag distinction, arrow/Home keyboard controls, reset layout, and fit-to-width. Hosts carry their displayed VM anchors when moved; canonical VM placements stay intact. Inspector section/scroll state survives detail refreshes.
 - Chrome desktop checks passed: exact 48-unit radius, edge tracking, click after drag, keyboard/Home/reset, offsets preserved through layer/zoom changes, cancellation rollback, and unchanged YAML/expected speaker tables. Narrow fit inspected; JavaScript syntax and `git diff --check` passed.
 - Next: independent illustrative route flow and expected-snapshot cleanup, then site integration and broader browser acceptance.
+
+## Rework checkpoint — R04/R05
+
+- Bounded dragging committed as `cf51c7c`.
+- Kept configuration-derived expected route snapshots and renamed the calculator accordingly. Removed duplicate speaker advertisement arrays; session/route exports remain available on demand. Removed route-learning playback and its coupling to selected-route inspector data.
+- Added an independent illustrative-flow switch, off initially. A fixed EVPN-capable host → RS Bolt → RS Ctrl → border sequence projects onto current sessions; hidden BGP layers stop it, clustered/abstract endpoints remain valid, and reduced motion uses static direction arrows. It never changes tables. Packet illustrations reuse rendered coordinates instead of recalculating layout every frame.
+- Chrome checks passed for default-off, marker motion, cluster/abstract projection, hidden-layer stop, reduced motion, and unchanged expected tables. A first-frame timing bug found by the walkthrough was fixed. `go test ./...`, `go vet ./...`, JS syntax, and diff checks passed.
+- Next: move the reusable module into parent content/web/cmd paths, integrate `/topologie/dc/`, and run the complete browser walkthrough and race/build checks.

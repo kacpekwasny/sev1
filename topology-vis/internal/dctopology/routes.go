@@ -51,13 +51,12 @@ type RouteCandidate struct {
 }
 
 type BGPSpeakerTable struct {
-	SpeakerID         string               `json:"speaker_id"`
-	Label             string               `json:"label"`
-	Kind              string               `json:"kind"`
-	LocallyOriginated []RouteCandidate     `json:"locally_originated"`
-	Received          []RouteCandidate     `json:"received"`
-	Selected          []RouteCandidate     `json:"selected"`
-	Advertised        []RouteAdvertisement `json:"advertised"`
+	SpeakerID         string           `json:"speaker_id"`
+	Label             string           `json:"label"`
+	Kind              string           `json:"kind"`
+	LocallyOriginated []RouteCandidate `json:"locally_originated"`
+	Received          []RouteCandidate `json:"received"`
+	Selected          []RouteCandidate `json:"selected"`
 }
 
 type RouteAdvertisement struct {
@@ -160,7 +159,9 @@ type routePeer struct {
 	Session  BGPSession
 }
 
-func BuildRouteState(model Model) RouteState {
+// BuildExpectedRouteState calculates a static educational snapshot from configuration.
+// It has no BGP update clock, convergence state, or dependency on browser animation.
+func BuildExpectedRouteState(model Model) RouteState {
 	state := RouteState{VPCs: buildVPCContexts(model.Config.VPCs)}
 	nodes := make(map[string]Node, len(model.Nodes))
 	for _, node := range model.Nodes {
@@ -424,13 +425,6 @@ func BuildRouteState(model Model) RouteState {
 	state.Forwarding = buildForwarding(model, selectedBySpeaker)
 	state.Traffic = resolveTraffic(model, state.Forwarding, underlay)
 	state.ControlPaths = resolveControlPaths(model, underlay)
-	for i := range state.Tables {
-		for _, advertisement := range state.Advertisements {
-			if advertisement.FromID == state.Tables[i].SpeakerID {
-				state.Tables[i].Advertised = append(state.Tables[i].Advertised, advertisement)
-			}
-		}
-	}
 	return state
 }
 

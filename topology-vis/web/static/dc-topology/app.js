@@ -23,6 +23,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         <label><input id="dc-show-sessions" type="checkbox"> Sesje BGP</label>
         <label><input id="dc-show-infra-hosts" type="checkbox" checked> RS na hostach</label>
         <label><input id="dc-collapse-rs" type="checkbox"> Grupuj RS</label>
+        <label title="Ilustracja po sesjach BGP; tablice tras pozostają bez zmian."><input id="dc-show-route-flow" type="checkbox"> Przepływ tras</label>
         <button id="dc-layout-reset" class="dc-tool-button" type="button">Reset układu</button>
         <button id="dc-fit" class="dc-tool-button" type="button">Dopasuj</button>
         <label class="dc-zoom"><span class="dc-sr-only">Powiększenie</span><input id="dc-zoom" type="range" min="50" max="150" value="85" step="5"><output id="dc-zoom-value">85%</output></label>
@@ -37,7 +38,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         </aside>
       </div>
       <div class="dc-graph-footer"><span class="dc-legend"><i class="legend-switch"></i> fabric <i class="legend-host"></i> host <i class="legend-vm"></i> route server <i class="legend-customer"></i> VM klienta</span>
-        <span>Adresy i tablice są obliczanym przykładem.</span></div>
+        <span id="dc-flow-note">Adresy i tablice są obliczanym przykładem.</span></div>
       <div id="dc-traffic-list" class="dc-traffic-list" aria-label="Scenariusze ruchu"></div>
       <div class="dc-playback" role="group" aria-label="Sterowanie ilustracją pakietu">
         <button id="dc-play" class="dc-button" type="button" disabled>Odtwórz pakiet</button>
@@ -110,6 +111,10 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   const playStatus = root.querySelector("#dc-play-status");
   const showLinks = root.querySelector("#dc-show-links");
   const showSessions = root.querySelector("#dc-show-sessions");
+  const showRouteFlow = root.querySelector("#dc-show-route-flow");
+  const flowNote = root.querySelector("#dc-flow-note");
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const illustration = { frame: 0, startedAt: 0, sequence: [] };
   const showInfraOnHosts = root.querySelector("#dc-show-infra-hosts");
   const collapseRouteServers = root.querySelector("#dc-collapse-rs");
   const zoomInput = root.querySelector("#dc-zoom");
@@ -145,9 +150,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   };
   const onReset = () => send({ type: "reset_default" });
   const onLayerChange = () => {
-    const layerHidden = selected?.type === "route" ? !showSessions.checked
-      : (selected?.type === "traffic" || selected?.type === "session") && !showLinks.checked;
-    if (animation.playing && layerHidden) pauseAnimation();
+    const layerHidden = (selected?.type === "traffic" || selected?.type === "session") && !showLinks.checked;
+    if (animation.playing && (layerHidden || reducedMotion.matches)) pauseAnimation();
     renderGraph();
     renderInspector();
   };
@@ -287,6 +291,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   listen(root.querySelector("#dc-reset"), "click", onReset);
   listen(showLinks, "change", onLayerChange);
   listen(showSessions, "change", onLayerChange);
+  listen(showRouteFlow, "change", onLayerChange);
+  listen(reducedMotion, "change", onLayerChange);
   listen(showInfraOnHosts, "change", onLayerChange);
   listen(collapseRouteServers, "change", onLayerChange);
   listen(zoomInput, "input", onZoom);
@@ -366,19 +372,67 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     return [];
   }
 
-  function selectedRouteEvents() {
-    if (!state.model || selected?.type !== "route") return [];
-    return (state.model.route_state?.advertisements ?? [])
-      .filter((item) => item.route_id === selected.id)
-      .sort((a, b) => (a.propagation_path?.length ?? 0) - (b.propagation_path?.length ?? 0) || a.id.localeCompare(b.id));
+  // This is a curated illustration of the RS hierarchy, independent of route tables.
+  function routeFlowSequence() {
+    const model = state.model;
+    if (!model) return [];
+    const origin = model.route_state?.origins?.find((route) => route.route_type === 5 && route.origin_kind === "host");
+    if (!origin) return [];
+    let fromID = origin.next_hop_node_id;
+    const sequence = [];
+    for (const kind of ["host-rs-bolt", "rs-bolt-rs-ctrl", "border-rs-ctrl"]) {
+      const session = model.bgp_sessions.find((item) => item.kind === kind &&
+        (item.a.entity_id === fromID || item.b.entity_id === fromID) &&
+        item.families.some((family) => family.route_types?.includes(5)));
+      if (!session) return [];
+      const toID = session.a.entity_id === fromID ? session.b.entity_id : session.a.entity_id;
+      sequence.push({ sessionID: session.id, fromID, toID });
+      fromID = toID;
+    }
+    return sequence;
   }
 
-  function playbackLength() {
-    return selected?.type === "route" ? selectedRouteEvents().length : Math.max(0, selectedPath().length - 1);
+  function syncIllustration() {
+    const active = showRouteFlow.checked && showSessions.checked && illustration.sequence.length > 0;
+    flowNote.textContent = !showRouteFlow.checked ? "Adresy i tablice są obliczanym przykładem."
+      : !showSessions.checked ? "Przepływ poglądowy — włącz warstwę Sesje BGP."
+      : !illustration.sequence.length ? "Brak zgodnego przykładu przepływu tras w tej konfiguracji."
+      : "Poglądowo: host → RS Bolt → RS Ctrl → border. Tablice pozostają stałe.";
+    if (!active || reducedMotion.matches) {
+      if (illustration.frame) cancelAnimationFrame(illustration.frame);
+      illustration.frame = 0;
+      graphEl.querySelector("#dc-route-marker")?.setAttribute("visibility", "hidden");
+      return;
+    }
+    updateIllustrationMarker(performance.now());
+    if (!illustration.frame) {
+      illustration.startedAt = performance.now();
+      const tick = (now) => {
+        if (destroyed) return;
+        updateIllustrationMarker(now);
+        illustration.frame = requestAnimationFrame(tick);
+      };
+      illustration.frame = requestAnimationFrame(tick);
+    }
+  }
+
+  function updateIllustrationMarker(now) {
+    const marker = graphEl.querySelector("#dc-route-marker");
+    const sequence = illustration.sequence;
+    if (!marker || !sequence.length || !showRouteFlow.checked || !showSessions.checked || reducedMotion.matches) return;
+    const scaled = (Math.max(0, now - illustration.startedAt) % (sequence.length * 1100)) / 1100;
+    const step = sequence[Math.floor(scaled)];
+    const from = currentPositions?.entityPoints.get(step.fromID);
+    const to = currentPositions?.entityPoints.get(step.toID);
+    if (!from || !to) { marker.setAttribute("visibility", "hidden"); return; }
+    const fraction = scaled % 1;
+    marker.setAttribute("cx", String(from.x + (to.x - from.x) * fraction));
+    marker.setAttribute("cy", String(from.y + (to.y - from.y) * fraction));
+    marker.setAttribute("visibility", "visible");
   }
 
   function animationDuration() {
-    return selected?.type === "route" ? playbackLength() * 520 : playbackLength() * 900;
+    return Math.max(0, selectedPath().length - 1) * 900;
   }
 
   function animationElapsed(now = performance.now()) {
@@ -386,24 +440,14 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function updateAnimationMarker(now = performance.now()) {
-    const routeMarker = graphEl.querySelector("#dc-route-marker");
     const marker = graphEl.querySelector("#dc-packet-marker");
-    if (selected?.type === "route") {
-      if (marker) marker.setAttribute("visibility", "hidden");
-      updateRouteMarker(routeMarker, now);
-      return;
-    }
-    if (routeMarker) routeMarker.setAttribute("visibility", "hidden");
     const path = selectedPath();
     if (!marker || path.length < 2 || !state.model || !showLinks.checked) {
       if (marker) marker.setAttribute("visibility", "hidden");
       return;
     }
-    const positions = layout(state.model, {
-      showInfraOnHosts: showInfraOnHosts.checked,
-      collapseRouteServers: collapseRouteServers.checked,
-      offsets: viewOffsets,
-    });
+    const positions = currentPositions;
+    if (!positions) return;
     const points = path.map((id) => positions.nodes.get(id)).filter(Boolean);
     if (points.length < 2) { marker.setAttribute("visibility", "hidden"); return; }
     const duration = (points.length - 1) * 900;
@@ -417,55 +461,24 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     marker.setAttribute("visibility", "visible");
   }
 
-  function updateRouteMarker(marker, now) {
-    const events = selectedRouteEvents();
-    if (!marker || !events.length || !state.model || !showSessions.checked) {
-      if (marker) marker.setAttribute("visibility", "hidden");
-      return;
-    }
-    const duration = 520;
-    const total = events.length * duration;
-    const elapsed = Math.min(total, animationElapsed(now));
-    const index = Math.min(events.length - 1, Math.floor(elapsed / duration));
-    const progress = elapsed >= total ? 1 : (elapsed - index * duration) / duration;
-    const event = events[index];
-    const positions = layout(state.model, {
-      showInfraOnHosts: showInfraOnHosts.checked,
-      collapseRouteServers: collapseRouteServers.checked,
-      offsets: viewOffsets,
-    });
-    const from = positions.entityPoints.get(event.from_id);
-    const to = positions.entityPoints.get(event.to_id);
-    if (!from || !to) { marker.setAttribute("visibility", "hidden"); return; }
-    marker.setAttribute("cx", String(from.x + (to.x - from.x) * progress));
-    marker.setAttribute("cy", String(from.y + (to.y - from.y) * progress));
-    marker.setAttribute("visibility", "visible");
-  }
-
   function updatePlaybackControls() {
     const path = selectedPath();
-    const events = selectedRouteEvents();
-    const canPlay = selected?.type === "route" ? events.length > 0 && showSessions.checked : path.length > 1 && showLinks.checked;
+    const canPlay = path.length > 1 && showLinks.checked;
     playButton.disabled = !canPlay;
     rewindButton.disabled = !canPlay;
-    playButton.textContent = animation.playing ? "Wstrzymaj" : selected?.type === "route" ? "Odtwórz ogłoszenia" : "Odtwórz pakiet";
+    playButton.textContent = animation.playing ? "Wstrzymaj pakiet" : "Odtwórz pakiet";
     if (animation.playing) return;
-    if (!selected) playStatus.textContent = "Wybierz trasę, przepływ lub sesję BGP.";
-    else if (selected.type === "route" && !events.length) playStatus.textContent = "Ta trasa nie ma ogłoszeń BGP.";
-    else if (selected.type === "route" && !showSessions.checked) playStatus.textContent = "Pokaż sesje BGP, aby odtworzyć ogłoszenia.";
-    else if (selected.type === "route") playStatus.textContent = `${events.length} ogłoszeń tej trasy · kolejność deterministyczna.`;
-    else if ((selected.type === "traffic" || selected.type === "session") && !showLinks.checked) playStatus.textContent = "Pokaż łącza fizyczne, aby odtworzyć pakiet.";
-    else if (selected.type === "traffic" && path.length === 1) playStatus.textContent = "Dostarczenie lokalne — bez ścieżki w fabric.";
-    else if (selected.type === "traffic" && path.length === 0) playStatus.textContent = "Brak osiągalnej ścieżki do odtworzenia.";
-    else if (selected.type === "session" && path.length === 1) playStatus.textContent = "Końcówki sesji są na tym samym hoście.";
-    else if (!canPlay) playStatus.textContent = "Wybierz przepływ lub sesję BGP.";
+    if (!selected || !["traffic", "session"].includes(selected.type)) playStatus.textContent = "Wybierz przepływ lub sesję BGP, aby prześledzić pakiet.";
+    else if (!showLinks.checked) playStatus.textContent = "Włącz łącza fizyczne, aby zobaczyć drogę pakietu.";
+    else if (path.length === 1) playStatus.textContent = "Dostarczenie lokalne — bez przejścia przez fabric.";
+    else if (!path.length) playStatus.textContent = "Brak osiągalnej ścieżki w tej konfiguracji.";
+    else playStatus.textContent = `${path.length - 1} hopów · poglądowa droga pakietu.`;
   }
 
   function startAnimation() {
     const path = selectedPath();
-    const events = selectedRouteEvents();
-    if ((selected?.type === "route" ? !events.length || !showSessions.checked : path.length < 2 || !showLinks.checked) || animation.playing) return;
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+    if (path.length < 2 || !showLinks.checked || animation.playing) return;
+    if (reducedMotion.matches) {
       playStatus.textContent = "Animacja wyłączona przez ustawienie ograniczenia ruchu; ścieżka pozostaje podświetlona.";
       return;
     }
@@ -474,7 +487,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     animation.playing = true;
     animation.startedAt = performance.now();
     animation.speed = Number(speedSelect.value);
-    playStatus.textContent = selected?.type === "route" ? "Ogłoszenia BGP są przekazywane po sesjach…" : "Pakiet przemieszcza się po wybranej ścieżce…";
+    playStatus.textContent = "Poglądowy pakiet przemieszcza się po wybranej ścieżce…";
     updatePlaybackControls();
     const tick = (now) => {
       if (!animation.playing || destroyed) return;
@@ -484,7 +497,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         animation.playing = false;
         animation.frame = 0;
         updateAnimationMarker(now);
-        playStatus.textContent = selected?.type === "route" ? "Przekazywanie ogłoszeń zakończone." : "Przepływ zakończony.";
+        playStatus.textContent = "Ilustracja pakietu zakończona.";
         updatePlaybackControls();
         return;
       }
@@ -636,6 +649,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const routeSessionIDs = selected?.type === "route"
       ? new Set((model.route_state?.advertisements ?? []).filter((item) => item.route_id === selected.id).map((item) => item.session_id))
       : new Set();
+    illustration.sequence = showRouteFlow.checked ? routeFlowSequence() : [];
+    const illustrationIDs = new Set(illustration.sequence.map((step) => step.sessionID));
     const groupLayer = svgElement("g", { class: "dc-groups", "aria-hidden": "true" });
     for (const group of model.groups) {
       const memberPositions = group.node_ids.map((id) => positions.nodes.get(id)).filter(Boolean);
@@ -665,7 +680,10 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       }));
       groupLayer.append(svgText(x1 + 10, y1 + 18, group.label, "dc-group-label"));
     }
-    svg.append(groupLayer);
+    const defs = svgElement("defs", {});
+    const arrow = svgElement("marker", { id: "dc-flow-arrow", viewBox: "0 0 8 8", refX: 7, refY: 4, markerWidth: 5, markerHeight: 5, orient: "auto" });
+    arrow.append(svgElement("path", { d: "M0 0 L8 4 L0 8Z", fill: "#d4b1fc" }));
+    defs.append(arrow); svg.append(defs, groupLayer);
 
     for (const [label, y] of [["BORDER", 82], ["STEM", 189], ["SPINE", 296], ["LEAF", 409], ["TOR", 549], ["HOSTY", 679]]) {
       svg.append(svgText(12, y, label, "dc-row-label"));
@@ -708,11 +726,13 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if (showSessions.checked) {
       const sessionLayer = svgElement("g", { class: "dc-sessions" });
       for (const session of model.bgp_sessions) {
-        const a = positions.entityPoints.get(session.a.entity_id);
-        const b = positions.entityPoints.get(session.b.entity_id);
+        const step = illustration.sequence.find((item) => item.sessionID === session.id);
+        const a = positions.entityPoints.get(step?.fromID ?? session.a.entity_id);
+        const b = positions.entityPoints.get(step?.toID ?? session.b.entity_id);
         if (!a || !b) continue;
-        const selectedClass = selected?.type === "session" && selected.id === session.id ? " selected" :
-          selected?.type === "route" && routeSessionIDs.has(session.id) ? " route-path" : "";
+        const selectedClass = (selected?.type === "session" && selected.id === session.id ? " selected" :
+          selected?.type === "route" && routeSessionIDs.has(session.id) ? " route-path" : "") +
+          (illustrationIDs.has(session.id) ? " illustrative" : "");
         const group = svgElement("g", {
           class: `dc-session${selectedClass}`, role: "button", tabindex: "0",
           "data-entity-type": "session", "data-entity-id": session.id,
@@ -768,6 +788,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     graphEl.replaceChildren(svg);
     updateAnimationMarker();
     updatePlaybackControls();
+    syncIllustration();
   }
 
   function renderInspector(nodeByID, interfaceByID) {
@@ -924,7 +945,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if (selected.type === "route") {
       const route = state.model.route_state?.origins?.find((item) => item.id === selected.id);
       if (!route) { selected = null; return renderInspector(); }
-      appendInspectorTitle("Trasa i jej propagacja", `${route.prefix} · ${route.id}`);
+      appendInspectorTitle("Oczekiwana trasa i eksport", `${route.prefix} · ${route.id}`);
       const identity = document.createElement("p");
       identity.textContent = `${route.afi}/${route.safi}${route.route_type ? ` Type ${route.route_type}` : ""} · origin ${route.origin_id} (${route.origin_label}) · next hop ${route.next_hop} · AS ${route.origin_asn}`;
       const context = document.createElement("p");
@@ -935,11 +956,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const ads = (state.model.route_state?.advertisements ?? []).filter((item) => item.route_id === route.id);
       const routeLoaded = inspectorLoaded.has(`${modelRevision}/route/${route.id}`);
       const note = document.createElement("p");
-      note.textContent = !routeLoaded
-        ? "Wczytuję ogłoszenia tej trasy…"
-        : showSessions.checked
-          ? `${ads.length} ogłoszeń przez sesje BGP. Wybierz Odtwórz ogłoszenia, aby śledzić je po jednej.`
-          : `${ads.length} ogłoszeń przez sesje BGP. Włącz warstwę sesji BGP, aby odtworzyć propagację.`;
+      note.textContent = routeLoaded ? `${ads.length} oczekiwanych eksportów przez sesje BGP. To obliczony stan konfiguracji.`
+        : inspectorErrors.get(`${modelRevision}/route/${route.id}`) || "Wczytuję oczekiwane eksporty tej trasy…";
       detailsEl.append(note);
       if (routeLoaded) appendRouteRows(detailsEl, ads);
       return;
@@ -1000,6 +1018,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       events.abort();
       if (configDialog.open) configDialog.close();
       if (animation.frame) cancelAnimationFrame(animation.frame);
+      if (illustration.frame) cancelAnimationFrame(illustration.frame);
       root.replaceChildren();
     },
   };
