@@ -12,8 +12,8 @@ function fields(container, values) {
 }
 
 export const explorerMarkup = `
-  <details class="dc-explorer" id="dc-explorer" open>
-    <summary>Sprawdź przepływ między urządzeniami</summary>
+  <details class="dc-explorer" id="dc-explorer">
+    <summary>Zaawansowane: UPDATE i wybór końców pakietu</summary>
     <div class="dc-explorer-grid">
       <form id="dc-update-form" class="dc-explorer-form">
         <h3>Ogłoszenie trasy · BGP UPDATE</h3>

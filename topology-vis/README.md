@@ -59,9 +59,10 @@ route from the populated list. Expand each step to inspect NLRI, next hop, AS pa
 and EVPN attributes. Session export rows also have an UPDATE inspection button.
 Custom flow still uses the Przepływ tras switch and does not change routing state.
 
-Use Kliknij źródło / Kliknij cel, or Wybierz oba na topologii, to pick concrete
-devices/VMs on the diagram. Paired selection opens a packet after the second click;
-Escape cancels. Move the popup using its ⠿ handle (also arrow keys; Home resets).
+Click a device/VM, choose Wyślij ruch do… beside it, then click the destination.
+The compact action offers IPv4/IPv6; grouped RSs offer a concrete member. Escape
+cancels target selection. The collapsed Zaawansowane controls retain manual
+selectors and UPDATE exploration. Move the popup using its ⠿ handle (also arrow keys; Home resets).
 
 Packet examples use IPv4 ICMP or IPv6 ICMPv6 Echo Request. Customer VM pairs obey
 VPC forwarding/isolation; choosing a border targets a compatible advertised prefix.

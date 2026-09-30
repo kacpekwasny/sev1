@@ -17,12 +17,27 @@ try {
  const model = await (await context.request.get(`${api}/model`)).json();
  assert.equal(model.local_links.length,19); assert.equal(model.local_interfaces.length,38);
  const choose=async(kind,from,to,family)=>{
+   if(!(await page.locator('#dc-explorer').evaluate(d=>d.open)))await page.locator('#dc-explorer > summary').click();
    await page.locator(`#dc-${kind}-form [name="from"]`).selectOption(from);
    await page.locator(`#dc-${kind}-form [name="to"]`).selectOption(to);
    if(family)await page.locator(`#dc-${kind}-form [name="family"]`).selectOption(family);
    await page.locator(`#dc-${kind}-form button[type=submit]`).click();
    await page.waitForFunction((kind)=>!document.querySelector(`#dc-${kind}-form button[type=submit]`).disabled,kind);
  };
+ // Primary traffic UI is beside a clicked device; advanced forms start closed.
+ assert.equal(await page.locator('#dc-explorer').evaluate(d=>d.open),false);
+ await page.locator('.dc-vm[data-entity-id="customer-1"]').click();
+ await page.locator('#dc-device-actions').waitFor({state:'visible'});
+ const action=await page.locator('#dc-device-actions').boundingBox(),canvasActions=await page.locator('.dc-workspace').boundingBox();
+ assert(action.x>=canvasActions.x&&action.x+action.width<=canvasActions.x+canvasActions.width+1);
+ await page.screenshot({path:`${output}/device-send-action.png`,fullPage:true,animations:'disabled'});
+ await page.locator('#dc-action-family').selectOption('ipv6');await page.locator('#dc-send-to').click();
+ await page.locator('.dc-vm[data-entity-id="customer-3"]').click();
+ await page.waitForFunction(()=>!document.querySelector('#dc-packet-form button[type=submit]').disabled);
+ assert.match(await page.locator('#dc-details').textContent(),/ICMPv6/);
+ await page.keyboard.press('Escape');
+ await page.locator('#dc-explorer > summary').click();
+ await page.locator('#dc-packet-form [name="family"]').selectOption('ipv4');
  // Placement policies and click-selected packet endpoints.
  for(const vm of model.vms.filter(v=>v.role==='rs_bolt'))assert.equal(vm.host_bolt_id,vm.served_bolt);
  assert.deepEqual([...new Set(model.vms.filter(v=>v.role==='rs_ctrl').map(v=>v.host_bolt_id))].sort(),[1,2]);
@@ -164,7 +179,9 @@ try {
  const touchContext=await browser.newContext({viewport:{width:1280,height:900},hasTouch:true});
  const touchPage=await touchContext.newPage();touchPage.on('pageerror',error=>errors.push(error.message));
  await touchPage.goto(target);await touchPage.locator('.dc-node').first().waitFor();
- await touchPage.locator('#dc-packet-form button[type=submit]').click();
+ await touchPage.locator('.dc-vm[data-entity-id="customer-1"]').click();
+ await touchPage.locator('#dc-send-to').click();
+ await touchPage.locator('.dc-vm[data-entity-id="customer-3"]').click();
  await touchPage.waitForFunction(()=>!document.querySelector('#dc-packet-form button[type=submit]').disabled);
  const touchPopup=await touchPage.locator('#dc-inspector').boundingBox();
  const tg=await touchPage.locator('#dc-inspector-grip').boundingBox();

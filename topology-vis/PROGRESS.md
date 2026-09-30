@@ -124,9 +124,12 @@ repeat completed rework milestones.
    independent prefix illustrations, staggered over actual RS sessions. A selected
    UPDATE remains an additional focused stream. Tables/YAML remain unchanged.
    Desktop/narrow Chrome walkthrough and Go tests passed.
-2. RS ASN prepending: implemented. Received RIBs and UPDATEs include all eBGP
+2. RS ASN prepending: implemented in `cc59d8f`. Received RIBs and UPDATEs include all eBGP
    sending ASNs, including RS Bolt/Ctrl/User, while EVPN next hop stays unchanged.
    Full Go tests verify each intermediate AS_SEQUENCE and its ordering.
-3. Compact device-adjacent traffic actions: pending.
+3. Compact device-adjacent traffic actions: implemented. Clicking a node/VM shows
+   a small anchored send action with IPv4/IPv6 choice; the next device click sends
+   the sample. A collapsed RS offers concrete member selection. Advanced manual
+   forms start closed. Desktop/narrow/touch walkthroughs and Go tests passed.
 4. Originated-route sections: pending.
 5. Route/packet path previews on hover: pending.

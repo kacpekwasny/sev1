@@ -35,6 +35,12 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       </div>
       <div class="dc-workspace">
         <div id="dc-graph" class="dc-graph-scroll"><p class="dc-empty">Buduję widok topologii…</p></div>
+        <div id="dc-device-actions" class="dc-device-actions" role="group" aria-label="Akcje urządzenia" hidden>
+          <div class="dc-device-actions-heading"><strong></strong><button type="button" id="dc-device-actions-close" aria-label="Zamknij akcje urządzenia">×</button></div>
+          <label id="dc-action-member-label" hidden>Członek <select id="dc-action-member"></select></label>
+          <div class="dc-device-send-row"><button id="dc-send-to" type="button">Wyślij ruch do…</button><select id="dc-action-family" aria-label="Rodzina pakietu"><option value="ipv4">IPv4</option><option value="ipv6">IPv6</option></select></div>
+        </div>
+        <div id="dc-pick-banner" class="dc-pick-banner" hidden><span role="status"></span><button type="button" class="dc-tool-button">Anuluj wybór</button></div>
         <aside id="dc-inspector" class="dc-inspector" role="dialog" aria-labelledby="dc-inspector-heading" tabindex="-1" hidden>
           <div class="dc-inspector-bar"><button id="dc-inspector-back" type="button" class="dc-icon-button" aria-label="Wróć do poprzedniego widoku" disabled>←</button><button id="dc-inspector-grip" type="button" class="dc-popup-grip" aria-label="Przesuń inspektor; strzałki przesuwają, Home przywraca">⠿ <span>INSPEKTOR</span></button>
             <label class="dc-rib-control">Tablice <select id="dc-rib-view"><option value="gui">GUI</option><option value="linux">Linux / FRR</option></select></label>
@@ -42,7 +48,6 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
           <div id="dc-details" class="dc-details"></div>
         </aside>
       </div>
-      <div id="dc-pick-banner" class="dc-pick-banner" hidden><span role="status"></span><button type="button" class="dc-tool-button">Anuluj wybór</button></div>
       <div id="dc-route-legend" class="dc-route-legend" hidden><span class="learned">● Fioletowy: droga ogłoszenia do tego RIB</span><span class="points-to">● Żółty: droga do next hop / celu</span></div>
       <div class="dc-graph-footer"><span class="dc-legend"><i class="legend-switch"></i> fabric <i class="legend-host"></i> host <i class="legend-vm"></i> route server <i class="legend-customer"></i> VM klienta</span>
         <span class="dc-canvas-note"><span aria-hidden="true">◎</span> Kliknij: szczegóły · przeciągnij: ustawienie</span>
@@ -110,6 +115,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   function closeInspector() {
     inspectorEl.hidden = true;
     inspectorHistory.length = 0;
+    deviceMenu = null; positionDeviceMenu();
     if (!["packet", "update"].includes(selected?.type)) {
       selected = null;
       resetAnimation();
@@ -150,7 +156,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   let currentPositions = null;
   let inspectorSelectionKey = "";
   const inspectorHistory = [];
-  let popupPosition = null, popupDrag = null, endpointPick = null;
+  let popupPosition = null, popupDrag = null, endpointPick = null, deviceMenu = null;
   const exploration = { update: null, packet: null };
   const exploreRequests = { update: 0, packet: 0 };
   const exploreErrors = { update: "", packet: "" };
@@ -176,6 +182,29 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     popupPosition.x=Math.max(4,Math.min(popupPosition.x,workspace.clientWidth-inspectorEl.offsetWidth-4));
     popupPosition.y=Math.max(4,Math.min(popupPosition.y,workspace.clientHeight-inspectorEl.offsetHeight-4));
     inspectorEl.style.left=`${popupPosition.x}px`;inspectorEl.style.top=`${popupPosition.y}px`;inspectorEl.style.right="auto";
+  }
+  function positionDeviceMenu() {
+    const menu=root.querySelector("#dc-device-actions");menu.hidden=!deviceMenu;
+    if(!deviceMenu)return;
+    const entity=[...graphEl.querySelectorAll("[data-entity-type]")].find(el=>el.dataset.entityId===deviceMenu.id&&el.dataset.entityType===deviceMenu.type);
+    if(!entity){menu.hidden=true;return;}
+    const box=entity.getBoundingClientRect(),parent=inspectorEl.parentElement.getBoundingClientRect();
+    let x=box.right-parent.x+8;
+    if(x+menu.offsetWidth>parent.width-8)x=box.left-parent.x-menu.offsetWidth-8;
+    menu.style.left=`${Math.max(8,Math.min(x,parent.width-menu.offsetWidth-8))}px`;
+    menu.style.top=`${Math.max(8,Math.min(box.y-parent.y-15,parent.height-menu.offsetHeight-8))}px`;
+  }
+  function showDeviceMenu(selection) {
+    deviceMenu=["node","vm","cluster"].includes(selection?.type)?selection:null;
+    const menu=root.querySelector("#dc-device-actions");
+    if(deviceMenu) {
+      const entity=[...state.model.nodes,...state.model.vms].find(n=>n.id===selection.id);
+      const members=state.model.vms.filter(v=>v.cluster_id===selection.id);
+      menu.querySelector("strong").textContent=entity?.label??members[0]?.cluster_id??selection.id;
+      root.querySelector("#dc-action-member-label").hidden=!members.length;
+      root.querySelector("#dc-action-member").replaceChildren(...members.map(v=>new Option(`${v.label} · ${v.host_id}`,v.id)));
+    }
+    positionDeviceMenu();
   }
   function updatePickBanner() {
     const banner=root.querySelector("#dc-pick-banner");banner.hidden=!endpointPick;
@@ -240,6 +269,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     renderGraph();
     renderInspector();
     openInspector();
+    showDeviceMenu(selected);
   };
   const onGraphKey = (event) => {
     const entity = event.target.closest("[data-entity-type]");
@@ -315,6 +345,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if (!dragFrame) dragFrame = requestAnimationFrame(() => { dragFrame = 0; renderGraph(); });
   };
   const onInspectorClick = (event) => {
+    deviceMenu=null;positionDeviceMenu();
     const update = event.target.closest("[data-update-id]");
     if (update) {
       const advertisement = state.model.route_state?.advertisements?.find((item) => item.id === update.dataset.updateId);
@@ -422,10 +453,21 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     }
     clampPopup();
   });
-  listen(window,"resize",clampPopup);
+  listen(window,"resize",()=>{clampPopup();positionDeviceMenu();});
+  listen(graphEl,"scroll",positionDeviceMenu);
+  listen(root.querySelector("#dc-device-actions-close"),"click",()=>{deviceMenu=null;positionDeviceMenu();});
+  listen(root.querySelector("#dc-send-to"),"click",()=>{
+    if(!deviceMenu)return;
+    const form=root.querySelector("#dc-packet-form");
+    form.elements.from.value=deviceMenu.type==="cluster"?root.querySelector("#dc-action-member").value:deviceMenu.id;
+    form.elements.family.value=root.querySelector("#dc-action-family").value;
+    form.dispatchEvent(new Event("change",{bubbles:true}));
+    endpointPick={name:"to",pair:true};deviceMenu=null;positionDeviceMenu();
+    inspectorEl.hidden=true;selected=null;inspectorHistory.length=0;resetAnimation();updatePickBanner();renderGraph();
+  });
   for(const button of root.querySelectorAll("[data-pick-endpoint]"))listen(button,"click",()=>{
     const name=button.dataset.pickEndpoint;endpointPick={name:name==="pair"?"from":name,pair:name==="pair"};
-    inspectorEl.hidden=true;inspectorHistory.length=0;selected=null;resetAnimation();updatePickBanner();renderGraph();
+    inspectorEl.hidden=true;inspectorHistory.length=0;selected=null;deviceMenu=null;positionDeviceMenu();resetAnimation();updatePickBanner();renderGraph();
     graphEl.scrollIntoView({block:"center"});graphEl.querySelector(".dc-node")?.focus({preventScroll:true});
   });
   listen(root.querySelector("#dc-pick-banner button"),"click",()=>{endpointPick=null;updatePickBanner();renderGraph();});
@@ -477,6 +519,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   listen(root.querySelector("#dc-config-close"), "click", () => configDialog.close());
   listen(root.querySelector("#dc-inspector-close"), "click", closeInspector);
   listen(window, "keydown", (event) => {
+    if (event.key === "Escape" && deviceMenu && inspectorEl.hidden) {deviceMenu=null;positionDeviceMenu();return;}
     if (event.key === "Escape" && endpointPick) {endpointPick=null;updatePickBanner();renderGraph();return;}
     if (event.key === "Escape" && !inspectorEl.hidden && !configDialog.open) {
       event.preventDefault();
@@ -544,6 +587,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   function beginExploration(kind) {
     const form = root.querySelector(`#dc-${kind}-form`);
     if (!state.model || state.busy) return;
+    deviceMenu=null;positionDeviceMenu();
     const requestID = ++exploreRequests[kind];
     exploration[kind] = null; exploreErrors[kind] = "";
     rememberInspector();
@@ -725,7 +769,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       viewOffsets.clear();
       inspectorEl.hidden = true;
       selected = null;
-      inspectorHistory.length = 0; popupPosition = null; endpointPick = null;
+      inspectorHistory.length = 0; popupPosition = null; endpointPick = null; deviceMenu = null;
       clampPopup(); updatePickBanner();
       resetAnimation();
       for (const kind of ["update", "packet"]) { exploration[kind] = null; exploreRequests[kind]++; exploreErrors[kind] = ""; }
@@ -1011,6 +1055,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     updateAnimationMarker();
     updatePlaybackControls();
     syncIllustration();
+    positionDeviceMenu();
   }
 
   function renderInspector(nodeByID, interfaceByID) {
