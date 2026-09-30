@@ -204,4 +204,8 @@ repeat completed rework milestones.
     even without configured uplink prefixes. Inspector sections label these routes
     as static in GUI/Linux modes. Tests cover customer, host, RS and stem packets
     to both borders in both families, with zero border exports; Go tests/build pass.
-11–12. Pending; follow D17's listed order.
+11. Packet markers follow the exact yellow port/TAP segments shared with link
+    drawing. Transit hops jump between ingress and egress instead of animating
+    through node centers. Geometry updates on drag/projection; desktop/narrow
+    browser checks place the marker on the drawn yellow track. Go tests pass.
+12. Pending: RS slug labels.

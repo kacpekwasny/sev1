@@ -129,6 +129,7 @@ body.dc-harness { margin: 0; min-width: 320px; background: #0b1018; }
 .dc-icon-button:hover { background: #e2ece8; }
 .dc-icon-button { padding:0; flex-shrink:0; }
 .dc-session.preview .dc-session-line { stroke:#d4b1fc; stroke-width:3; opacity:1; }
+.dc-packet-track { stroke:#ffe16a; stroke-width:3; fill:none; pointer-events:none; }
 .dc-details { overflow: auto; padding: 16px 18px 22px; font-size: 11px; overscroll-behavior: contain; }
 .dc-disclosure-body { margin:8px 0 4px 5px; padding:4px 0 4px 9px; border-left:2px solid #c6d4df; background:linear-gradient(90deg,#eaf0f680,transparent 35px); }
 .dc-details { min-height:0; flex:1; }

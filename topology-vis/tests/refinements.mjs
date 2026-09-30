@@ -71,6 +71,27 @@ try {
     assert.equal(packet.packet.reachable,true);
   }
   await page.keyboard.press('Escape');
+  await page.locator('.dc-vm[data-entity-id="customer-1"]').click();
+  await page.locator('#dc-send-to').click();
+  await page.locator('.dc-vm[data-entity-id="customer-3"]').click();
+  await page.waitForFunction(()=>!document.querySelector('#dc-packet-form button[type=submit]').disabled);
+  await page.keyboard.press('Escape');
+  const onYellow=()=>page.evaluate(()=>{
+    const m=document.querySelector('#dc-packet-marker'),x=Number(m.getAttribute('cx')),y=Number(m.getAttribute('cy'));
+    return [...document.querySelectorAll('.dc-packet-track')].some(l=>{
+      const a=l.x1.baseVal.value,b=l.y1.baseVal.value,c=l.x2.baseVal.value,d=l.y2.baseVal.value;
+      const t=Math.max(0,Math.min(1,((x-a)*(c-a)+(y-b)*(d-b))/((c-a)**2+(d-b)**2||1)));
+      return Math.hypot(x-a-t*(c-a),y-b-t*(d-b))<.01;
+    });
+  });
+  assert.equal(await onYellow(),true);
+  const start=await page.locator('#dc-packet-marker').evaluate(m=>[Number(m.getAttribute('cx')),Number(m.getAttribute('cy'))]);
+  await page.locator('#dc-play').click();
+  await page.waitForFunction(([x,y])=>{
+    const m=document.querySelector('#dc-packet-marker');return Math.hypot(Number(m.getAttribute('cx'))-x,Number(m.getAttribute('cy'))-y)>1;
+  },start);
+  assert.equal(await onYellow(),true);
+  await page.locator('#dc-play').click();
   assert.equal(await (await page.request.get(`${api}/config.yaml`)).text(),yaml);
   assert.deepEqual(errors,[]);await page.close();
  }

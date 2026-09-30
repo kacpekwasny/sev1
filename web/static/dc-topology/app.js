@@ -2,6 +2,7 @@ const NS = "http://www.w3.org/2000/svg";
 import { appendRIB, appendFIB, identifyRoute, appendOriginatedRoutes, appendBorderRoutes } from "./tables.js";
 import { routeFlowStreams } from "./route-flow.js";
 import { displayNames } from "./labels.js";
+import { physicalPoints, tapPoints, packetSegments } from "./packet-path.js";
 import { routePaths } from "./route-paths.js";
 import { appendBGPBits } from "./packet-bits.js";
 import { explorerMarkup, appendUpdateInspection, appendPacketInspection } from "./inspection.js";
@@ -160,6 +161,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   let dragFrame = 0;
   let suppressClickUntil = 0;
   let currentPositions = null;
+  let currentPacketSegments = [];
   let inspectorSelectionKey = "";
   const inspectorHistory = [];
   let popupPosition = null, popupDrag = null, endpointPick = null, deviceMenu = null;
@@ -784,7 +786,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function animationDuration() {
-    return Math.max(0, selectedPath().length - 1) * 900;
+    return currentPacketSegments.length * 900;
   }
 
   function animationElapsed(now = performance.now()) {
@@ -798,16 +800,13 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       if (marker) marker.setAttribute("visibility", "hidden");
       return;
     }
-    const positions = currentPositions;
-    if (!positions) return;
-    const points = path.map((id) => positions.entityPoints.get(id)).filter(Boolean);
-    if (points.length < 2 || points.length !== path.length) { marker.setAttribute("visibility", "hidden"); return; }
-    const duration = (points.length - 1) * 900;
+    if(!currentPacketSegments.length) {marker.setAttribute("visibility","hidden");return;}
+    const duration = animationDuration();
     const progress = Math.min(1, animationElapsed(now) / duration);
-    const scaled = progress * (points.length - 1);
-    const segment = Math.min(points.length - 2, Math.floor(scaled));
+    const scaled = progress * currentPacketSegments.length;
+    const segment = Math.min(currentPacketSegments.length - 1, Math.floor(scaled));
     const fraction = progress >= 1 ? 1 : scaled - segment;
-    const a = points[segment], b = points[segment + 1];
+    const [a,b]=currentPacketSegments[segment].points;
     marker.setAttribute("cx", String(a.x + (b.x - a.x) * fraction));
     marker.setAttribute("cy", String(a.y + (b.y - a.y) * fraction));
     marker.setAttribute("visibility", "visible");
@@ -1022,6 +1021,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     svg.style.height = `${Math.ceil(positions.height * zoom)}px`;
 
     currentPositions = positions;
+    currentPacketSegments = packetSegments(model,positions,selectedPath());
     const nodeByID = new Map(model.nodes.map((node) => [node.id, node]));
     const interfaceByID = new Map(model.interfaces.map((iface) => [iface.id, iface]));
     const inspectedPaths = routePaths(model, routeHover??selected);
@@ -1079,9 +1079,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
           "data-entity-type": "link", "data-entity-id": link.id,
           "aria-label": `Łącze ${nodeByID.get(link.a_node_id)?.label} — ${nodeByID.get(link.b_node_id)?.label}`,
         });
-        const direction = Math.sign(b.y - a.y) || 1;
-        const x1 = a.x, y1 = a.y + direction * a.height / 2;
-        const x2 = b.x, y2 = b.y - direction * b.height / 2;
+        const [start,end]=physicalPoints(a,b);
+        const x1=start.x,y1=start.y,x2=end.x,y2=end.y;
         group.append(svgElement("line", { x1, y1, x2, y2, class: "dc-edge-hit" }));
         group.append(svgElement("line", { x1, y1, x2, y2, class: "dc-edge-line" }));
         edgeLayer.append(group);
@@ -1154,11 +1153,18 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       for (const link of model.local_links ?? []) {
         if (![exploration.packet.from_id, exploration.packet.to_id].includes(link.vm_id)) continue;
         const host = positions.entityPoints.get(link.host_id), vm = positions.entityPoints.get(link.vm_id);
-        if (host && vm) localLayer.append(svgElement("line", {x1:host.x,y1:host.y + host.height / 2 - 25,x2:vm.x,y2:vm.y,class:"dc-local-path", "data-tap-id":link.tap_interface_id}));
+        if (host && vm) {
+          const [a,b]=tapPoints(host,vm);
+          localLayer.append(svgElement("line", {x1:a.x,y1:a.y,x2:b.x,y2:b.y,class:"dc-local-path", "data-tap-id":link.tap_interface_id}));
+        }
       }
       svg.append(localLayer);
     }
 
+    if(!routeHover&&showLinks.checked)for(const segment of currentPacketSegments) {
+      const [a,b]=segment.points;
+      svg.append(svgElement("line",{x1:a.x,y1:a.y,x2:b.x,y2:b.y,class:"dc-packet-track","data-from":segment.from,"data-to":segment.to,"aria-hidden":"true"}));
+    }
     const vmLayer = svgElement("g", { class: "dc-vms" });
     for (const item of positions.displayItems) {
       const point = positions.displayPoints.get(item.id);
