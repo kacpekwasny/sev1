@@ -44,6 +44,13 @@ try {
   assert.equal(await page.locator('#dc-show-sessions').isChecked(),false);
   await page.locator('#dc-inspector-grip').hover();
   await page.locator('.dc-session.preview').waitFor({state:'detached'});
+  for(const mode of ['gui','linux']) {
+    await page.locator('#dc-rib-view').selectOption(mode);
+    assert.doesNotMatch(await page.locator('#dc-details').textContent(),/host-b\d+-h\d+/);
+    assert.match(await page.locator('#dc-details').textContent(),/h1001/);
+  }
+  assert.doesNotMatch(await page.locator('#dc-packet-form select[name="from"]').textContent(),/host-b\d+-h\d+/);
+  await page.locator('#dc-rib-view').selectOption('gui');
   await page.keyboard.press('Escape');
   assert.equal(await (await page.request.get(`${api}/config.yaml`)).text(),yaml);
   assert.deepEqual(errors,[]);await page.close();

@@ -1,6 +1,7 @@
 const NS = "http://www.w3.org/2000/svg";
 import { appendRIB, appendFIB, identifyRoute, appendOriginatedRoutes } from "./tables.js";
 import { routeFlowStreams } from "./route-flow.js";
+import { displayNames } from "./labels.js";
 import { routePaths } from "./route-paths.js";
 import { appendBGPBits } from "./packet-bits.js";
 import { explorerMarkup, appendUpdateInspection, appendPacketInspection } from "./inspection.js";
@@ -258,7 +259,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const members=state.model.vms.filter(v=>v.cluster_id===selection.id);
       menu.querySelector("strong").textContent=entity?.label??members[0]?.cluster_id??selection.id;
       root.querySelector("#dc-action-member-label").hidden=!members.length;
-      root.querySelector("#dc-action-member").replaceChildren(...members.map(v=>new Option(`${v.label} · ${v.host_id}`,v.id)));
+      root.querySelector("#dc-action-member").replaceChildren(...members.map(v=>new Option(displayNames(`${v.label} · ${v.host_id}`),v.id)));
     }
     positionDeviceMenu();
   }
@@ -681,7 +682,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function renderEndpointOptions(model) {
-    const endpoints = [...model.nodes.map((item) => ({ id: item.id, label: `${kindLabels[item.kind]} · ${item.label}` })), ...model.vms.map((item) => ({ id: item.id, label: `${item.label} · ${item.host_id}` }))];
+    const endpoints = [...model.nodes.map((item) => ({ id: item.id, label: `${kindLabels[item.kind]} · ${item.label}` })), ...model.vms.map((item) => ({ id: item.id, label: displayNames(`${item.label} · ${item.host_id}`) }))];
     for (const kind of ["update", "packet"]) {
       const form = root.querySelector(`#dc-${kind}-form`);
       for (const name of ["from", "to"]) form.elements[name].replaceChildren(...endpoints.map((item) => new Option(item.label, item.id)));
@@ -733,6 +734,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       : !illustration.sequence.length ? "Brak zgodnego przykładu przepływu tras w tej konfiguracji."
       : exploration.update ? `UPDATE: ${exploration.update.from_id} → ${exploration.update.to_id} · ${exploration.update.route.prefix}. Tablice pozostają stałe.`
       : `Poglądowo: ${illustration.streams.length} ogłoszeń płynie kolejno przez RS, po jednym UPDATE. Tablice pozostają stałe.`;
+    flowNote.textContent=displayNames(flowNote.textContent);
     if (!active || reducedMotion.matches) {
       if (illustration.frame) cancelAnimationFrame(illustration.frame);
       illustration.frame = 0;
@@ -1163,7 +1165,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         class: `dc-vm ${item.role}${item.entityType === "cluster" ? " cluster" : ""}${selectedClass}`, transform: `translate(${point.x} ${point.y})`,
         role: "button", tabindex: "0", "data-entity-type": item.entityType, "data-entity-id": item.id,
         "data-host-id": item.hostID, "data-on-host": item.onHost,
-        "aria-label": `${item.label}${item.onHost ? `, host ${item.hostID}` : ", widok abstrakcyjny"}`,
+        "aria-label": displayNames(`${item.label}${item.onHost ? `, host ${item.hostID}` : ", widok abstrakcyjny"}`),
         "aria-description": "Enter: szczegóły. Strzałki: przesuń. Home: przywróć pozycję.",
       });
       group.append(svgElement("rect", { x: -47, y: -12, width: 94, height: 24, rx: 7 }));
@@ -1194,6 +1196,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const sections = keep ? new Map([...detailsEl.querySelectorAll("details")].map((item) => [sectionKey(item), item.open])) : new Map();
     const scroll = keep ? detailsEl.scrollTop : 0;
     renderInspectorContent(nodeByID, interfaceByID);
+    const textNodes=document.createTreeWalker(detailsEl,NodeFilter.SHOW_TEXT);
+    while(textNodes.nextNode())textNodes.currentNode.nodeValue=displayNames(textNodes.currentNode.nodeValue);
     for (const item of detailsEl.querySelectorAll("details")) {
       const body=document.createElement("div");body.className="dc-disclosure-body";
       for(const child of [...item.childNodes])if(child.nodeName!=="SUMMARY")body.append(child);

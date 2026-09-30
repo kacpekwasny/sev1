@@ -189,4 +189,7 @@ repeat completed rework milestones.
 6. Hover/focus a session row to preview its exact graph connection without
    navigating or fetching data. It also works while the general BGP layer is
    hidden; leaving restores that layer's state. Desktop/narrow checks and Go tests pass.
-7–12. Pending; follow D17's listed order.
+7. Host names use `h2001`-style slugs throughout inspector text, GUI/Linux tables,
+   provenance, controls and accessibility labels. Canonical API/config IDs remain
+   stable. Desktop/narrow checks and Go tests pass.
+8–12. Pending; follow D17's listed order.
