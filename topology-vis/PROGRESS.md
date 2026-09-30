@@ -192,4 +192,8 @@ repeat completed rework milestones.
 7. Host names use `h2001`-style slugs throughout inspector text, GUI/Linux tables,
    provenance, controls and accessibility labels. Canonical API/config IDs remain
    stable. Desktop/narrow checks and Go tests pass.
-8–12. Pending; follow D17's listed order.
+8. Border exports no BGP routes, including underlay identities. Configured uplink
+   destinations remain reachable as explicitly labeled static forwarding entries;
+   they do not enter BGP RIBs or animated UPDATEs. Tests cover zero border exports,
+   static alternatives, tenant isolation and retained packet reachability. Go tests pass.
+9–12. Pending; follow D17's listed order.

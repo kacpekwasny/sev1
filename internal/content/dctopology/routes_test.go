@@ -62,23 +62,23 @@ func TestDefaultRouteStateAndForwarding(t *testing.T) {
 		tables[table.SpeakerID] = table
 	}
 	local := tables["host-b1-h1"]
-	if countRoutesByVPC(local.LocallyOriginated, 1) != 4 || countRoutesByVPC(local.Selected, 1) != 13 {
-		t.Fatalf("host with two local VMs should originate four and select thirteen tenant prefixes: local=%d selected=%d", countRoutesByVPC(local.LocallyOriginated, 1), countRoutesByVPC(local.Selected, 1))
+	if countRoutesByVPC(local.LocallyOriginated, 1) != 4 || countRoutesByVPC(local.Selected, 1) != 12 {
+		t.Fatalf("host with two local VMs should originate four and select twelve BGP tenant prefixes: local=%d selected=%d", countRoutesByVPC(local.LocallyOriginated, 1), countRoutesByVPC(local.Selected, 1))
 	}
 	remote := tables["host-b2-h1"]
-	if countRoutesByVPC(remote.LocallyOriginated, 1) != 2 || countRoutesByVPC(remote.Selected, 1) != 13 {
+	if countRoutesByVPC(remote.LocallyOriginated, 1) != 2 || countRoutesByVPC(remote.Selected, 1) != 12 {
 		t.Fatalf("remote VPC host route table mismatch: local=%d selected=%d", countRoutesByVPC(remote.LocallyOriginated, 1), countRoutesByVPC(remote.Selected, 1))
 	}
-	if got := countRoutesByVPC(tables["host-b1-h2"].Selected, 1); got != 7 {
-		t.Errorf("host without a VPC should retain seven EVPN routes in the RIB: got %d", got)
+	if got := countRoutesByVPC(tables["host-b1-h2"].Selected, 1); got != 6 {
+		t.Errorf("host without a VPC should retain six EVPN routes in the RIB: got %d", got)
 	}
 	for _, entry := range state.Forwarding {
 		if entry.OwnerID == "host-b1-h2" {
 			t.Errorf("host without VPC imported forwarding entry: %+v", entry)
 		}
 	}
-	if got := countRoutesByVPC(tables["rs-ctrl-m1"].Selected, 1); got != 13 {
-		t.Errorf("RS Ctrl selected route count=%d; want 13", got)
+	if got := countRoutesByVPC(tables["rs-ctrl-m1"].Selected, 1); got != 12 {
+		t.Errorf("RS Ctrl selected route count=%d; want 12", got)
 	}
 	if got := len(tables["customer-1"].Selected); got != 6 {
 		t.Errorf("selected customer BGP table should contain its own and two peer VM routes: got %d, want 6", got)
@@ -336,48 +336,40 @@ func TestMultipleAddressesOfOneFamilyKeepDistinctType5RouteIdentity(t *testing.T
 	}
 }
 
-func TestRouteSelectionUsesStableFinalTieBreakerAndKeepsCandidates(t *testing.T) {
+func TestStaticBorderPrefixesNeverEnterBGP(t *testing.T) {
 	config := exampleConfig(t)
-	config.RouteOrigins = append(config.RouteOrigins, RouteOriginConfig{
-		ID: "alternate-uplink-v4", VPCID: 1, Prefix: "198.51.100.0/24", BorderID: 2,
-	})
+	config.RouteOrigins = append(config.RouteOrigins, RouteOriginConfig{ID: "alternate-uplink-v4", VPCID: 1, Prefix: "198.51.100.0/24", BorderID: 2})
 	model, err := BuildTopology(config)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var hostTable *BGPSpeakerTable
-	for index := range model.Routes.Tables {
-		if model.Routes.Tables[index].SpeakerID == "host-b1-h1" {
-			hostTable = &model.Routes.Tables[index]
-			break
+	for _, ad := range model.Routes.Advertisements {
+		if strings.HasPrefix(ad.FromID, "border-") {
+			t.Fatalf("border exported a route: %+v", ad)
 		}
 	}
-	if hostTable == nil {
-		t.Fatal("missing host BGP table")
-	}
-	candidates := 0
-	for _, candidate := range hostTable.Received {
-		if candidate.Prefix == "198.51.100.0/24" {
-			candidates++
-			if candidate.LocalPreference != 100 || candidate.OriginCode != 2 || len(candidate.ASPath) != len(candidate.Path)-1 {
-				t.Errorf("unexpected candidate attributes: %+v", candidate)
+	for _, table := range model.Routes.Tables {
+		for _, route := range table.Selected {
+			if route.Prefix == "198.51.100.0/24" {
+				t.Fatalf("static egress leaked into BGP: %+v", route)
 			}
 		}
 	}
-	if candidates != 2 {
-		t.Fatalf("host received %d candidates for overlapping prefix; want 2", candidates)
-	}
-	selected := 0
-	for _, route := range hostTable.Selected {
-		if route.Prefix == "198.51.100.0/24" {
-			selected++
-			if route.OriginID != "border-1" {
-				t.Errorf("stable route-ID tie breaker selected %s instead of border-1", route.OriginID)
+	alternatives := 0
+	for _, entry := range model.Routes.Forwarding {
+		if entry.OwnerID == "customer-1" && entry.Prefix == "198.51.100.0/24" {
+			alternatives++
+			if entry.Protocol != "static" {
+				t.Fatal("egress not labeled static")
 			}
 		}
 	}
-	if selected != 1 {
-		t.Fatalf("host selected %d paths for the prefix; want exactly one", selected)
+	if alternatives != 2 {
+		t.Fatalf("static alternatives=%d, want 2", alternatives)
+	}
+	packet := InspectPacket(model, "customer-1", "border-2", "ipv4")
+	if !packet.Reachable {
+		t.Fatalf("static border egress lost reachability: %+v", packet)
 	}
 }
 

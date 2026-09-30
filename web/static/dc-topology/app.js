@@ -1368,10 +1368,11 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if (selected.type === "route") {
       const route = state.model.route_state?.origins?.find((item) => item.id === selected.id);
       if (!route) { selected = null; return renderInspector(); }
-      appendInspectorTitle("Oczekiwana trasa i eksport", `${route.prefix} · ${route.id}`);
+      appendInspectorTitle(route.protocol==="static"?"Trasa statyczna i droga wyjścia":"Oczekiwana trasa i eksport", `${route.prefix} · ${route.id}`);
       const paths = routePaths(state.model, selected);
       const identity = document.createElement("p");
       identity.textContent = `${route.afi}/${route.safi}${route.route_type ? ` Type ${route.route_type}` : ""} · origin ${route.origin_id} (${route.origin_label}) · next hop ${paths.nextHop??route.next_hop} · AS ${route.origin_asn}`;
+      if(route.protocol==="static")identity.textContent=`${route.afi}/${route.safi} · statyczna · next hop ${paths.nextHop??route.next_hop} · ${route.origin_label}`;
       const context = document.createElement("p");
       context.textContent = route.vpc_id
         ? `VPC ${route.vpc_id} · RD ${route.rd} · RT ${route.route_target} · VNI ${route.vni}`
@@ -1386,6 +1387,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const note = document.createElement("p");
       note.textContent = routeLoaded ? `${ads.length} oczekiwanych eksportów przez sesje BGP. To obliczony stan konfiguracji.`
         : inspectorErrors.get(`${modelRevision}/route/${route.id}`) || "Wczytuję oczekiwane eksporty tej trasy…";
+      if(route.protocol==="static")note.textContent="Trasa statyczna — nie jest ogłaszana przez BGP.";
       detailsEl.append(note);
       if (routeLoaded) appendRouteRows(detailsEl, ads);
       return;
@@ -1735,7 +1737,7 @@ function appendRouteRows(container, entries, simple = false, ownerID = "") {
     const direction = route.from_id && route.to_id ? ` · ${route.from_id} → ${route.to_id}` : "";
     const pathNodes = route.propagation_path ?? route.path;
     const path = pathNodes?.length ? ` · ${pathNodes.join(" → ")}` : "";
-    const label = document.createElement("strong"); label.textContent = `${prefix}${vpc}${family}`;
+    const label = document.createElement("strong"); label.textContent = `${prefix}${vpc}${family}${route.protocol==="static"?" · statyczna":""}`;
     const info = document.createElement("span"); info.textContent = `${rd}${rt}${vni}${origin}${peer}${direction}${nextHop}${nextHopInterface}${asPath}${policy}${resolution}${path}`.replace(/^ · /, "");
     if (simple) info.textContent = `${nextHop}${peer || (route.received_from === "" ? " · lokalna" : "")}${route.received_from === "" ? "" : asPath}${vni}`.replace(/^ · /, "");
     row.append(label, info);

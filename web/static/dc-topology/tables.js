@@ -18,7 +18,7 @@ const routeLine = (pre, route, ownerID, value) => {
 const originCode = (value) => ({ 0: "i", 1: "e", 2: "?" })[value] ?? "?";
 
 export function appendOriginatedRoutes(container, model, speakerID, mode, appendRows) {
-  const routes=(model.route_state?.origins??[]).filter(route=>route.origin_id===speakerID)
+  const routes=(model.route_state?.origins??[]).filter(route=>route.origin_id===speakerID&&route.protocol!=="static")
     .map(route=>({...route,speaker_id:speakerID,path:[speakerID],as_path:[],received_from:""}));
   const parent=section(container,`Trasy inicjowane przez urządzenie · ${routes.length}`);
   parent.classList.add("dc-originated-routes");parent.dataset.originSpeaker=speakerID;
@@ -110,7 +110,7 @@ export function appendFIB(container, model, ownerID, title, mode, appendRows) {
       for (const route of routes) {
         pre.append(output); output = "";
         const device = ownerID.startsWith("customer-") ? "eth0" : route.encapsulate_vxlan ? `vxlan${route.vni}` : localDevice(route);
-        output += `${route.prefix} dev ${device} proto bgp table ${route.vni}\n`;
+        output += `${route.prefix} dev ${device} proto ${route.protocol||"bgp"} table ${route.vni}\n`;
         if (route.encapsulate_vxlan) output += `    # VTEP ${route.next_hop}, VNI ${route.vni}, RT ${route.route_target}\n`;
         routeLine(pre, route, ownerID, output); output = "";
       }

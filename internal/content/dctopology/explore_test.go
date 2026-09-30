@@ -61,8 +61,8 @@ func TestUpdateInspectionUsesDirectedExports(t *testing.T) {
 		t.Fatal("fabricated an export of a remotely learned route from host")
 	}
 	auto := InspectUpdateFlow(model, "border-1", "host-b1-h1", "")
-	if !auto.Reachable || auto.Route.OriginID != "border-1" {
-		t.Fatal("did not choose a compatible export")
+	if auto.Reachable {
+		t.Fatal("border must not advertise any BGP routes")
 	}
 	for _, ad := range model.Routes.Advertisements {
 		for _, node := range model.Nodes {
