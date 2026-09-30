@@ -233,7 +233,11 @@ Latest local default load was 168 ms; maximum rebuild was 2,702 ms (128 devices,
    spacing and controls. The grouped-RS member selector fits the compact width.
    Desktop/narrow screenshots and controls checked; Chrome refinements and Go
    tests pass.
-2. Wrapped packet field hover — pending.
+2. Hover/focus any fragment of a packet field to highlight that whole field across
+   all rows, including IPv6 addresses, Ethernet MACs, payloads and BGP markers.
+   Click selection and its field explanation remain independent of hover.
+   Chrome checks cover IPv6 four-row addresses, MACs, payloads, focus/leave and
+   retained click selection; endpoint walkthrough, packet-bit and Go tests pass.
 3. Host RIB route-detail question — answered without changing route inspection.
    The list contains expected exports of the selected route across topology-wide
    BGP sessions, rather than extra routes in the inspected host's RIB.

@@ -94,8 +94,10 @@ and jumping from ingress to egress at transit hops.
 TTL, Echo fields, and payload are illustrative; this is not a packet capture.
 
 Pakiet bit po bicie shows the serialized sample in 32-bit rows. Click a field or
-its bits for its value, width, bit offsets and explanation. Packet lengths and
-checksums are computed, including ICMPv6/UDP pseudoheaders. The VXLAN packet view
+its bits for its value, width, bit offsets and explanation.
+Hover or keyboard-focus any field fragment to highlight that entire field across
+rows, including all four rows of an IPv6 address. Click selection stays visible.
+Packet lengths and checksums are computed, including ICMPv6/UDP pseudoheaders. The VXLAN packet view
 shows the source VTEP's egress with outer IPv4; synthetic MACs and sample header
 values are identified. BGP session inspection also has a sample TCP/KEEPALIVE map.
 Wire references: [IPv4](https://www.rfc-editor.org/rfc/rfc791),

@@ -248,7 +248,7 @@ body.dc-page { background: #0b1018; }
 .dc-bit-grid { display:grid; grid-template-columns:repeat(32,minmax(0,1fr)); gap:2px 0; }
 .dc-bit-field { min-width:0; padding:3px 0; border:1px solid #b8cad9; border-radius:3px; background:#edf3f8; color:#30465d; cursor:pointer; overflow:hidden; }
 .dc-bit-field:nth-child(even) { background:#e1eaf3; }
-.dc-bit-field:hover, .dc-bit-field.active { background:#e7def8; border-color:#9477c0; }
+.dc-bit-field:hover, .dc-bit-field.hovered, .dc-bit-field.field-focus, .dc-bit-field.active { background:#e7def8; border-color:#9477c0; }
 .dc-bit-field:focus-visible { outline:2px solid #7859b7; z-index:1; }
 .dc-bit-label { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:8px; line-height:13px; }
 .dc-bit-values { display:flex; justify-content:space-around; font:9px/1.6 ui-monospace,monospace; }

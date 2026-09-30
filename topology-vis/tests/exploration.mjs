@@ -216,6 +216,26 @@ try {
  await choose('packet','border-1','leaf-b1-1','ipv6');
  assert.match(await page.locator('#dc-details').textContent(),/ICMPv6/);
  assert.equal(await page.locator('#dc-details').getByText('Enkapsulacja:',{exact:false}).count(),0);
+ // A wrapped field is one selectable value, including all four IPv6 rows.
+ for(const [layer,field,parts] of [['IP','Source Address',4],['IP','Destination Address',4],['Ethernet','Destination MAC',2],['ICMPv6 Echo Request','Payload',null]]) {
+   const fragments=page.locator(`.dc-bit-field[data-layer="${layer}"][data-field="${field}"]`);
+   const count=await fragments.count();if(parts)assert.equal(count,parts);else assert(count>1);
+   await fragments.last().hover();
+   assert.equal(await page.locator('.dc-bit-field.hovered').count(),count,'Hover must highlight every fragment and only that field');
+   assert.equal(await fragments.evaluateAll(cells=>new Set(cells.map(cell=>getComputedStyle(cell).backgroundColor)).size),1);
+   await page.locator('#dc-inspector-grip').hover();
+   assert.equal(await page.locator('.dc-bit-field.hovered').count(),0);
+   await fragments.first().focus();
+   assert.equal(await page.locator('.dc-bit-field.field-focus').count(),count,'Keyboard focus must highlight the complete field');
+   await page.locator('#dc-inspector-grip').focus();
+   assert.equal(await page.locator('.dc-bit-field.field-focus').count(),0);
+ }
+ const sourceField=page.locator('.dc-bit-field[data-layer="IP"][data-field="Source Address"]');
+ await sourceField.first().click();
+ await page.locator('.dc-bit-field[data-layer="IP"][data-field="Destination Address"]').first().hover();
+ assert.equal(await sourceField.evaluateAll(cells=>cells.every(cell=>cell.classList.contains('active'))),true);
+ assert.match(await page.locator('.dc-bit-info').textContent(),/Source Address · 128 bitów/);
+ await page.screenshot({path:`${output}/ipv6-wrapped-field-hover.png`,animations:'disabled'});
  await page.keyboard.press('Escape');
 
  // Rapid changes must not let an old result replace the current packet.

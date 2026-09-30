@@ -127,11 +127,18 @@ function appendWireLayers(container,layers,note) {
     const ruler=document.createElement("div");ruler.className="dc-bit-ruler";ruler.textContent="0        8        16       24      31";
     const grid=document.createElement("div");grid.className="dc-bit-grid";details.append(summary,ruler,grid);section.append(details);
     for(const [index,f] of l.fields.entries()) {
+      const fragments=[];
+      const highlight=(kind,enabled)=>{for(const fragment of fragments)fragment.classList.toggle(kind,enabled);};
       let consumed=0;
       while(consumed<f.width) {
         const offset=f.offset+consumed,length=Math.min(32-offset%32,f.width-consumed);
         const button=document.createElement("button");button.type="button";button.className="dc-bit-field";
         button.dataset.field=f.label;button.dataset.layer=l.name;button.dataset.fieldIndex=index;
+        fragments.push(button);
+        button.onpointerenter=()=>highlight("hovered",true);
+        button.onpointerleave=()=>highlight("hovered",false);
+        button.onfocus=()=>highlight("field-focus",true);
+        button.onblur=()=>highlight("field-focus",false);
         button.style.gridColumn=`${offset%32+1} / span ${length}`;button.style.gridRow=String(Math.floor(offset/32)+1);
         button.setAttribute("aria-label",`${l.name}: ${f.label}, ${f.width} bitów, wartość ${f.value}`);
         const label=document.createElement("span");label.className="dc-bit-label";label.textContent=f.label;button.append(label);
