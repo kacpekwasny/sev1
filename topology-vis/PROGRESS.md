@@ -372,3 +372,16 @@ every hosted VM in all four projection modes, pointer departure, focus changes,
 collapsed-list cleanup and Escape dismissal. Desktop/narrow screenshots reviewed.
 Go tests and embedded production build pass.
 Commit: the commit containing this checkpoint.
+
+## D24 — kernel review complete; border defaults next
+
+RIB next hops remain unchanged; kernel FIB entries resolve remote customer routes
+through EVPN to an IPv4 VTEP and L3-SVI/VXLAN, with neighbor/FDB context. Local
+unnumbered TAP host routes are static, local loopbacks use table local, and physical
+loopbacks/IPv6-only RS service addresses use underlay ECMP. GUI includes these
+kernel classes; Linux uses the same snapshot and preserves route inspection.
+Tests cover network-prefix recursion, unresolved-route exclusion and VM/underlay
+separation. Chrome checks GUI/Linux, hover/click/back and fabric FIBs at desktop
+and narrow widths. Go tests/build/vet pass. Commit: this checkpoint.
+
+Next: add and verify border-advertised defaults in a separate commit.

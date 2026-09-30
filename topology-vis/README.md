@@ -30,6 +30,14 @@ BGP RIBs; private forwarding remains scoped to its VPC. Default-VRF unicast rout
 resolve VM next hops through the imported VM EVPN route and its IPv4 VTEP; they
 are not converted into EVPN at Ctrl. GUI/Linux forwarding and route details show
 that recursive resolution. Default-VRF border egress uses table main without VXLAN.
+Kernel views show the resolved dataplane: local VM /32 and /128 static routes
+use unnumbered TAPs; remote VM and recursive customer routes use an illustrative
+L3-SVI (`br<VNI>`) backed by `vxlan<VNI>`, with neighbor/router-MAC/FDB context.
+IPv6 overlay neighbors use IPv4-mapped addresses; the outer VTEP stays IPv4.
+Device loopbacks and IPv6-only RS service advertisements use physical underlay
+ECMP; local loopbacks belong to table local. VM inspection projects its host's
+VRF, not a guest kernel configuration. Reference: [FRR EVPN](https://docs.frrouting.org/en/stable-10.5/evpn.html),
+[Linux VXLAN](https://kernel.org/doc/html/latest/networking/vxlan.html).
 The examples include EVPN Type 5, VPC isolation, VXLAN context,
 underlay ECMP, customer IPv4/IPv6 peering, and data/control packet paths.
 

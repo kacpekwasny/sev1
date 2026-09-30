@@ -86,6 +86,11 @@ type RouteAdvertisement struct {
 }
 
 type ForwardingEntry struct {
+	KernelDevice     string   `json:"kernel_device,omitempty"`
+	KernelTable      string   `json:"kernel_table,omitempty"`
+	KernelNextHop    string   `json:"kernel_next_hop,omitempty"`
+	TunnelDevice     string   `json:"tunnel_device,omitempty"`
+	RouterMAC        string   `json:"router_mac,omitempty"`
 	VRF              string   `json:"vrf,omitempty"`
 	ResolvedRouteID  string   `json:"resolved_route_id,omitempty"`
 	ResolvedNextHop  string   `json:"resolved_next_hop,omitempty"`
@@ -202,7 +207,8 @@ func BuildExpectedRouteState(model Model) RouteState {
 			continue
 		}
 		host := nodes[vm.HostID]
-		for _, item := range []struct{ family, address string }{{"ipv4", vm.IPv4}, {"ipv6", vm.IPv6}} {
+		// Infrastructure service addresses are exported by the host in IPv6 underlay.
+		for _, item := range []struct{ family, address string }{{"ipv6", vm.IPv6}} {
 			bits := 128
 			if item.family == "ipv4" {
 				bits = 32
@@ -706,6 +712,15 @@ func modelVMByID(vms []VM, id string) (VM, bool) {
 
 func buildForwarding(model Model, selected map[string][]RouteCandidate, origins []Route) []ForwardingEntry {
 	var result []ForwardingEntry
+	for _, node := range model.Nodes {
+		for _, candidate := range selected[node.ID] {
+			if candidate.OriginKind == "underlay" {
+				entry := forwardingEntry(node.ID, string(node.Kind), node.ID, candidate)
+				entry.VRF, entry.EncapsulateVXLAN = "default", false
+				result = append(result, entry)
+			}
+		}
+	}
 	hostVPCs := make(map[string]map[uint32]bool)
 	for _, vm := range model.VMs {
 		if vm.Role == VMCustomer {
@@ -728,7 +743,7 @@ func buildForwarding(model Model, selected map[string][]RouteCandidate, origins 
 			if overlay.VPCID == 0 {
 				entry.VRF = "default"
 				for _, unicast := range selected[node.ID] {
-					if unicast.OriginKind != "customer" || unicast.VPCID != 0 || unicast.IPFamily != overlay.IPFamily {
+					if unicast.OriginKind != "customer" || unicast.VPCID != 0 || unicast.IPFamily != overlay.IPFamily || unicast.Prefix != overlay.Prefix {
 						continue
 					}
 					address, err := netip.ParseAddr(unicast.NextHop)
@@ -742,9 +757,49 @@ func buildForwarding(model Model, selected map[string][]RouteCandidate, origins 
 					entry.VRF, entry.Protocol = "default", "bgp"
 					entry.ResolvedRouteID, entry.ResolvedNextHop = overlay.ID, overlay.NextHop
 					entry.VNI, entry.RouteTarget = overlay.VNI, overlay.RouteTarget
+					entry.NextHopNodeID, entry.EncapsulateVXLAN = overlay.NextHopNodeID, overlay.NextHopNodeID != node.ID
+					entry.UnderlayCost, entry.ECMPNextHops = overlay.UnderlayCost, append([]string(nil), overlay.UnderlayNextHops...)
 					break
 				}
 			}
+			hostEntries[node.ID] = append(hostEntries[node.ID], entry)
+			result = append(result, entry)
+		}
+		// Resolve other customer prefixes by longest-prefix match of the original
+		// VM next hop against imported EVPN, not by the advertised prefix itself.
+		for _, unicast := range selected[node.ID] {
+			if unicast.OriginKind != "customer" || unicast.VPCID != 0 {
+				continue
+			}
+			already := false
+			for _, entry := range hostEntries[node.ID] {
+				already = already || entry.RouteID == unicast.ID
+			}
+			if already {
+				continue
+			}
+			address, err := netip.ParseAddr(unicast.NextHop)
+			if err != nil {
+				continue
+			}
+			var best *RouteCandidate
+			bestBits := -1
+			for i := range selected[node.ID] {
+				overlay := &selected[node.ID][i]
+				prefix, err := netip.ParsePrefix(overlay.Prefix)
+				if err == nil && overlay.AFI == "l2vpn" && overlay.RouteType == 5 && overlay.VPCID == 0 && prefix.Contains(address) && prefix.Bits() > bestBits {
+					best, bestBits = overlay, prefix.Bits()
+				}
+			}
+			if best == nil {
+				continue // An unresolved recursive next hop never enters the FIB.
+			}
+			entry := forwardingEntry(node.ID, "host", node.ID, unicast)
+			entry.VRF = "default"
+			entry.ResolvedRouteID, entry.ResolvedNextHop = best.ID, best.NextHop
+			entry.NextHopNodeID, entry.VNI, entry.RouteTarget = best.NextHopNodeID, best.VNI, best.RouteTarget
+			entry.EncapsulateVXLAN = best.NextHopNodeID != node.ID
+			entry.UnderlayCost, entry.ECMPNextHops = best.UnderlayCost, append([]string(nil), best.UnderlayNextHops...)
 			hostEntries[node.ID] = append(hostEntries[node.ID], entry)
 			result = append(result, entry)
 		}
@@ -775,6 +830,9 @@ func buildForwarding(model Model, selected map[string][]RouteCandidate, origins 
 			continue
 		}
 		add := func(owner, kind, host string) {
+			if owner == route.NextHopNodeID && route.VPCID == 0 && route.Prefix == netip.PrefixFrom(netip.MustParseAddr(route.NextHop), netip.MustParseAddr(route.NextHop).BitLen()).String() {
+				return // The border's own loopback already has a local kernel route.
+			}
 			resolved := underlay.resolve(host, route.NextHopNodeID, nodes, vms)
 			if !resolved.Reachable {
 				return
@@ -811,6 +869,80 @@ func buildForwarding(model Model, selected map[string][]RouteCandidate, origins 
 			}
 		}
 	}
+	byRoute := map[string]Route{}
+	for _, route := range origins {
+		byRoute[route.ID] = route
+	}
+	for i := range result {
+		entry := &result[i]
+		origin := byRoute[entry.RouteID]
+		entry.KernelTable = "main"
+		if entry.VPCID != 0 {
+			entry.KernelTable = fmt.Sprint(entry.VNI)
+		}
+		if entry.OwnerType == "vpc-view" {
+			// This is the host VRF seen from a guest, not the guest's kernel FIB.
+			continue
+		}
+		if entry.EncapsulateVXLAN {
+			entry.KernelDevice = fmt.Sprintf("br%d", entry.VNI)
+			entry.TunnelDevice = fmt.Sprintf("vxlan%d", entry.VNI)
+			vtep := entry.NextHop
+			if entry.ResolvedNextHop != "" {
+				vtep = entry.ResolvedNextHop
+			}
+			entry.KernelNextHop = vtep
+			if netip.MustParsePrefix(entry.Prefix).Addr().Is6() {
+				// FRR's IPv6 overlay uses an IPv4-mapped neighbor on the L3-SVI;
+				// the VXLAN outer destination remains the IPv4 VTEP.
+				entry.KernelNextHop = "::ffff:" + vtep
+			}
+			nve := nveID(nodes[entry.NextHopNodeID])
+			entry.RouterMAC = fmt.Sprintf("02:00:00:00:%02x:%02x", nve>>8, nve&255)
+		} else if entry.SourceNVE == entry.NextHopNodeID {
+			entry.KernelDevice = "lo"
+			localVM := origin.SourceVMID
+			if entry.ResolvedRouteID != "" {
+				localVM = byRoute[entry.ResolvedRouteID].SourceVMID
+			}
+			for _, link := range model.LocalLinks {
+				if link.HostID == entry.OwnerID && link.VMID == localVM {
+					for _, iface := range model.LocalInterfaces {
+						if iface.ID == link.TapInterfaceID {
+							entry.KernelDevice = iface.Name
+						}
+					}
+				}
+			}
+			if entry.ResolvedRouteID != "" && entry.Prefix != byRoute[entry.ResolvedRouteID].Prefix {
+				entry.KernelNextHop = entry.NextHop
+			} else if entry.KernelDevice != "lo" {
+				entry.Protocol = "static" // Unnumbered TAPs need explicit /32 and /128 host routes.
+			} else if origin.OriginKind == "underlay" {
+				entry.Protocol = "kernel"
+			}
+			if entry.KernelDevice == "lo" && origin.OriginKind == "underlay" {
+				entry.KernelTable = "local"
+			}
+		}
+	}
+	// Guest inspectors expose the host's VRF projection, including the resolved
+	// host dataplane even when that host's inspector has not been fetched yet.
+	hostFIB := map[string]ForwardingEntry{}
+	for _, entry := range result {
+		if entry.OwnerType != "vpc-view" {
+			hostFIB[entry.OwnerID+"/"+entry.RouteID] = entry
+		}
+	}
+	for i := range result {
+		entry := &result[i]
+		if entry.OwnerType == "vpc-view" {
+			if host, ok := hostFIB[entry.SourceNVE+"/"+entry.RouteID]; ok {
+				entry.KernelDevice, entry.KernelTable, entry.KernelNextHop = host.KernelDevice, host.KernelTable, host.KernelNextHop
+				entry.TunnelDevice, entry.RouterMAC, entry.Protocol = host.TunnelDevice, host.RouterMAC, host.Protocol
+			}
+		}
+	}
 	sort.Slice(result, func(i, j int) bool {
 		if result[i].OwnerID == result[j].OwnerID {
 			if result[i].VPCID == result[j].VPCID {
@@ -824,13 +956,17 @@ func buildForwarding(model Model, selected map[string][]RouteCandidate, origins 
 }
 
 func forwardingEntry(ownerID, ownerType, sourceNVE string, candidate RouteCandidate) ForwardingEntry {
+	protocol := candidate.Protocol
+	if protocol == "" {
+		protocol = "bgp"
+	}
 	return ForwardingEntry{
-		Protocol: candidate.Protocol,
+		Protocol: protocol,
 		OwnerID:  ownerID, OwnerType: ownerType, SourceNVE: sourceNVE,
 		VPCID: candidate.VPCID, Prefix: candidate.Prefix, RouteID: candidate.ID, RouteType: candidate.RouteType,
 		RD: candidate.RD, RouteTarget: candidate.RouteTarget, OriginID: candidate.OriginID,
 		NextHop: candidate.NextHop, NextHopNodeID: candidate.NextHopNodeID,
-		VNI: candidate.VNI, EncapsulateVXLAN: candidate.NextHopNodeID != sourceNVE,
+		VNI: candidate.VNI, EncapsulateVXLAN: candidate.VNI != 0 && candidate.NextHopNodeID != sourceNVE,
 		UnderlayCost: candidate.UnderlayCost, ECMPNextHops: append([]string(nil), candidate.UnderlayNextHops...),
 	}
 }

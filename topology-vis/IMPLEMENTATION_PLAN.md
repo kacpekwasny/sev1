@@ -1,6 +1,6 @@
 # DC topology visualizer: implementation plan for GPT-Luna
 
-Status on 2026-09-30: **R00–R18 are implemented.** The user committed the baseline as `9c50463`; rework commits and verification are recorded in [PROGRESS.md](PROGRESS.md). The milestones and older steps below remain the implementation/acceptance contract, not a request to repeat completed work. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
+Status on 2026-09-30: **R00–R19 are implemented; R20 is next.** The user committed the baseline as `9c50463`; rework commits and verification are recorded in [PROGRESS.md](PROGRESS.md). The milestones and older steps below remain the implementation/acceptance contract, not a request to repeat completed work. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
 
 ## Current rework contract and execution order
 
@@ -33,6 +33,8 @@ These milestones define the revised scope; consult progress before executing an 
 | R17 — Correct customer and packet paths | Apply D22: import-only customer sessions, all-host RS Bolt fanout, unchanged unicast in the default VRF recursively resolved via VM EVPN, public VNI 3 defaults, and continuous packet traversal through nodes. | Three commits. Verify every Bolt/host/family export, recursive default-VRF forwarding, explicit private VPC isolation, and real packet frames across link-contact boundaries at both widths. |
 | R18 — Preview hosted VMs | Apply D23: highlight topology VMs when hovering over the host inspector's VM entries; support keyboard focus and grouped RS projections. | Verify hosted/abstract and grouped/expanded modes at both widths, unchanged selection/playback, and preview cleanup. |
 
+| R19 — Review kernel routes | Apply D24: IPv6-only RS service underlay, local TAP/static and loopback/local-table routes, resolved EVPN/VXLAN recursive forwarding, shared GUI/Linux FIB and tunnel neighbor/FDB context. | Check underlay/customer separation, recursive network prefixes and unresolved exclusion; inspect GUI/Linux and route paths at both widths. |
+| R20 — Border default advertisements | Apply D24: public IPv4/IPv6 defaults originated by borders, propagated through fabric and RS hierarchy, installed via resolved underlay. Keep private isolation and customer import-only policy. | Separate commit; verify origin/export/AS_PATH, RIB selection, kernel defaults, longest-prefix forwarding and default flow examples. |
 
 The 48-layout-unit drag bound, ephemeral offsets, popup behavior, and illustrative-flow defaults are specified in the guide and D11. These are authorized defaults that may be refined during usability checks. The latest user explicitly resumed implementation; the earlier instructions-only limit no longer applies.
 

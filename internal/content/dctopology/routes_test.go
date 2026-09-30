@@ -29,8 +29,8 @@ func TestDefaultRouteStateAndForwarding(t *testing.T) {
 			tenantOrigins++
 		}
 	}
-	if underlayOrigins != 88 || tenantOrigins != 12 {
-		t.Fatalf("BGP route origins: underlay=%d tenant=%d; want 88 and 12", underlayOrigins, tenantOrigins)
+	if underlayOrigins != 72 || tenantOrigins != 12 {
+		t.Fatalf("BGP route origins: underlay=%d tenant=%d; want 72 and 12", underlayOrigins, tenantOrigins)
 	}
 	routes := map[string]Route{}
 	for _, route := range state.Origins {
@@ -280,7 +280,7 @@ func TestRouteContextsKeepOverlappingPrefixesIsolated(t *testing.T) {
 	}
 	for _, host := range []string{"host-b1-h1", "host-b2-h1"} {
 		for _, entry := range model.Routes.Forwarding {
-			if entry.OwnerID == host && entry.VPCID == 0 && entry.Protocol != "static" {
+			if entry.OwnerID == host && entry.VPCID == 0 && entry.Protocol != "static" && !strings.HasPrefix(entry.RouteID, "underlay") {
 				t.Errorf("host forwarding entry lost VPC context: %+v", entry)
 			}
 		}
@@ -719,5 +719,103 @@ func TestPublicDefaultsFanoutAndRecursiveForwarding(t *testing.T) {
 		if flow.ID == "do-uplinku" && flow.VXLAN {
 			t.Fatal("default VRF border egress must stay in main underlay")
 		}
+	}
+}
+
+func TestKernelForwardingSeparatesUnderlayAndVXLAN(t *testing.T) {
+	data, err := os.ReadFile("../../../content/dc-topology/default.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	config, err := ParseYAML(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	model, err := BuildTopology(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	origins := map[string]Route{}
+	for _, route := range model.Routes.Origins {
+		origins[route.ID] = route
+		if route.OriginKind == "underlay" && route.SourceVMID != "" {
+			vm, _ := modelVMByID(model.VMs, route.SourceVMID)
+			if route.IPFamily != "ipv6" || vm.Role == VMCustomer {
+				t.Fatalf("invalid underlay VM export: %+v", route)
+			}
+		}
+	}
+	local, remote, service, physical := 0, 0, 0, 0
+	for _, entry := range model.Routes.Forwarding {
+		if entry.OwnerID != "host-b1-h1" {
+			continue
+		}
+		origin := origins[entry.RouteID]
+		if origin.OriginKind == "customer" || origin.OriginKind == "host" {
+			if entry.EncapsulateVXLAN {
+				remote++
+				if entry.KernelDevice != "br3" || entry.TunnelDevice != "vxlan3" || entry.RouterMAC == "" || entry.KernelTable != "main" {
+					t.Fatalf("unresolved kernel tunnel: %+v", entry)
+				}
+				expected := entry.ResolvedNextHop
+				if origin.IPFamily == "ipv6" {
+					expected = "::ffff:" + expected
+				}
+				if entry.KernelNextHop != expected {
+					t.Fatalf("kernel uses original recursive VM next hop: %+v", entry)
+				}
+			} else {
+				local++
+				if !strings.HasPrefix(entry.KernelDevice, "tap-c") || entry.KernelNextHop != "" || entry.Protocol != "static" {
+					t.Fatalf("local VM must use its TAP: %+v", entry)
+				}
+			}
+		} else if origin.OriginKind == "underlay" {
+			if entry.EncapsulateVXLAN || entry.VNI != 0 {
+				t.Fatalf("underlay uses VXLAN: %+v", entry)
+			}
+			if origin.SourceVMID != "" {
+				service++
+			}
+			if len(entry.ECMPNextHops) > 0 {
+				physical++
+			}
+			if entry.KernelDevice == "lo" && entry.KernelTable != "local" {
+				t.Fatalf("loopback missing local table: %+v", entry)
+			}
+		}
+	}
+	if local != 4 || remote != 2 || service != 16 || physical == 0 {
+		t.Fatalf("kernel route classes: local=%d remote=%d RS=%d physical=%d", local, remote, service, physical)
+	}
+	// A wider customer prefix resolves by the VM next hop, retaining its original NLRI.
+	selected := map[string][]RouteCandidate{}
+	for _, table := range model.Routes.Tables {
+		selected[table.SpeakerID] = append([]RouteCandidate(nil), table.Selected...)
+	}
+	route := origins["customer/customer-3/ipv4/10.64.0.3"]
+	route.ID, route.Prefix, route.NextHopNodeID = "customer/test-network", "203.0.113.0/24", "host-b1-h2"
+	selected["host-b1-h1"] = append(selected["host-b1-h1"], RouteCandidate{Route: route})
+	unreachable := route
+	unreachable.ID, unreachable.NextHop = "customer/unresolved", "192.0.2.199"
+	selected["host-b1-h1"] = append(selected["host-b1-h1"], RouteCandidate{Route: unreachable})
+	originsList := append(append([]Route(nil), model.Routes.Origins...), route, unreachable)
+	found := false
+	for _, entry := range buildForwarding(model, selected, originsList) {
+		if entry.OwnerID != "host-b1-h1" {
+			continue
+		}
+		if entry.RouteID == unreachable.ID {
+			t.Fatal("unresolved recursion was installed")
+		}
+		if entry.RouteID == route.ID {
+			found = true
+			if entry.Prefix != route.Prefix || entry.NextHop != route.NextHop || entry.NextHopNodeID != "host-b2-h1" || !entry.EncapsulateVXLAN || entry.KernelDevice != "br3" {
+				t.Fatalf("recursive route lost its resolution: %+v", entry)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("customer network prefix missing from kernel FIB")
 	}
 }

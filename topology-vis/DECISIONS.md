@@ -405,6 +405,23 @@ visible cluster; hosted and abstract placement use the current projection.
 The preview preserves inspector selection and playback, clearing on departure,
 inspector dismissal or replacement.
 
+### D24 — Kernel forwarding review and border defaults
+
+Customer addresses have EVPN/VXLAN reachability, not direct underlay exports.
+Customer unicast next hops remain in BGP; their kernel routes resolve through
+the matching VM EVPN route. Local unnumbered TAP delivery uses explicit static
+host routes. Infrastructure RS services are advertised in underlay as IPv6 only;
+physical device loopbacks retain both families. GUI and Linux FIB views show the
+resolved dataplane, including underlay ECMP and an illustrative traditional
+L3-SVI/VXLAN neighbor/router-MAC/FDB mapping. IPv4-mapped IPv6 overlay neighbors
+do not change the IPv4 outer VTEP. VM inspectors remain host-VRF projections.
+
+Next, borders should originate default routes. This supersedes the blanket
+no-border-export rule for defaults; configured static egress examples remain
+static. Use IPv4/IPv6 public defaults from each border, preserving private VRF
+isolation and RS User's import-only customer sessions. Commit the review first,
+then the default-route feature.
+
 ## Recording an answer
 
 Record the latest user direction and affected milestones. If it changes previously implemented work, reopen the affected acceptance checks; do not claim the old checks verify new behavior. Distinguish direct user requirements from authorized implementation defaults. Preserve the original TODO while keeping this decision record and the active plan authoritative for later changes.

@@ -49,6 +49,11 @@ export function appendRIB(container, model, speakerID, mode, appendRows) {
     family.dataset.family = afi;
     family.classList.add("dc-rib-family");
     family.querySelector("summary").prepend(Object.assign(document.createElement("span"), {className:"dc-family-badge", textContent:"AFI / SAFI "}));
+    if(afi!=="l2vpn") {
+      const note=document.createElement('p');
+      note.textContent='RIB pokazuje next hop BGP. Loopbacki urządzeń i IPv6 usług RS używają underlay; next hop klienta jest rekursywny przez EVPN/VXLAN, nie bezpośrednią trasą do VM.';
+      family.append(note);
+    }
     if (mode === "linux") {
       const bestIDs = new Set(best.map((route) => route.id));
       const rows = [...best, ...incoming.filter((route) => !bestIDs.has(route.id))];
@@ -74,52 +79,70 @@ export function appendRIB(container, model, speakerID, mode, appendRows) {
   }
 }
 
+// Render the resolved kernel nexthop, keeping BGP recursion in explanatory comments.
+export function kernelRouteLine(model, route) {
+  const table=route.kernel_table||'main', protocol=route.protocol||'bgp';
+  const prefix=route.kernel_device==='lo'&&table==='local'?`local ${route.prefix}`:route.prefix;
+  let line;
+  if(route.kernel_device) {
+    line=`${prefix}${route.kernel_next_hop?` via ${route.kernel_next_hop}`:''} dev ${route.kernel_device} proto ${protocol}${route.encapsulate_vxlan?' onlink':route.kernel_device==='lo'?' scope host':' scope link'}\n`;
+  } else {
+    line=`${prefix} proto ${protocol}\n`;
+    for(const hop of route.ecmp_next_hops??[]) {
+      const iface=model.interfaces.find(item=>item.node_id===(route.owner_type==='vpc-view'?route.source_nve:route.owner_id)&&item.peer_node_id===hop);
+      const peer=model.interfaces.find(item=>item.link_id===iface?.link_id&&item.node_id===hop);
+      if(iface&&peer)line+=`    nexthop via ${route.prefix.includes(':')?'':'inet6 '}${peer.link_local_ipv6||peer.ipv6_address} dev ${iface.name} weight 1\n`;
+    }
+  }
+  if(route.resolved_route_id)line+=`    # RIB: via ${route.next_hop}; rekursja EVPN ${route.resolved_route_id} → VTEP ${route.resolved_next_hop}\n`;
+  if(route.encapsulate_vxlan)line+=`    # ${route.kernel_device} → ${route.tunnel_device}, VXLAN VNI ${route.vni}, zewnętrzny VTEP IPv4 ${route.resolved_next_hop||route.next_hop}\n`;
+  return line;
+}
+
 export function appendFIB(container, model, ownerID, title, mode, appendRows) {
-  const entries = (model.route_state?.forwarding ?? []).filter((item) => item.owner_id === ownerID&&(item.vpc_id||item.vni||item.vrf==="default"));
-  const parent = section(container, `${title} · ${entries.length} wpisów`);
-  if (mode !== "linux") { appendRows(parent, entries, true, ownerID); return; }
-  const table = model.route_state?.tables?.find((item) => item.speaker_id === ownerID);
-  const localDevice = (route) => {
-    const origin = model.route_state?.origins?.find((item) => item.id === (route.route_id ?? route.id));
-    const link = model.local_links?.find((item) => item.vm_id === origin?.source_vm_id && item.host_id === ownerID);
-    return model.local_interfaces?.find((item) => item.id === link?.tap_interface_id)?.name ?? "lo";
-  };
-  const pre = document.createElement("pre"); pre.className = "dc-terminal"; parent.append(pre);
-  let output = "# Oczekiwana tablica jądra w stylu iproute2; urządzenia VXLAN są ilustracją L3VNI.\n";
-  for (const family of ["ipv4", "ipv6"]) {
-    output += `\n$ ip -${family === "ipv4" ? "4" : "6"} route show table main\n`;
-    for (const route of table?.selected ?? []) {
-      if (route.afi !== family || route.origin_kind !== "underlay") continue;
-      pre.append(output); output = "";
-      if (route.next_hop_node_id === ownerID) output += `${route.prefix} dev ${localDevice(route)} proto bgp\n`;
-      else {
-        output += `${route.prefix} proto bgp\n`;
-        for (const hop of route.underlay_next_hops ?? []) {
-          const iface = model.interfaces.find((item) => item.node_id === ownerID && item.peer_node_id === hop);
-          const peer = model.interfaces.find((item) => item.link_id === iface?.link_id && item.node_id === hop);
-          if (iface && peer) output += `    nexthop via ${family === "ipv4" ? "inet6 " : ""}${peer.link_local_ipv6 || peer.ipv6_address} dev ${iface.name} weight 1\n`;
-        }
-      }
-      routeLine(pre, route, ownerID, output); output = "";
-    }
+  const entries=(model.route_state?.forwarding??[]).filter(item=>item.owner_id===ownerID);
+  const parent=section(container,`${title} · ${entries.length} wpisów`);
+  parent.classList.add('dc-fib');
+  const guestView=entries.some(route=>route.owner_type==='vpc-view');
+  if(guestView) {
+    const note=document.createElement('p');
+    note.textContent='Widok NVE hosta dla VRF tej VM. Enkapsulacja i rekursja działają na hoście, nie w jądrze gościa.';
+    parent.append(note);
   }
-  for (const vpcID of [...new Set(entries.map((route) => route.vpc_id))]) {
-    for (const bits of [4, 6]) {
-      output += `\n$ ip -${bits} route show ${vpcID?`vrf vpc${vpcID}`:"table main"}\n`;
-      const routes = entries.filter((route) => route.vpc_id === vpcID && route.prefix.includes(":") === (bits === 6));
-      for (const route of routes) {
-        pre.append(output); output = "";
-        const device = ownerID.startsWith("customer-") ? "eth0" : route.encapsulate_vxlan ? `vxlan${route.vni}` : localDevice(route);
-        output += route.resolved_route_id
-          ? `${route.prefix} via ${route.next_hop} proto bgp table main\n    # rekursja EVPN: ${route.resolved_route_id} → VTEP ${route.resolved_next_hop}, VNI ${route.vni}\n`
-          : `${route.prefix} dev ${device} proto ${route.protocol||"bgp"} table ${vpcID?route.vni:"main"}\n`;
-        if (route.encapsulate_vxlan&&!route.resolved_route_id) output += `    # VTEP ${route.next_hop}, VNI ${route.vni}, RT ${route.route_target}\n`;
-        routeLine(pre, route, ownerID, output); output = "";
-      }
-      if (!routes.length) output += "# Brak wpisów.\n";
-    }
+  const groups=new Map();
+  for(const route of entries) {
+    const origin=model.route_state?.origins?.find(item=>item.id===route.route_id);
+    const key=route.kernel_table==='local'?'local':route.vpc_id?`vpc${route.vpc_id}`:origin?.origin_kind==='underlay'?'underlay':'public';
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(route);
   }
-  pre.append(output);
+  if(mode!=='linux') {
+    for(const [key,routes] of groups) {
+      const label=key==='local'?'Adresy lokalne · table local':key==='underlay'?'Underlay · loopbacki i IPv6 usług RS · table main':key==='public'?'Default/public VRF · table main':`Prywatny VRF ${key}`;
+      const group=section(parent,`${label} · ${routes.length}`,true);
+      group.dataset.fibGroup=key;
+      appendRows(group,routes,true,ownerID);
+    }
+    return;
+  }
+  const pre=document.createElement('pre');pre.className='dc-terminal';parent.append(pre);
+  pre.textContent='# Oczekiwana tablica jądra w stylu iproute2; nazwy L3-SVI/VXLAN i router MAC są ilustracyjne.\n';
+  // A guest inspector projects its host's VRF, so use that host's real FIB rows.
+  const kernelEntries=guestView?entries.map(route=>model.route_state.forwarding.find(host=>host.owner_id===route.source_nve&&host.route_id===route.route_id&&host.vpc_id===route.vpc_id)||route):entries;
+  const tables=[...new Set(kernelEntries.map(route=>route.kernel_table||'main'))];
+  for(const table of tables)for(const bits of [4,6]) {
+    pre.append(`\n$ ip -${bits} route show table ${table}\n`);
+    const routes=kernelEntries.filter(route=>(route.kernel_table||'main')===table&&route.prefix.includes(':')===(bits===6));
+    for(const route of routes)routeLine(pre,route,ownerID,kernelRouteLine(model,route));
+    if(!routes.length)pre.append('# Brak wpisów.\n');
+  }
+  const tunnels=new Map();
+  for(const route of kernelEntries)if(route.encapsulate_vxlan&&route.router_mac)tunnels.set(`${route.tunnel_device}/${route.kernel_next_hop}`,route);
+  if(tunnels.size) {
+    pre.append('\n# Rozwiązanie L3-SVI → router MAC → zdalny VTEP (oczekiwane neighbor/FDB)\n');
+    for(const route of tunnels.values())routeLine(pre,route,ownerID,
+      `$ ip ${route.prefix.includes(':')?'-6':'-4'} neigh show dev ${route.kernel_device}\n${route.kernel_next_hop} lladdr ${route.router_mac} extern_learn NOARP\n$ bridge fdb show dev ${route.tunnel_device}\n${route.router_mac} dst ${route.resolved_next_hop||route.next_hop} self extern_learn\n`);
+  }
 }
 
 export function appendBorderRoutes(container,model,ownerID,mode,appendRows) {

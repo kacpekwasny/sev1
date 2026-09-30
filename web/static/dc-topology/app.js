@@ -1414,12 +1414,10 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       }
       appendEndpointSessions(detailsEl, state.model, node.id);
       appendSpeakerTableOrLoading(detailsEl, node.id);
-      if (node.kind === "host") {
-        if (inspectorLoaded.has(`${modelRevision}/speaker/${node.id}`)) {
-          appendFIB(detailsEl, state.model, node.id, "Tablica forwarding hosta", root.querySelector("#dc-rib-view").value, appendRouteRows);
-        } else {
+      if (inspectorLoaded.has(`${modelRevision}/speaker/${node.id}`)) {
+        appendFIB(detailsEl, state.model, node.id, "Oczekiwana tablica jądra / FIB", root.querySelector("#dc-rib-view").value, appendRouteRows);
+      } else {
         appendInspectorLoading(detailsEl, "speaker", node.id);
-        }
       }
       return;
     }
@@ -1875,7 +1873,7 @@ function appendRouteRows(container, entries, simple = false, ownerID = "") {
     const nextHop = route.next_hop ? ` · NH ${route.next_hop}` : "";
     const nextHopInterface = route.next_hop_interface_id ? ` (${route.next_hop_interface_id})` : "";
     const family = route.route_type ? ` · EVPN Type ${route.route_type}` : (route.afi && route.safi ? ` · ${route.afi}/${route.safi}` : "");
-    const resolution = route.underlay_cost !== undefined ? ` · koszt ${route.underlay_cost}, ECMP ${route.underlay_next_hops?.length ?? 0}` : "";
+    const resolution = route.underlay_cost !== undefined ? ` · koszt ${route.underlay_cost}, ECMP ${(route.underlay_next_hops??route.ecmp_next_hops)?.length ?? 0}` : "";
     const rd = route.rd ? ` · RD ${route.rd}` : "";
     const rt = route.route_target ? ` · RT ${route.route_target}` : "";
     const vni = route.vni ? ` · VNI ${route.vni}` : "";
@@ -1890,6 +1888,9 @@ function appendRouteRows(container, entries, simple = false, ownerID = "") {
     const info = document.createElement("span"); info.textContent = `${rd}${rt}${vni}${origin}${peer}${direction}${nextHop}${nextHopInterface}${asPath}${policy}${resolution}${path}`.replace(/^ · /, "");
     if (simple) info.textContent = `${nextHop}${peer || (route.received_from === "" ? " · lokalna" : "")}${route.received_from === "" ? "" : asPath}${vni}`.replace(/^ · /, "");
     if(route.resolved_route_id)info.textContent+=` · rekursja EVPN → ${route.resolved_next_hop} · ${route.resolved_route_id}`;
+    if(route.kernel_device)info.textContent+=` · jądro: ${route.kernel_next_hop?`via ${route.kernel_next_hop} `:""}dev ${route.kernel_device} · ${route.protocol} · table ${route.kernel_table}`;
+    if(route.encapsulate_vxlan)info.textContent+=` · VXLAN przez ${route.tunnel_device||`vxlan${route.vni}`}`;
+    else if(route.ecmp_next_hops?.length)info.textContent+=` · underlay ECMP: ${route.ecmp_next_hops.join(", ")}`;
     row.append(label, info);
     container.append(row);
     if (route.from_id && route.to_id) {
