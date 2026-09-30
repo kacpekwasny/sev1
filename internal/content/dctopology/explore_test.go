@@ -22,10 +22,35 @@ func TestUpdateInspectionUsesDirectedExports(t *testing.T) {
 	}
 	expected := []string{"host-b1-h1", "rs-bolt-b1-m1", "rs-ctrl-m1", "rs-bolt-b2-m1", "host-b2-h1"}
 	hops := []string{flow.FromID}
-	for _, step := range flow.Steps {
+	for index, step := range flow.Steps {
 		hops = append(hops, step.ToID)
-		if step.NextHopNodeID != "host-b1-h1" || step.VNI != 10001 || len(step.ASPath) != 1 {
-			t.Fatal("RS changed advertised attributes")
+		if step.NextHopNodeID != "host-b1-h1" || step.VNI != 10001 || len(step.ASPath) != index+1 {
+			t.Fatal("RS lost next hop or did not prepend its ASN")
+		}
+	}
+	entityASN := map[string]uint32{}
+	for _, node := range model.Nodes {
+		entityASN[node.ID] = node.ASN
+	}
+	for _, vm := range model.VMs {
+		entityASN[vm.ID] = vm.ASN
+	}
+	for index, step := range flow.Steps {
+		for pathIndex, asn := range step.ASPath {
+			if asn != entityASN[expected[index-pathIndex]] {
+				t.Fatalf("wrong ASN order in UPDATE %d: %v", index, step.ASPath)
+			}
+		}
+	}
+	for _, table := range model.Routes.Tables {
+		for _, route := range table.Selected {
+			want := make([]uint32, 0, len(route.Path)-1)
+			for i := len(route.Path) - 2; i >= 0; i-- {
+				want = append(want, entityASN[route.Path[i]])
+			}
+			if !reflect.DeepEqual(route.ASPath, want) {
+				t.Fatalf("RIB path does not match its BGP hops: %+v", route)
+			}
 		}
 	}
 	if !reflect.DeepEqual(hops, expected) {

@@ -1,6 +1,6 @@
 # Decisions and implementation defaults
 
-Status on 2026-09-30: **D14 is the latest direction.** It refines RS placement, EVPN IPv4 next hops, packet fields and click selection, popup movement, and route provenance/navigation. D11–D13 continue to define the JavaScript workspace, static expected-state model, and optional illustrative flow. Earlier decisions apply only where they do not conflict with these updates.
+Status on 2026-09-30: **D15 is the latest direction.** It refines RS placement, EVPN IPv4 next hops, packet fields and click selection, popup movement, and route provenance/navigation. D11–D13 continue to define the JavaScript workspace, static expected-state model, and optional illustrative flow. Earlier decisions apply only where they do not conflict with these updates.
 
 The user approved defaults and authorized reasonable assumptions and autonomous work while unavailable. Git/parent-site writes are available, and desktop/narrow browser acceptance has run; see progress for actual checks.
 
@@ -32,7 +32,7 @@ Approved defaults, 2026-09-29, after the user replied **“Approve”**:
 - Treat each host as an NVE for the VMs placed on it. Originate Type-5 routes only for configured VM prefixes in their attached VPC; require explicit YAML route origins for other prefixes. Use the interface-less IP-VRF-to-IP-VRF model: no overlay index and no dependency on Type 2/3. The route's BGP next hop is the source host's synthetic VTEP address, resolved by underlay reachability (IPv4 VTEP/next hop per D14); the VPC VNI supplies the VXLAN context. RFC 9136 describes this no-overlay-index case for IP NVO tunnels and uses the Type-5 BGP next hop as the forwarding endpoint.
 - Give every VPC a positive 16-bit `vpc_id`. Use RT `target:64512:<vpc_id>`, VNI `10000 + vpc_id`, and an RD unique per `(vpc_id, NVE)`: `64512:(65536 * vpc_id + nve_id)`, where `nve_id` is a stable, globally unique 16-bit host/NVE ID. Validate the packed value and reject duplicate IDs, RDs, RTs, or VNIs. Import only routes whose RT matches the receiving VPC; export only within that VPC. No route leaking or default/shared VPC is enabled by default. Separate VPCs retain separate route keys even when their IP prefixes overlap. The proposed RT encoding uses the two-octet-AS-specific Route Target format; the RD distinguishes origins as well as VPCs.
 - Apply family and VPC import checks before selection. Discard routes with an unresolved next hop or an AS-path loop. For eligible alternatives, use a small deterministic profile: local preference 100 by default (internal policy metadata, not sent over eBGP), shorter AS_PATH, lower ORIGIN code, lower MED when neighboring ASNs match (missing MED treated as zero), lower underlay cost to the resolved next hop, then stable route-origin ID. Keep one BGP best path per destination; underlay ECMP remains a separate next-hop-resolution result and retains all equal-cost physical paths. Do not enable BGP multipath or ADD-PATH.
-- Treat the RS tiers as control-plane brokers only. A route server preserves the learned NEXT_HOP and AS_PATH, does not prepend its ASN, and never becomes a data-packet hop. Filter routes by recipient policy before selecting one best advertisement per recipient, so a route filtered for one client does not hide an eligible alternative from it. Suppress reflection to the ingress peer and reject detected loops. This follows RFC 7947's route-server attribute transparency for the expected snapshot. No temporal propagation simulation is required.
+- Treat the RS tiers as control-plane brokers only. A route server preserves the learned NEXT_HOP and never becomes a data-packet hop. **D15 overrides the former transparent AS_PATH default:** this deployment prepends each RS ASN. Filter routes by recipient policy before selecting one best advertisement per recipient, so a route filtered for one client does not hide an eligible alternative from it. Suppress reflection to the ingress peer and reject detected loops. RFC 7947 explains a different IXP transparency policy; this custom DC follows the user-defined prepending behavior. No temporal propagation simulation is required.
 
 The UI must identify tables as expected calculated state and route-flow graphics as illustrative; do not imply live or simulated protocol convergence.
 
@@ -275,6 +275,21 @@ Implemented defaults:
 
 Status: **implemented and verified** as R09. These defaults supersede conflicting
 placement and IPv6-VTEP wording in earlier decisions without adding simulation.
+
+### D15 — Multi-route streams, RS ASNs, and device-first inspection
+
+User direction: animate many routes; these RSs append their ASN; move traffic
+sending to a compact action beside the clicked device; expose routes each device
+originates; preview learned/packet paths on route hover. Commit after each point.
+
+Points 1–2 are implemented and separately verified: a bounded multi-prefix stream
+uses actual hierarchy sessions; every exporting eBGP speaker, including RSs,
+prepends its ASN. A locally originated RIB path is empty; received AS_PATH contains
+all sending hops, nearest first. EVPN NEXT_HOP remains the original IPv4 VTEP.
+This follows the eBGP AS_SEQUENCE ordering in
+[RFC 4271 §5.1.2](https://www.rfc-editor.org/rfc/rfc4271.html#section-5.1.2).
+Device actions, originated-route sections and hover previews follow as separate
+increments; consult PROGRESS for their completion and validation.
 
 ## Recording an answer
 

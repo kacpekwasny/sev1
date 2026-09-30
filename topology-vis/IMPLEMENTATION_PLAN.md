@@ -206,7 +206,7 @@ Unnumbered sessions use modeled link-local endpoints plus explicit interface IDs
 
 **Develop:** calculate a deterministic expected snapshot when loading/rebuilding valid YAML. Use topology, origins, VPC policy, next-hop resolution, and the documented route-selection profile to produce useful expected speaker tables, expected peer exports, and forwarding views. Reuse existing static calculations where correct; do not build a BGP state machine, update queue, convergence guard, timed learning sequence, or event trace for playback. Keep large details on demand and cache the initial result rather than recomputing on clicks or animation frames.
 
-Keep EVPN Type-5 identity and VPC import context distinct, retain underlay ECMP information, and preserve transparent RS next hops/AS paths. Label tables as expected state. Complete table filters and empty states in the inspector overlay; do not claim to display live router or guest OS tables.
+Keep EVPN Type-5 identity and VPC import context distinct, retain underlay ECMP information, and preserve RS next hops and include every RS ASN in AS_PATH (D15). Label tables as expected state. Complete table filters and empty states in the inspector overlay; do not claim to display live router or guest OS tables.
 
 **Verify/fix:** compare against small independent expected tables and exports, including origin, family, recipient, next hop, VPC, and selected/installed status where relevant. Test VPC isolation with overlapping prefixes, family filtering, unreachable next hops, redundant RS paths, and deterministic repeated load/rebuild. Verify a view toggle, drag, inspector selection, or decorative animation cannot alter the snapshot. Protocol convergence and repeated update-event tests are not acceptance requirements.
 

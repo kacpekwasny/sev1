@@ -367,12 +367,11 @@ func BuildExpectedRouteState(model Model) RouteState {
 			if !resolution.Reachable {
 				continue
 			}
-			asPath := []uint32{route.OriginASN}
-			if physicalTransit {
-				asPath = make([]uint32, 0, len(path)-1)
-				for index := len(path) - 2; index >= 0; index-- {
-					asPath = append(asPath, entityByID[path[index]].ASN)
-				}
+			// Every eBGP hop, including this deployment's RSs, prepends its
+			// own ASN. The receiving speaker is not part of its received path.
+			asPath := make([]uint32, 0, len(path)-1)
+			for index := len(path) - 2; index >= 0; index-- {
+				asPath = append(asPath, entityByID[path[index]].ASN)
 			}
 			candidate := RouteCandidate{
 				Route: route, SpeakerID: speakerID, ReceivedFrom: fromID,
@@ -621,10 +620,9 @@ func buildRouteAdvertisements(model Model, selected map[string][]RouteCandidate,
 					continue
 				}
 				seen[key] = true
-				asPath := append([]uint32(nil), candidate.ASPath...)
+				asPath := append([]uint32{entities[speakerID].ASN}, candidate.ASPath...)
 				nextHop, nextHopNodeID, nextHopInterfaceID := candidate.NextHop, candidate.NextHopNodeID, candidate.NextHopInterfaceID
 				if physicalTransit {
-					asPath = append([]uint32{entities[speakerID].ASN}, asPath...)
 					for _, endpoint := range []SessionEndpoint{peer.Session.A, peer.Session.B} {
 						if endpoint.EntityID == speakerID {
 							nextHop, nextHopNodeID, nextHopInterfaceID = endpoint.Address, speakerID, endpoint.InterfaceID

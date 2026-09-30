@@ -120,11 +120,13 @@ repeat completed rework milestones.
 
 ## Latest request — separately committed points
 
-1. Multi-route flow: implemented. The switch shows a bounded stream of up to 24
+1. Multi-route flow: implemented in `f7054b4`. The switch shows a bounded stream of up to 24
    independent prefix illustrations, staggered over actual RS sessions. A selected
    UPDATE remains an additional focused stream. Tables/YAML remain unchanged.
    Desktop/narrow Chrome walkthrough and Go tests passed.
-2. RS ASN prepending: pending.
+2. RS ASN prepending: implemented. Received RIBs and UPDATEs include all eBGP
+   sending ASNs, including RS Bolt/Ctrl/User, while EVPN next hop stays unchanged.
+   Full Go tests verify each intermediate AS_SEQUENCE and its ordering.
 3. Compact device-adjacent traffic actions: pending.
 4. Originated-route sections: pending.
 5. Route/packet path previews on hover: pending.

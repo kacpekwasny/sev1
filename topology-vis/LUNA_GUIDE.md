@@ -55,7 +55,7 @@ If a tool or filesystem restriction blocks a check or commit, record the exact f
 - Preserve synthetic addressing, compatible configured VM placements, deterministic generated fallback, stable IDs, and four-member RS clusters. D14 placement constraints take precedence over the former cross-bolt fallback. Hosted location, served bolt, and cluster membership remain separate properties.
 - Keep transport addresses/interface scope separate from AFI/SAFI. Expected route tables are educational computed snapshots, not live router or guest OS state.
 - Preserve VPC isolation, Type-5 identity/next-hop/VNI context, and underlay ECMP information where relevant to those snapshots. Do not let identical prefixes in different VPCs overwrite or leak into one another.
-- Route servers remain control-plane brokers with transparent next hops and AS paths. Customer data paths do not use them as transit devices.
+- Route servers remain control-plane brokers with preserved next hops; per D15, every RS prepends its own ASN to AS_PATH. Customer data paths do not use them as transit devices.
 - Layer switches, RS collapse, drag offsets, popup selection, and visual flow never mutate canonical routing/configuration. Count changes rebuild topology and expected tables; export preserves all actual RS members and placements.
 - Illustrative paths may be fixed, but must reference valid current entities and connections. Handle missing/incompatible endpoints and unreachable paths explicitly.
 - Do not expand scope to live collection, operational routing daemons, fault injection, withdrawals, or convergence simulation.

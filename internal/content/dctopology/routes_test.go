@@ -87,8 +87,8 @@ func TestDefaultRouteStateAndForwarding(t *testing.T) {
 		if candidate.VPCID != 1 {
 			continue
 		}
-		if len(candidate.ASPath) != 1 || candidate.ASPath[0] != candidate.OriginASN {
-			t.Errorf("route server prepended an ASN or changed the origin path: %+v", candidate)
+		if len(candidate.ASPath) != len(candidate.Path)-1 {
+			t.Errorf("AS_PATH omits an eBGP/RS hop: %+v", candidate)
 		}
 		for _, nextHop := range candidate.UnderlayNextHops {
 			if nextHop != "tor-b2-r1-1" && nextHop != "tor-b2-r1-2" {
@@ -359,7 +359,7 @@ func TestRouteSelectionUsesStableFinalTieBreakerAndKeepsCandidates(t *testing.T)
 	for _, candidate := range hostTable.Received {
 		if candidate.Prefix == "198.51.100.0/24" {
 			candidates++
-			if candidate.LocalPreference != 100 || candidate.OriginCode != 2 || len(candidate.ASPath) != 1 {
+			if candidate.LocalPreference != 100 || candidate.OriginCode != 2 || len(candidate.ASPath) != len(candidate.Path)-1 {
 				t.Errorf("unexpected candidate attributes: %+v", candidate)
 			}
 		}

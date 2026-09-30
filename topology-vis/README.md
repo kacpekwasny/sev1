@@ -90,7 +90,9 @@ AFI/SAFI sections are visually nested under the expected RIB. Routes in either
 format are clickable. The back arrow restores the previous table and its expanded
 sections. Purple arrows show the route's learned path into that specific RIB;
 yellow arrows show its resolved next-hop path and local target VM when applicable.
-EVPN Type-5 next hops use IPv4; BGP transport remains IPv6. RS Bolt members stay
+EVPN Type-5 next hops use IPv4; BGP transport remains IPv6. Each RS prepends its
+ASN, so a host → RS Bolt → RS Ctrl → RS Bolt → host UPDATE carries all four
+sending ASNs, closest first; locally originated RIB paths are empty. RS Bolt members stay
 inside their served bolt, and RS Ctrl covers all bolts. Explicit YAML placement
 must meet these policies, with host diversity preferred for generated members.
 
