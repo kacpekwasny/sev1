@@ -134,7 +134,7 @@ try {
  await page.waitForFunction(()=>document.querySelectorAll('.dc-route-learned').length>0);
  assert.equal(await page.locator('.dc-route-learned').last().getAttribute('data-to'),'host-b1-h1');
  assert.equal(await page.locator('.dc-route-points-to').last().getAttribute('data-to'),'customer-3');
- assert.match(await page.locator('.dc-route-provenance').textContent(),/RIB host-b1-h1/);
+ assert.match(await page.locator('.dc-route-provenance').textContent(),/RIB h1001/);
  await page.screenshot({path:`${output}/route-provenance.png`,fullPage:true,animations:'disabled'});
  await page.locator('#dc-inspector-back').click();
  assert.match(await page.locator('#dc-inspector-heading').textContent(),/h1001/);

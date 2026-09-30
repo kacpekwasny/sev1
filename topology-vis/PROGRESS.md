@@ -196,4 +196,8 @@ repeat completed rework milestones.
    destinations remain reachable as explicitly labeled static forwarding entries;
    they do not enter BGP RIBs or animated UPDATEs. Tests cover zero border exports,
    static alternatives, tenant isolation and retained packet reachability. Go tests pass.
-9–12. Pending; follow D17's listed order.
+9. Customer VM unicast exports now appear in the sequential route-flow queue:
+   VM → RS User → compatible RS Ctrl. Existing IPv4/IPv6 expected exports remain
+   canonical; browser checks verify every default customer's VM → RS User export
+   and the stream's endpoints. Desktop/narrow checks and Go tests pass.
+10–12. Pending; follow D17's listed order.

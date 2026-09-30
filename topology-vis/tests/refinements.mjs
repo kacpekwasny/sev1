@@ -10,6 +10,18 @@ try {
   await page.goto(target);await page.locator('.dc-node').first().waitFor();
   const api=new URL(await page.locator('#dc-topology-app').getAttribute('data-api-base'),target).href;
   const yaml=await (await page.request.get(`${api}/config.yaml`)).text();
+  const model=await (await page.request.get(`${api}/model`)).json();
+  for(const vm of model.vms.filter(vm=>vm.role==='customer')) {
+    const reply=await (await page.request.get(`${api}/explore?kind=update&from=${vm.id}&to=rs-user-m1`)).json();
+    assert.equal(reply.update_flow.reachable,true);
+    assert.equal(reply.update_flow.steps[0].from_id,vm.id);
+    assert.equal(reply.update_flow.steps[0].to_id,'rs-user-m1');
+  }
+  const {routeFlowStreams}=await page.evaluate(async()=>{
+    const {routeFlowStreams}=await import('/static/dc-topology/route-flow.js');
+    return {routeFlowStreams:routeFlowStreams(await (await fetch(document.querySelector('#dc-topology-app').dataset.apiBase+'/model')).json())};
+  });
+  assert(routeFlowStreams.some(stream=>stream.steps[0].fromID==='customer-1'&&stream.steps[0].toID.startsWith('rs-user-')));
   const initial=await page.locator('.dc-node').count();
   await page.locator('#dc-show-underlay').uncheck();
   assert.equal(await page.locator('.dc-node:not(.host)').count(),0);

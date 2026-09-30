@@ -4,6 +4,20 @@ export function routeFlowStreams(model, focused = null) {
   if (!model) return [];
   const streams = [];
   if (focused?.reachable) streams.push({route:focused.route,focused:true,steps:focused.steps.map(s=>({sessionID:s.session_id,fromID:s.from_id,toID:s.to_id}))});
+  for(const [index,route] of (model.route_state?.origins??[]).filter(r=>r.origin_kind==='customer').entries()) {
+    if(streams.length>=24)break;
+    const supports=s=>s.families.some(f=>f.afi===route.afi&&f.safi===route.safi);
+    const peers=model.bgp_sessions.filter(s=>s.kind==='customer-rs-user'&&supports(s)&&(s.a.entity_id===route.origin_id||s.b.entity_id===route.origin_id));
+    if(!peers.length)continue;
+    const peer=peers[index%peers.length],user=peer.a.entity_id===route.origin_id?peer.b.entity_id:peer.a.entity_id;
+    const steps=[{sessionID:peer.id,fromID:route.origin_id,toID:user}];
+    const controllers=model.bgp_sessions.filter(s=>s.kind==='rs-ctrl-rs-user'&&supports(s)&&(s.a.entity_id===user||s.b.entity_id===user));
+    if(controllers.length) {
+      const controller=controllers[index%controllers.length];
+      steps.push({sessionID:controller.id,fromID:user,toID:controller.a.entity_id===user?controller.b.entity_id:controller.a.entity_id});
+    }
+    streams.push({route,steps,focused:false});
+  }
   const origins=(model.route_state?.origins??[]).filter(r=>r.route_type===5);
   const hosts=model.nodes.filter(n=>n.kind==='host');
   for (const [index, route] of origins.entries()) {
