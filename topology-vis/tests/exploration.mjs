@@ -64,6 +64,11 @@ try {
  await page.keyboard.press('Escape');
  // GUI and terminal rows retain the inspected speaker and allow going back.
  await page.locator('.dc-node[data-entity-id="host-b1-h1"] .dc-node-label').click();
+ const localOrigins=model.route_state.origins.filter(r=>r.origin_id==='host-b1-h1');
+ assert.equal(await page.locator('[data-origin-speaker="host-b1-h1"] .dc-route-row').count(),localOrigins.length);
+ await page.locator('[data-origin-speaker="host-b1-h1"] > summary').click();
+ assert.match(await page.locator('[data-origin-speaker="host-b1-h1"]').textContent(),/10\.16\.0\.1/);
+
  const remote='vm/customer-3/ipv4/10.64.0.3';
  await page.locator(`[data-family="l2vpn"] .dc-route-row[data-route-id="${remote}"]`).first().click();
  await page.waitForFunction(()=>document.querySelectorAll('.dc-route-learned').length>0);
@@ -82,6 +87,13 @@ try {
  assert.equal(await page.locator('#dc-rib-view').inputValue(),'linux');
  assert.equal(await page.locator('#dc-inspector-back').isDisabled(),true);
  await page.locator('#dc-rib-view').selectOption('gui');await page.keyboard.press('Escape');
+ await page.locator('.dc-vm[data-entity-id="rs-ctrl-m1"]').click();
+ assert.match(await page.locator('[data-origin-speaker="rs-ctrl-m1"]').textContent(),/nie inicjuje tras BGP/);
+ await page.keyboard.press('Escape');
+ await page.locator('.dc-vm[data-entity-id="customer-1"]').click();
+ assert.equal(await page.locator('[data-origin-speaker="customer-1"] .dc-route-row').count(),2);
+ await page.keyboard.press('Escape');
+
  await choose('update','host-b1-h1','host-b2-h1');
  assert.equal(await page.locator('.dc-update-step').count(),4);
  assert((await page.locator('.dc-session.illustrative').count())>=4);

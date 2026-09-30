@@ -127,9 +127,12 @@ repeat completed rework milestones.
 2. RS ASN prepending: implemented in `cc59d8f`. Received RIBs and UPDATEs include all eBGP
    sending ASNs, including RS Bolt/Ctrl/User, while EVPN next hop stays unchanged.
    Full Go tests verify each intermediate AS_SEQUENCE and its ordering.
-3. Compact device-adjacent traffic actions: implemented. Clicking a node/VM shows
+3. Compact device-adjacent traffic actions: implemented in `bf88653`. Clicking a node/VM shows
    a small anchored send action with IPv4/IPv6 choice; the next device click sends
    the sample. A collapsed RS offers concrete member selection. Advanced manual
    forms start closed. Desktop/narrow/touch walkthroughs and Go tests passed.
-4. Originated-route sections: pending.
+4. Originated-route sections: implemented for every physical node and VM, in GUI
+   and Linux modes. Entries use canonical origin ownership; an RS with no local
+   NLRI explicitly states that its service prefixes are originated by its host.
+   Browser checks cover host, customer and empty RS sections; Go tests/build pass.
 5. Route/packet path previews on hover: pending.

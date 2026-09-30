@@ -17,6 +17,24 @@ const routeLine = (pre, route, ownerID, value) => {
 };
 const originCode = (value) => ({ 0: "i", 1: "e", 2: "?" })[value] ?? "?";
 
+export function appendOriginatedRoutes(container, model, speakerID, mode, appendRows) {
+  const routes=(model.route_state?.origins??[]).filter(route=>route.origin_id===speakerID)
+    .map(route=>({...route,speaker_id:speakerID,path:[speakerID],as_path:[],received_from:""}));
+  const parent=section(container,`Trasy inicjowane przez urządzenie · ${routes.length}`);
+  parent.classList.add("dc-originated-routes");parent.dataset.originSpeaker=speakerID;
+  if(!routes.length) {
+    const note=document.createElement("p");
+    const vm=model.vms.find(item=>item.id===speakerID);
+    note.textContent=vm?`Ta VM nie inicjuje tras BGP w tym modelu. Jej prefiksy usługowe lub EVPN ogłasza host ${vm.host_id}.`:"Urządzenie nie inicjuje tras w tej konfiguracji.";
+    parent.append(note);return;
+  }
+  if(mode!=="linux") {appendRows(parent,routes,true,speakerID);return;}
+  const pre=document.createElement("pre");pre.className="dc-terminal";
+  pre.textContent=`${speakerID}# trasy lokalnie inicjowane\n# Lokalny AS_PATH jest pusty; własny ASN trafia do eksportu eBGP.\n`;
+  parent.append(pre);
+  for(const route of routes)routeLine(pre,route,speakerID,`${route.prefix}  ${route.afi}/${route.safi}  NH ${route.next_hop}${route.vpc_id?`  VPC ${route.vpc_id}`:""}\n`);
+}
+
 export function appendRIB(container, model, speakerID, mode, appendRows) {
   const table = model.route_state?.tables?.find((item) => item.speaker_id === speakerID);
   if (!table) return;

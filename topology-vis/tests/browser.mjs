@@ -131,7 +131,7 @@ const canvasBox = await page.locator("#dc-graph").boundingBox();
 assert(popupBox.x >= canvasBox.x && popupBox.y >= canvasBox.y && popupBox.x + popupBox.width <= canvasBox.x + canvasBox.width + 1);
 await page.locator("summary").filter({ hasText: "Oczekiwana tablica BGP" }).click();
 assert((await page.locator(".dc-route-row").count()) > 0);
-await page.locator(".dc-route-row").first().click();
+await page.locator(".dc-rib-family .dc-route-row").first().click();
 assert.equal(await page.locator("#dc-inspector-heading").textContent(), "Oczekiwana trasa i eksport");
 await page.locator("#dc-details").getByText(/oczekiwanych eksportów/).waitFor();
 assert(await page.locator("#dc-play").isDisabled());

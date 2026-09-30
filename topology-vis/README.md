@@ -87,6 +87,10 @@ paths. Local attachments remain separate from physical cables. Host RIBs visibly
 separate EVPN Type 5, IPv4, and IPv6; EVPN retention does not imply importing another
 VPC into forwarding. Select GUI or Linux / FRR in the inspector to switch between
 concise cards and command-style expected BGP/kernel output. No commands are run.
+Every device/VM inspector has Trasy inicjowane przez urządzenie, independently
+of learned routes. RSs without local NLRI explain service-prefix ownership by
+the host. Originated routes are clickable in both formats.
+
 AFI/SAFI sections are visually nested under the expected RIB. Routes in either
 format are clickable. The back arrow restores the previous table and its expanded
 sections. Purple arrows show the route's learned path into that specific RIB;
