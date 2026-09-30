@@ -4,7 +4,7 @@ Updated: 2026-09-30
 
 ## Current status
 
-R00–R07 and the revised Steps 00–13 are implemented and verified. The explorer is
+R00–R08 and the revised Steps 00–13 are implemented and verified. The explorer is
 integrated at `/topologie/dc/`, linked from Topologie, and shares its source with
 the standalone harness. Git and parent-site writes are available. D03 remains
 absent; the original `TODO.md` is unchanged.
@@ -15,7 +15,8 @@ Baseline: user commit `9c50463`. Working rework commits:
 - `cf51c7c` — bounded dragging, keyboard controls, and layout reset/fit.
 - `d8b54dd` — expected route snapshots and optional illustrative route flow.
 - `295c4dd` — site integration, source relocation, and browser isolation.
-- The D12/R07 layout refinement is in the feature commit containing this checkpoint.
+- `993aeba` — D12/R07 RS tiers, contained host badges, and separated outlines.
+- D13/R08 endpoint/message/table inspection is in the commit containing this checkpoint.
 
 ## Delivered behavior
 
@@ -39,6 +40,21 @@ YAML export and route tables are unaffected by dragging, clustering, or animatio
 Packet examples remain separate. Browser edits use isolated, bounded in-memory
 workspaces; expired workspaces report errors instead of mismatched tables.
 
+Two endpoint explorers now query the snapshot for directed UPDATE propagation
+and IPv4/IPv6 packet travel. UPDATE steps expose NLRI, next hop, AS_PATH, and EVPN
+attributes; session export rows can inspect an individual UPDATE. Packet inspection
+shows ICMP/header/encapsulation fields, ECMP choice, and interfaces per hop. Local
+delivery includes TAP/vNIC hops; custom popup dismissal preserves packet playback.
+BGP session inspection also exposes its IPv6/TCP header and local attachments.
+Late responses cannot overwrite new selections. Cross-VPC traffic stays blocked.
+
+Host TAPs and VM eth0 interfaces are separate local attachments. All hosts retain
+EVPN in their global RIB; forwarding still imports only attached tenant contexts.
+Host underlay reception no longer depends on VPC attachment, and unrelated hosts
+cannot be fabric transit. Underlay AS_PATH ordering is corrected. Host inspection
+opens EVPN separately and offers concise GUI cards or Linux/FRR-style text for
+the same expected tables. Packet headers and CLI output are educational views.
+
 Domain: `internal/content/dctopology/`. Presentation: `web/static/dc-topology/`.
 Site adapter: `internal/web/dc_topology.go`. Fixture: `content/dc-topology/default.yaml`.
 Run `go run . -dev` and open `/topologie/dc/`, or `go run ./cmd/dc-topology` on 8084.
@@ -61,8 +77,14 @@ Run `go run . -dev` and open `/topologie/dc/`, or `go run ./cmd/dc-topology` on 
   R07 adds geometric containment, centered rows, RS tier placement, disjoint
   sibling outlines, badge/host tracking, immediate movement away from cell limits,
   and small/co-located/mixed host counts, across all four RS display combinations.
-- Latest local measurement: default page load 287 ms; capped scenario load and
-  initial calculation 1,944 ms. Capped model: 128 devices, 432 cables, 88 VMs,
+  R08 additionally checks host TAPs, visible EVPN, and Linux/FRR formatting.
+- `tests/exploration.mjs` — passed: selectable directional updates, decoded
+  attributes, route choices, collapsed projections, IPv4/IPv6/VXLAN/local/fabric
+  packets, BGP transport headers, TAP paths, playback/reopening, out-of-order responses, immutable YAML,
+  and narrow popup/control layout. New Go tests cover endpoint/API validation,
+  read-only exploration, border prefixes, VPC rejection, and host transit exclusion.
+- Latest local measurement: default page load 212 ms; capped scenario load and
+  initial calculation 2,509 ms. Capped model: 128 devices, 432 cables, 88 VMs,
   1,040 sessions. These are local observations, not an SLA.
 - Embedded production page checked from `/tmp` with an absolute `-content` path;
   standalone harness checked with shared assets at desktop/narrow widths.

@@ -95,6 +95,22 @@ assert.equal(await page.locator("#dc-show-route-flow").isChecked(), false);
 await checkLayout();
 await page.screenshot({ path: `${output}/desktop.png`, fullPage: true, animations: "disabled" });
 
+// Hosts retain EVPN independently of tenant FIB import, and expose local TAPs.
+const hostWithoutVPC = page.locator('.dc-node[data-entity-id="host-b1-h2"]');
+await hostWithoutVPC.locator('.dc-node-label').click();
+await page.locator('summary').filter({hasText:'Oczekiwana tablica BGP'}).waitFor();
+if (!(await page.locator('summary').filter({hasText:'Oczekiwana tablica BGP'}).evaluate((item)=>item.parentElement.open))) await page.locator('summary').filter({hasText:'Oczekiwana tablica BGP'}).click();
+assert.match(await page.locator('[data-family="l2vpn"] > summary').textContent(), /7 wybranych/);
+await page.locator('summary').filter({hasText:'Interfejsy ('}).click();
+assert.match(await page.locator('#dc-details').textContent(), /tap-b1m3/);
+await page.locator('#dc-rib-view').selectOption('linux');
+assert.match(await page.locator('[data-family="l2vpn"] pre').textContent(), /show bgp l2vpn evpn route type prefix/);
+assert.match(await page.locator('[data-family="l2vpn"] pre').textContent(), /Route Distinguisher: 64512:/);
+assert.match(await page.locator('#dc-details').textContent(), /ip -4 route show table main/);
+await page.screenshot({path:`${output}/host-linux.png`,fullPage:true,animations:'disabled'});
+await page.locator('#dc-rib-view').selectOption('gui');
+await page.keyboard.press('Escape');
+
 // A delayed result for a previous selection must not replace the current popup.
 let release;
 const gate = new Promise((resolve) => { release = resolve; });

@@ -193,6 +193,45 @@ first-member cluster anchors, sessions, expected tables, and YAML exports.
 Status: **implemented and browser-verified**. D12 refines presentation in R03 and
 Steps 03/04/06; it does not change canonical network semantics.
 
+### D13 — Endpoint exploration, decoded messages, TAPs, and table views
+
+User direction, 2026-09-30: choose two devices for route-update flow and packet
+travel; inspect the UPDATE and packet; expose missing host EVPN routes and local
+TAP interfaces; offer Linux-style RIBs and a simplified GUI.
+
+Implemented defaults under the existing autonomy authorization:
+
+- Endpoint selectors include every physical node and individual VM. UPDATE flow
+  follows directed, expected advertisements for a chosen compatible route from
+  the existing snapshot. It exposes NLRI, next hop, AS_PATH, ORIGIN, MED, and EVPN
+  RD/RT/VNI per export. LOCAL_PREF is labeled receiver policy, not an eBGP wire
+  attribute. Session export rows also open their specific UPDATE.
+- Packet selection uses a sample IPv4 ICMP or IPv6 ICMPv6 Echo Request. Customer
+  VM pairs use the installed VPC forwarding entries; border selection uses a
+  compatible advertised prefix. Other nodes/infra VMs use underlay transport via
+  the VM's hosting host. Unsupported tenant destinations and cross-VPC traffic
+  report a missing/permitted-route error. RS VMs are not customer-data transit.
+- Packet inspection shows addresses, sample TTL/payload, VXLAN/UDP/VNI when used,
+  ECMP choice, and ingress/egress interfaces at each hop. Local VM delivery uses
+  TAP/vNIC hops without fabric links. Generic ICMP fields are illustrative, not
+  a capture; addresses and routing/attachment context come from the model.
+- VM attachments have separate local links, host TAPs, and guest eth0 interfaces;
+  they do not increase physical cable/BGP adjacency counts. TAP names are stable
+  and valid Linux interface lengths, with guest addresses/VPC in their own scope.
+- Hosts retain global EVPN RIB entries even without an attached tenant; RT/VPC
+  filtering remains in forwarding import. Underlay reception is independent of
+  tenant attachment. Hosts cannot become unrelated underlay transit shortcuts.
+  Underlay AS_PATH lists the sending peer first and the origin last.
+- The inspector separates EVPN/IPv4/IPv6. GUI cards summarize route and next hop;
+  Linux/FRR mode renders the same snapshot as FRR BGP and iproute2-style output.
+  These are expected model views, not commands executed on a guest/router.
+- Queries are read-only, bounded by configured model caps, and do not modify
+  routes or export. Rebuilds clear ephemeral selections; stale responses cannot
+  replace newer endpoint choices. Popup close preserves custom path selection.
+
+Status: **implemented and verified**. D13 extends R08 and the earlier static
+route/packet inspection steps without introducing a BGP convergence simulator.
+
 ## Recording an answer
 
 Record the latest user direction and affected milestones. If it changes previously implemented work, reopen the affected acceptance checks; do not claim the old checks verify new behavior. Distinguish direct user requirements from authorized implementation defaults. Preserve the original TODO while keeping this decision record and the active plan authoritative for later changes.

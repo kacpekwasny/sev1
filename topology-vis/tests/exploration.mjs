@@ -1,0 +1,119 @@
+// Run with the same external Playwright setup as browser.mjs.
+import assert from "node:assert/strict";
+import { mkdir } from "node:fs/promises";
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright-core");
+const target = process.env.TOPOLOGY_URL || "http://127.0.0.1:8081/topologie/dc/";
+const output = process.env.TOPOLOGY_SCREENSHOTS || "/tmp/dc-topology-browser";
+await mkdir(output, {recursive:true});
+const browser = await chromium.launch({channel:"chrome",headless:true});
+try {
+ const context = await browser.newContext({viewport:{width:1280,height:900}});
+ const page = await context.newPage(), errors=[];
+ page.on("pageerror",error=>errors.push(error.message));
+ page.on("console",message=>{if(message.type()==="error"&&!message.text().includes("400 (Bad Request)"))errors.push(message.text());});
+ await page.goto(target); await page.locator('.dc-node').first().waitFor();
+ const api = new URL(await page.locator('#dc-topology-app').getAttribute('data-api-base') || '/api',target).href;
+ const yaml = await (await context.request.get(`${api}/config.yaml`)).text();
+ const model = await (await context.request.get(`${api}/model`)).json();
+ assert.equal(model.local_links.length,19); assert.equal(model.local_interfaces.length,38);
+ const choose=async(kind,from,to,family)=>{
+   await page.locator(`#dc-${kind}-form [name="from"]`).selectOption(from);
+   await page.locator(`#dc-${kind}-form [name="to"]`).selectOption(to);
+   if(family)await page.locator(`#dc-${kind}-form [name="family"]`).selectOption(family);
+   await page.locator(`#dc-${kind}-form button`).click();
+   await page.waitForFunction((kind)=>!document.querySelector(`#dc-${kind}-form button`).disabled,kind);
+ };
+ await choose('update','host-b1-h1','host-b2-h1');
+ assert.equal(await page.locator('.dc-update-step').count(),4);
+ assert.equal(await page.locator('.dc-session.illustrative').count(),4);
+ assert.match(await page.locator('#dc-details').textContent(),/MP_REACH_NLRI/);
+ assert.match(await page.locator('#dc-details').textContent(),/nie jest atrybutem przesyłanym przez eBGP/);
+ assert((await page.locator('#dc-update-form [name="route"] option').count())>1);
+ await page.screenshot({path:`${output}/update-inspector.png`,fullPage:true,animations:'disabled'});
+ await page.keyboard.press('Escape');
+ await page.locator('#dc-show-infra-hosts').uncheck(); await page.locator('#dc-collapse-rs').check();
+ assert.equal(await page.locator('.dc-session.illustrative').count(),4);
+ await choose('update','host-b2-h1','host-b1-h1');
+ const remoteRoute='vm/customer-1/ipv4/10.64.0.1';
+ // Server rejects an invented export rather than reversing the visible arrows.
+ const blocked = await (await context.request.get(`${api}/explore?kind=update&from=host-b2-h1&to=host-b1-h1&route=${encodeURIComponent(remoteRoute)}`)).json();
+ assert.equal(blocked.update_flow.reachable,false);
+ await page.keyboard.press('Escape'); await page.locator('#dc-show-route-flow').uncheck();
+ await page.locator('#dc-show-sessions').uncheck();await page.locator('#dc-show-infra-hosts').check();await page.locator('#dc-collapse-rs').uncheck();
+
+ await choose('packet','customer-1','customer-3','ipv4');
+ assert.match(await page.locator('#dc-details').textContent(),/49152 \/ 4789/);
+ assert.match(await page.locator('#dc-details').textContent(),/VNI10001/);
+ assert.match(await page.locator('#dc-details').textContent(),/tap-c1/);
+ assert.match(await page.locator('#dc-details').textContent(),/tap-c3/);
+ assert((await page.locator('.dc-edge.flow-path').count())>0);
+ await page.screenshot({path:`${output}/packet-inspector.png`,fullPage:true,animations:'disabled'});
+ await page.keyboard.press('Escape'); await page.locator('#dc-play').click();
+ await page.waitForFunction(()=>document.querySelector('#dc-packet-marker').getAttribute('visibility')==='visible');
+ await page.locator('#dc-inspect-packet').click(); assert.match(await page.locator('#dc-inspector-heading').textContent(),/Pakiet/);
+ await page.keyboard.press('Escape');
+ await page.locator('.dc-node[data-entity-id="border-1"]').click();
+ await page.locator('#dc-inspect-packet').click();
+ assert.match(await page.locator('#dc-details').textContent(),/49152 \/ 4789/);
+ await page.keyboard.press('Escape');
+ await choose('packet','customer-1','customer-2','ipv4');
+ assert.equal(await page.locator('.dc-local-path').count(),2);
+ assert.equal(await page.locator('.dc-packet-hop').count(),3);
+ assert.equal(await page.locator('.dc-edge.flow-path').count(),0);
+ assert.equal(await page.locator('#dc-play').isDisabled(),false);
+ await page.keyboard.press('Escape');
+ await choose('packet','border-1','leaf-b1-1','ipv6');
+ assert.match(await page.locator('#dc-details').textContent(),/ICMPv6/);
+ assert.equal(await page.locator('#dc-details').getByText('Enkapsulacja:',{exact:false}).count(),0);
+ await page.keyboard.press('Escape');
+
+ // Rapid changes must not let an old result replace the current packet.
+ let release;
+ const gate = new Promise(resolve=>{release=resolve;});
+ await page.route('**/explore?**',async route=>{
+   const q=new URL(route.request().url()).searchParams;
+   if(q.get('kind')==='packet'&&q.get('to')==='customer-3'&&q.get('family')==='ipv4')await gate;
+   await route.continue();
+ });
+ await page.locator('#dc-packet-form [name="from"]').selectOption('customer-1');
+ await page.locator('#dc-packet-form [name="to"]').selectOption('customer-3');
+ await page.locator('#dc-packet-form [name="family"]').selectOption('ipv4');
+ await page.locator('#dc-packet-form button').click();
+ await page.locator('#dc-packet-form [name="family"]').selectOption('ipv6');
+ await page.locator('#dc-packet-form button').click();
+ await page.waitForFunction(()=>!document.querySelector('#dc-packet-form button').disabled);
+ assert.match(await page.locator('#dc-details').textContent(),/ICMPv6/);
+ const delayed=page.waitForResponse(response=>response.url().includes('/explore?')&&response.url().includes('family=ipv4'));
+ release();await delayed;
+ assert.match(await page.locator('#dc-details').textContent(),/ICMPv6/);
+ await page.unroute('**/explore?**');await page.keyboard.press('Escape');
+
+ // A session export opens its exact directed UPDATE, not only the origin route.
+ await page.locator('.dc-node[data-entity-id="border-1"]').click();
+ await page.locator('#dc-details summary').filter({hasText:'Sesje BGP ('}).click();
+ await page.locator('#dc-details [data-session-id]').first().click();
+ await page.locator('.dc-update-inspect').first().waitFor({state:'attached'});
+ await page.locator('#dc-inspect-packet').click();
+ assert.equal(await page.locator('#dc-inspector-heading').textContent(),'Sesja BGP');
+ assert.match(await page.locator('#dc-details').textContent(),/TCP 49152 → 179/);
+ await page.locator('#dc-details > .dc-interface-details > summary').first().click();
+ await page.locator('.dc-update-inspect:visible').first().click();
+ await page.waitForFunction(()=>!document.querySelector('#dc-update-form button').disabled);
+ assert.equal(await page.locator('.dc-update-step').count(),1);
+ await page.keyboard.press('Escape');
+
+ await page.setViewportSize({width:390,height:844});
+ await choose('packet','customer-1','customer-3','ipv6');
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);
+ const box=await page.locator('#dc-inspector').boundingBox(), canvas=await page.locator('#dc-graph').boundingBox();
+ assert(box.x>=canvas.x&&box.x+box.width<=canvas.x+canvas.width+1);
+ const close=await page.locator('#dc-inspector-close').boundingBox();
+ assert(close.y>=150&&close.y+close.height<844,'Close control must remain below the sticky navigation');
+ await page.screenshot({path:`${output}/mobile-packet.png`,fullPage:true,animations:'disabled'});
+ await page.keyboard.press('Escape');
+ await choose('update','host-b1-h1','host-b2-h1');
+ await page.screenshot({path:`${output}/mobile-update.png`,fullPage:true,animations:'disabled'});
+ assert.equal(await (await context.request.get(`${api}/config.yaml`)).text(),yaml);
+ assert.deepEqual(errors,[]);
+ console.log('Endpoint UPDATE/packet inspection, TAP paths, stale results, and narrow layouts: passed');
+} finally {await browser.close();}

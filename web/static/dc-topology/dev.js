@@ -7,6 +7,7 @@ const requests = new AbortController();
 let commandQueue = Promise.resolve();
 const app = mountTopologyApp(root, { onCommand(command) {
   if (command.type === "load_inspector") return loadInspector(command);
+  if (command.type === "explore") return loadExploration(command);
   // Keep configuration writes and their following reads in user-action order.
   commandQueue = commandQueue.then(() => handleCommand(command));
 } });
@@ -26,6 +27,17 @@ async function loadInspector(command) {
     if (error.name === "AbortError") return;
     app.setState({ inspectorData: { ok: false, kind: command.kind, id: command.id,
       revision: command.revision, message: `Nie udało się wczytać szczegółów: ${error.message}` } });
+  }
+}
+
+async function loadExploration(command) {
+  const { kind, from, to, route, family, requestID, revision } = command;
+  try {
+    const query = new URLSearchParams({kind,from,to,route,family});
+    const data = await request(`/explore?${query}`);
+    app.setState({explorationData:{...data,kind,requestID,revision}});
+  } catch(error) {
+    if (error.name !== "AbortError") app.setState({explorationData:{ok:false,kind,requestID,revision,message:error.message}});
   }
 }
 

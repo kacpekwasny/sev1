@@ -19,18 +19,19 @@ const (
 )
 
 type Node struct {
-	ID           string   `json:"id"`
-	Label        string   `json:"label"`
-	Kind         NodeKind `json:"kind"`
-	ASN          uint32   `json:"asn"`
-	IPv4         string   `json:"ipv4"`
-	IPv6         string   `json:"ipv6"`
-	RoleIndex    int      `json:"role_index"`
-	BoltID       int      `json:"bolt_id,omitempty"`
-	RackID       int      `json:"rack_id,omitempty"`
-	HostID       int      `json:"host_id,omitempty"`
-	GroupID      string   `json:"group_id,omitempty"`
-	InterfaceIDs []string `json:"interface_ids,omitempty"`
+	ID                string   `json:"id"`
+	Label             string   `json:"label"`
+	Kind              NodeKind `json:"kind"`
+	ASN               uint32   `json:"asn"`
+	IPv4              string   `json:"ipv4"`
+	IPv6              string   `json:"ipv6"`
+	RoleIndex         int      `json:"role_index"`
+	BoltID            int      `json:"bolt_id,omitempty"`
+	RackID            int      `json:"rack_id,omitempty"`
+	HostID            int      `json:"host_id,omitempty"`
+	GroupID           string   `json:"group_id,omitempty"`
+	InterfaceIDs      []string `json:"interface_ids,omitempty"`
+	LocalInterfaceIDs []string `json:"local_interface_ids,omitempty"`
 }
 
 type Group struct {
@@ -43,6 +44,8 @@ type Group struct {
 }
 
 type Interface struct {
+	Kind          string `json:"kind,omitempty"`
+	VPCID         uint32 `json:"vpc_id,omitempty"`
 	ID            string `json:"id"`
 	NodeID        string `json:"node_id"`
 	PeerNodeID    string `json:"peer_node_id"`
@@ -65,14 +68,16 @@ type PhysicalLink struct {
 }
 
 type Model struct {
-	Config     Config         `json:"config"`
-	Nodes      []Node         `json:"nodes"`
-	Groups     []Group        `json:"groups"`
-	Interfaces []Interface    `json:"interfaces"`
-	Links      []PhysicalLink `json:"physical_links"`
-	VMs        []VM           `json:"vms"`
-	Sessions   []BGPSession   `json:"bgp_sessions"`
-	Routes     RouteState     `json:"route_state"`
+	Config          Config         `json:"config"`
+	Nodes           []Node         `json:"nodes"`
+	Groups          []Group        `json:"groups"`
+	Interfaces      []Interface    `json:"interfaces"`
+	LocalInterfaces []Interface    `json:"local_interfaces"`
+	LocalLinks      []LocalLink    `json:"local_links"`
+	Links           []PhysicalLink `json:"physical_links"`
+	VMs             []VM           `json:"vms"`
+	Sessions        []BGPSession   `json:"bgp_sessions"`
+	Routes          RouteState     `json:"route_state"`
 }
 
 type BuildError struct {
@@ -244,6 +249,7 @@ func BuildTopology(config Config) (Model, error) {
 		return Model{}, err
 	}
 	model.VMs = vms
+	buildLocalInterfaces(&model)
 	if err := buildSessions(&model); err != nil {
 		return Model{}, err
 	}

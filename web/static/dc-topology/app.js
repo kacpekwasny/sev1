@@ -1,4 +1,6 @@
 const NS = "http://www.w3.org/2000/svg";
+import { appendRIB, appendFIB } from "./tables.js";
+import { explorerMarkup, appendUpdateInspection, appendPacketInspection } from "./inspection.js";
 
 const kindLabels = {
   border: "Border", stem: "Stem", spine: "Spine", leaf: "Leaf", tor: "ToR", host: "Host",
@@ -32,6 +34,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         <div id="dc-graph" class="dc-graph-scroll"><p class="dc-empty">Buduję widok topologii…</p></div>
         <aside id="dc-inspector" class="dc-inspector" role="dialog" aria-labelledby="dc-inspector-heading" tabindex="-1" hidden>
           <div class="dc-inspector-bar"><span class="dc-kicker">INSPEKTOR / OCZEKIWANY STAN</span>
+            <label class="dc-rib-control">Tablice <select id="dc-rib-view"><option value="gui">GUI</option><option value="linux">Linux / FRR</option></select></label>
             <button id="dc-inspector-close" class="dc-icon-button" type="button" aria-label="Zamknij inspektor">×</button></div>
           <div id="dc-details" class="dc-details"></div>
         </aside>
@@ -43,9 +46,11 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       <div class="dc-playback" role="group" aria-label="Sterowanie ilustracją pakietu">
         <button id="dc-play" class="dc-button" type="button" disabled>Odtwórz pakiet</button>
         <button id="dc-rewind" class="dc-button secondary" type="button" disabled>Od początku</button>
+        <button id="dc-inspect-packet" class="dc-button secondary" type="button" disabled>Inspektuj pakiet</button>
         <label>Tempo <select id="dc-speed"><option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
         <span id="dc-play-status" aria-live="polite">Wybierz przepływ lub sesję BGP.</span>
       </div>
+      ${explorerMarkup}
     </section>
     <p id="dc-message" class="dc-message" role="status" aria-live="polite">Wczytywanie przykładu…</p>
     <dialog id="dc-config-dialog" class="dc-config-dialog" aria-labelledby="dc-config-title">
@@ -85,8 +90,9 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   function focusEntity(selection) {
     const element = [...graphEl.querySelectorAll("[data-entity-type]")].find((item) =>
       item.dataset.entityType === selection?.type && item.dataset.entityId === selection?.id);
-    const target = element || [...trafficList.querySelectorAll("[data-traffic-id]")].find((item) => item.dataset.trafficId === selection?.id);
-    target?.focus({ preventScroll: true });
+    const target = element || [...trafficList.querySelectorAll("[data-traffic-id]")].find((item) => item.dataset.trafficId === selection?.id) || (["update", "packet"].includes(selection?.type) ? root.querySelector(`#dc-${selection.type}-form button`) : null);
+    const focusTarget = target?.disabled ? target.closest("form")?.elements.from : target;
+    focusTarget?.focus({ preventScroll: true });
   }
 
   function openInspector() {
@@ -97,8 +103,10 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
 
   function closeInspector() {
     inspectorEl.hidden = true;
-    selected = null;
-    resetAnimation();
+    if (!["packet", "update"].includes(selected?.type)) {
+      selected = null;
+      resetAnimation();
+    }
     renderGraph();
     renderTrafficList();
     focusEntity(returnFocus);
@@ -134,6 +142,9 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   let suppressClickUntil = 0;
   let currentPositions = null;
   let inspectorSelectionKey = "";
+  const exploration = { update: null, packet: null };
+  const exploreRequests = { update: 0, packet: 0 };
+  const exploreErrors = { update: "", packet: "" };
   const animation = { playing: false, elapsed: 0, startedAt: 0, frame: 0 };
 
   const onSubmit = (event) => {
@@ -246,6 +257,16 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if (!dragFrame) dragFrame = requestAnimationFrame(() => { dragFrame = 0; renderGraph(); });
   };
   const onInspectorClick = (event) => {
+    const update = event.target.closest("[data-update-id]");
+    if (update) {
+      const advertisement = state.model.route_state?.advertisements?.find((item) => item.id === update.dataset.updateId);
+      if (advertisement) {
+        const form = root.querySelector("#dc-update-form"); form.elements.from.value = advertisement.from_id; form.elements.to.value = advertisement.to_id;
+        setRouteOptions({ routes: [state.model.route_state.origins.find((item) => item.id === advertisement.route_id)] });
+        form.elements.route.value = advertisement.route_id; beginExploration("update");
+      }
+      return;
+    }
     const route = event.target.closest("[data-route-id]");
     if (route && detailsEl.contains(route)) {
       selected = { type: "route", id: route.dataset.routeId };
@@ -312,6 +333,45 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   });
   listen(root.querySelector("#dc-fit"), "click", fitGraph);
   listen(detailsEl, "click", onInspectorClick);
+  listen(root.querySelector("#dc-rib-view"), "change", () => renderInspector());
+  for (const kind of ["update", "packet"]) {
+    const form = root.querySelector(`#dc-${kind}-form`);
+    listen(form, "submit", (event) => { event.preventDefault(); beginExploration(kind); });
+    listen(form, "change", () => {
+      exploreRequests[kind]++;
+      exploration[kind] = null;
+      exploreErrors[kind] = "";
+      form.querySelector("button").disabled = false;
+      root.querySelector(`#dc-${kind}-status`).textContent = "Pokaż przepływ, aby zatwierdzić wybrane końce.";
+      if (kind === "update") {
+        if (form.elements.from.value !== form.dataset.from || form.elements.to.value !== form.dataset.to) setRouteOptions(null);
+        renderGraph();
+      } else resetAnimation();
+      renderInspector();
+    });
+  }
+  listen(root.querySelector("#dc-inspect-packet"), "click", () => {
+    if (selected?.type === "session") {
+      renderInspector(); openInspector();
+      const summary = [...detailsEl.querySelectorAll("summary")].find((item) => item.textContent === "Fizyczna droga pakietu BGP");
+      if (summary) summary.parentElement.open = true;
+      inspectorEl.scrollIntoView({ block: "start" });
+      return;
+    }
+    if (selected?.type !== "traffic" && exploration.packet) {
+      selected = { type: "packet", id: String(exploreRequests.packet) };
+      renderGraph(); renderInspector(); openInspector(); inspectorEl.scrollIntoView({ block: "start" });
+      return;
+    }
+    const flow = state.model.route_state?.traffic?.find((item) => item.id === selected?.id);
+    const session = state.model.bgp_sessions.find((item) => item.id === selected?.id);
+    const from = flow?.source_vm_id ?? session?.a.entity_id;
+    const to = flow?.destination_id ?? session?.b.entity_id;
+    if (from && to) {
+      const form = root.querySelector("#dc-packet-form"); form.elements.from.value = from; form.elements.to.value = to;
+      form.elements.family.value = session ? "ipv6" : "ipv4"; beginExploration("packet");
+    }
+  });
   listen(trafficList, "click", onTrafficClick);
   listen(playButton, "click", onPlaybackClick);
   listen(rewindButton, "click", onRewindClick);
@@ -358,8 +418,48 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
 
   function appendSpeakerTableOrLoading(container, speakerID) {
     const table = state.model?.route_state?.tables?.find((item) => item.speaker_id === speakerID);
-    if (table) appendSpeakerTable(container, state.model, speakerID);
+    if (table) appendRIB(container, state.model, speakerID, root.querySelector("#dc-rib-view").value, appendRouteRows);
     else appendInspectorLoading(container, "speaker", speakerID);
+  }
+
+  function setRouteOptions(flow) {
+    const form = root.querySelector("#dc-update-form"), select = form.elements.route;
+    select.replaceChildren(new Option("Dobierz zgodną trasę", ""));
+    for (const route of flow?.routes ?? []) select.add(new Option(`${route.route_type ? "EVPN Type 5" : route.afi} · ${route.prefix}${route.vpc_id ? ` · VPC ${route.vpc_id}` : ""} · ${route.origin_label}`, route.id));
+    if (flow?.route) select.value = flow.route.id;
+    form.dataset.from = form.elements.from.value; form.dataset.to = form.elements.to.value;
+  }
+
+  function renderEndpointOptions(model) {
+    const endpoints = [...model.nodes.map((item) => ({ id: item.id, label: `${kindLabels[item.kind]} · ${item.label}` })), ...model.vms.map((item) => ({ id: item.id, label: `${item.label} · ${item.host_id}` }))];
+    for (const kind of ["update", "packet"]) {
+      const form = root.querySelector(`#dc-${kind}-form`);
+      for (const name of ["from", "to"]) form.elements[name].replaceChildren(...endpoints.map((item) => new Option(item.label, item.id)));
+      const defaults = kind === "update" ? ["host-b1-h1", "host-b2-h1"] : ["customer-1", "customer-3"];
+      form.elements.from.value = endpoints.some((item) => item.id === defaults[0]) ? defaults[0] : endpoints[0].id;
+      form.elements.to.value = endpoints.some((item) => item.id === defaults[1]) ? defaults[1] : endpoints.find((item) => item.id !== form.elements.from.value).id;
+      form.querySelector("button").disabled = false;
+      root.querySelector(`#dc-${kind}-status`).textContent = "Wybierz końce i pokaż przepływ. Inspekcja nie zmienia tablic ani YAML.";
+    }
+    setRouteOptions(null);
+  }
+
+  function beginExploration(kind) {
+    const form = root.querySelector(`#dc-${kind}-form`);
+    if (!state.model || state.busy) return;
+    const requestID = ++exploreRequests[kind];
+    exploration[kind] = null; exploreErrors[kind] = "";
+    selected = { type: kind, id: String(requestID) };
+    resetAnimation();
+    form.querySelector("button").disabled = true;
+    root.querySelector(`#dc-${kind}-status`).textContent = "Sprawdzam wybrane końce…";
+    if (kind === "update") { showSessions.checked = true; showRouteFlow.checked = true; }
+    else showLinks.checked = true;
+    renderGraph(); renderInspector(); openInspector();
+    inspectorEl.scrollIntoView({ block: "start" });
+    send({ type: "explore", kind, from: form.elements.from.value, to: form.elements.to.value,
+      route: kind === "update" ? form.elements.route.value : "", family: kind === "packet" ? form.elements.family.value : "",
+      requestID, revision: modelRevision });
   }
 
   function selectedPath() {
@@ -370,6 +470,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if (selected.type === "session") {
       return state.model.route_state?.control_paths?.find((item) => item.session_id === selected.id)?.physical_node_ids ?? [];
     }
+    if (selected.type === "packet") return exploration.packet?.display_hop_ids ?? [];
     return [];
   }
 
@@ -377,6 +478,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   function routeFlowSequence() {
     const model = state.model;
     if (!model) return [];
+    if (exploration.update) return (exploration.update.steps ?? []).map((step) => ({ sessionID: step.session_id, fromID: step.from_id, toID: step.to_id }));
+    if (selected?.type === "update") return [];
     const origin = model.route_state?.origins?.find((route) => route.route_type === 5 && route.origin_kind === "host");
     if (!origin) return [];
     let fromID = origin.next_hop_node_id;
@@ -398,6 +501,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     flowNote.textContent = !showRouteFlow.checked ? "Adresy i tablice są obliczanym przykładem."
       : !showSessions.checked ? "Przepływ poglądowy — włącz warstwę Sesje BGP."
       : !illustration.sequence.length ? "Brak zgodnego przykładu przepływu tras w tej konfiguracji."
+      : exploration.update ? `UPDATE: ${exploration.update.from_id} → ${exploration.update.to_id} · ${exploration.update.route.prefix}. Tablice pozostają stałe.`
       : "Poglądowo: host → RS Bolt → RS Ctrl → border. Tablice pozostają stałe.";
     if (!active || reducedMotion.matches) {
       if (illustration.frame) cancelAnimationFrame(illustration.frame);
@@ -430,6 +534,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     marker.setAttribute("cx", String(from.x + (to.x - from.x) * fraction));
     marker.setAttribute("cy", String(from.y + (to.y - from.y) * fraction));
     marker.setAttribute("visibility", "visible");
+    for (const item of detailsEl.querySelectorAll(".dc-update-step")) item.classList.toggle("is-current", Number(item.dataset.stepIndex) === Math.floor(scaled));
   }
 
   function animationDuration() {
@@ -449,7 +554,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     }
     const positions = currentPositions;
     if (!positions) return;
-    const points = path.map((id) => positions.nodes.get(id)).filter(Boolean);
+    const points = path.map((id) => positions.entityPoints.get(id)).filter(Boolean);
     if (points.length < 2) { marker.setAttribute("visibility", "hidden"); return; }
     const duration = (points.length - 1) * 900;
     const progress = Math.min(1, animationElapsed(now) / duration);
@@ -460,6 +565,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     marker.setAttribute("cx", String(a.x + (b.x - a.x) * fraction));
     marker.setAttribute("cy", String(a.y + (b.y - a.y) * fraction));
     marker.setAttribute("visibility", "visible");
+    for (const item of detailsEl.querySelectorAll(".dc-packet-hop")) item.classList.toggle("is-current", Number(item.dataset.hopIndex) === Math.floor(scaled));
   }
 
   function updatePlaybackControls() {
@@ -467,9 +573,10 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const canPlay = path.length > 1 && showLinks.checked;
     playButton.disabled = !canPlay;
     rewindButton.disabled = !canPlay;
+    root.querySelector("#dc-inspect-packet").disabled = !exploration.packet && (!selected || !["traffic", "session"].includes(selected.type));
     playButton.textContent = animation.playing ? "Wstrzymaj pakiet" : "Odtwórz pakiet";
     if (animation.playing) return;
-    if (!selected || !["traffic", "session"].includes(selected.type)) playStatus.textContent = "Wybierz przepływ lub sesję BGP, aby prześledzić pakiet.";
+    if (!selected || !["traffic", "session", "packet"].includes(selected.type)) playStatus.textContent = "Wybierz przepływ lub sesję BGP, aby prześledzić pakiet.";
     else if (!showLinks.checked) playStatus.textContent = "Włącz łącza fizyczne, aby zobaczyć drogę pakietu.";
     else if (path.length === 1) playStatus.textContent = "Dostarczenie lokalne — bez przejścia przez fabric.";
     else if (!path.length) playStatus.textContent = "Brak osiągalnej ścieżki w tej konfiguracji.";
@@ -541,10 +648,26 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       inspectorEl.hidden = true;
       selected = null;
       resetAnimation();
+      for (const kind of ["update", "packet"]) { exploration[kind] = null; exploreRequests[kind]++; exploreErrors[kind] = ""; }
+      renderEndpointOptions(next.model);
     }
     state = { ...state, ...next };
     if (next.busy !== undefined) {
       for (const button of root.querySelectorAll("#dc-config-form button, #dc-count-form button")) button.disabled = Boolean(next.busy);
+    }
+    if (next.explorationData) {
+      const payload = next.explorationData;
+      if (payload.revision === modelRevision && payload.requestID === exploreRequests[payload.kind]) {
+        const kind = payload.kind;
+        exploration[kind] = payload.ok ? payload.update_flow ?? payload.packet : null;
+        exploreErrors[kind] = payload.ok ? "" : payload.message;
+        root.querySelector(`#dc-${kind}-form button`).disabled = false;
+        const result = exploration[kind];
+        root.querySelector(`#dc-${kind}-status`).textContent = !payload.ok ? payload.message : result.reachable
+          ? kind === "update" ? `${result.steps.length} eksportów · ${result.route.prefix}` : `${result.physical_link_ids.length} łączy · ${result.vxlan ? `VXLAN ${result.vni}` : "bez VXLAN"}`
+          : trafficReasonText(result.reason);
+        if (kind === "update" && payload.ok) setRouteOptions(result);
+      }
     }
     if (next.inspectorData) {
       const payload = next.inspectorData;
@@ -692,6 +815,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
           const flow = model.route_state?.traffic?.find((item) => item.id === selected.id);
           if (flow?.physical_link_ids.includes(link.id)) selectedClass += " flow-path";
         }
+        if (selected?.type === "packet" && exploration.packet?.physical_link_ids.includes(link.id)) selectedClass += " flow-path";
         if (selected?.type === "session") {
           const path = model.route_state?.control_paths?.find((item) => item.session_id === selected.id);
           if (path?.physical_link_ids.includes(link.id)) selectedClass += " flow-path";
@@ -757,6 +881,16 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     }
     svg.append(nodeLayer);
 
+    if (selected?.type === "packet" && exploration.packet?.reachable && showLinks.checked) {
+      const localLayer = svgElement("g", { class: "dc-local-paths", "aria-hidden": "true" });
+      for (const link of model.local_links ?? []) {
+        if (![exploration.packet.from_id, exploration.packet.to_id].includes(link.vm_id)) continue;
+        const host = positions.entityPoints.get(link.host_id), vm = positions.entityPoints.get(link.vm_id);
+        if (host && vm) localLayer.append(svgElement("line", {x1:host.x,y1:host.y + host.height / 2 - 25,x2:vm.x,y2:vm.y,class:"dc-local-path", "data-tap-id":link.tap_interface_id}));
+      }
+      svg.append(localLayer);
+    }
+
     const vmLayer = svgElement("g", { class: "dc-vms" });
     for (const item of positions.displayItems) {
       const point = positions.displayPoints.get(item.id);
@@ -785,11 +919,16 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   function renderInspector(nodeByID, interfaceByID) {
     const key = selected ? `${selected.type}/${selected.id}` : "";
     const keep = key === inspectorSelectionKey;
-    const opened = keep ? [...detailsEl.querySelectorAll("details[open]")].map((item) => item.querySelector("summary")?.textContent.split(" · ")[0]) : [];
+    const sectionKey = (item) => {
+      const path = [];
+      for (let current = item; current && detailsEl.contains(current); current = current.parentElement.closest("details")) path.unshift(current.querySelector(":scope > summary")?.textContent.split(" · ")[0]);
+      return path.join("/");
+    };
+    const sections = keep ? new Map([...detailsEl.querySelectorAll("details")].map((item) => [sectionKey(item), item.open])) : new Map();
     const scroll = keep ? detailsEl.scrollTop : 0;
     renderInspectorContent(nodeByID, interfaceByID);
     for (const item of detailsEl.querySelectorAll("details")) {
-      if (opened.includes(item.querySelector("summary")?.textContent.split(" · ")[0])) item.open = true;
+      if (sections.has(sectionKey(item))) item.open = sections.get(sectionKey(item));
     }
     detailsEl.scrollTop = scroll;
     inspectorSelectionKey = key;
@@ -812,6 +951,14 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       detailsEl.innerHTML = "<p>Wybierz urządzenie lub łącze na diagramie. Adresy są fikcyjne; tablice przedstawiają oczekiwany stan.</p>";
       return;
     }
+    if (["update", "packet"].includes(selected.type)) {
+      const kind = selected.type;
+      appendInspectorTitle(kind === "update" ? "Przepływ trasy · BGP UPDATE" : "Pakiet i droga między urządzeniami", kind === "update" ? exploration.update?.route?.id ?? "UPDATE" : exploration.packet?.route_id ?? "ICMP");
+      if (exploreErrors[kind]) { appendHiddenNote(exploreErrors[kind]); return; }
+      if (kind === "update") appendUpdateInspection(detailsEl, exploration.update, state.model, trafficReasonText);
+      else appendPacketInspection(detailsEl, exploration.packet, trafficReasonText);
+      return;
+    }
     if (selected.type === "node") {
       const node = (nodeByID ?? new Map(state.model.nodes.map((item) => [item.id, item]))).get(selected.id);
       if (!node) { selected = null; return renderInspector(); }
@@ -825,13 +972,13 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       for (const value of identity) { const li = document.createElement("li"); li.textContent = value; list.append(li); }
       const interfaces = document.createElement("details");
       interfaces.className = "dc-interface-details";
-      const summary = document.createElement("summary"); summary.textContent = `Interfejsy (${node.interface_ids.length})`;
+      const summary = document.createElement("summary"); summary.textContent = `Interfejsy (${node.interface_ids.length + (node.local_interface_ids?.length ?? 0)}) · TAP ${node.local_interface_ids?.length ?? 0}`;
       interfaces.append(summary);
-      for (const id of node.interface_ids) {
-        const iface = (interfaceByID ?? new Map(state.model.interfaces.map((item) => [item.id, item]))).get(id);
+      for (const id of [...node.interface_ids, ...(node.local_interface_ids ?? [])]) {
+        const iface = (interfaceByID ?? new Map([...state.model.interfaces, ...(state.model.local_interfaces ?? [])].map((item) => [item.id, item]))).get(id);
         if (!iface) continue;
         const row = document.createElement("p");
-        row.textContent = `${iface.name} ↔ ${iface.peer_node_id}: ${formatAddress(iface)}`;
+        row.textContent = `${iface.name} ↔ ${iface.peer_node_id}: ${iface.kind === "tap" ? `TAP · ${iface.vpc_id ? `VPC ${iface.vpc_id}` : "infra"} · port lokalny bez adresu L3` : formatAddress(iface)}`;
         interfaces.append(row);
       }
       detailsEl.append(list, interfaces);
@@ -851,7 +998,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       appendSpeakerTableOrLoading(detailsEl, node.id);
       if (node.kind === "host") {
         if (inspectorLoaded.has(`${modelRevision}/speaker/${node.id}`)) {
-          appendForwardingTable(detailsEl, state.model, node.id, "Tablica forwarding hosta");
+          appendFIB(detailsEl, state.model, node.id, "Tablica forwarding hosta", root.querySelector("#dc-rib-view").value, appendRouteRows);
         } else {
         appendInspectorLoading(detailsEl, "speaker", node.id);
         }
@@ -878,11 +1025,18 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const list = document.createElement("ul"); list.className = "dc-inspector-list";
       for (const value of values) { const li = document.createElement("li"); li.textContent = value; list.append(li); }
       detailsEl.append(list);
+      const attachment = state.model.local_links?.find((item) => item.vm_id === vm.id);
+      if (attachment) {
+        const tap = state.model.local_interfaces.find((item) => item.id === attachment.tap_interface_id);
+        const nic = document.createElement("p"); nic.className = "dc-local-interface";
+        nic.textContent = `eth0 ${vm.ipv4}/32 · ${vm.ipv6}/128 ↔ ${tap.name} na ${vm.host_id}${vm.vpc_id ? ` · VPC ${vm.vpc_id}` : " · infra"}`;
+        detailsEl.append(nic);
+      }
       appendEndpointSessions(detailsEl, state.model, vm.id);
       appendSpeakerTableOrLoading(detailsEl, vm.id);
       if (vm.role === "customer") {
         if (inspectorLoaded.has(`${modelRevision}/speaker/${vm.id}`)) {
-          appendForwardingTable(detailsEl, state.model, vm.id, "Widok forwarding VPC (NVE hosta; nie tabela systemu gościa)");
+          appendFIB(detailsEl, state.model, vm.id, "Widok forwarding VPC (NVE hosta; nie tabela systemu gościa)", root.querySelector("#dc-rib-view").value, appendRouteRows);
         } else {
           appendInspectorLoading(detailsEl, "speaker", vm.id);
         }
@@ -930,7 +1084,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         appendInspectorLoading(detailsEl, "session", session.id);
       }
       const controlPath = state.model.route_state?.control_paths?.find((item) => item.session_id === session.id);
-      if (controlPath) appendControlPath(detailsEl, session, controlPath);
+      if (controlPath) appendControlPath(detailsEl, session, controlPath, state.model);
       return;
     }
     if (selected.type === "route") {
@@ -1203,43 +1357,6 @@ function vmShortLabel(vm) {
   return `${vm.role === "rs_ctrl" ? "RS Ctrl" : "RS User"} ${vm.member}`;
 }
 
-function appendSpeakerTable(container, model, speakerID) {
-  const table = model.route_state?.tables?.find((item) => item.speaker_id === speakerID);
-  if (!table) return;
-  const locallyOriginated = table.locally_originated ?? [];
-  const received = table.received ?? [];
-  const selected = table.selected ?? [];
-  const details = document.createElement("details");
-  details.className = "dc-interface-details";
-  const summary = document.createElement("summary");
-  summary.textContent = `Oczekiwana tablica BGP · ${selected.length} wybranych · ${received.length} odebranych`;
-  details.append(summary);
-  const groups = [
-    ["Najlepsze ścieżki", selected],
-    ["Trasy lokalne", locallyOriginated],
-    ["Trasy odebrane", received],
-  ];
-  for (const [label, entries] of groups) {
-    const title = document.createElement("p"); title.className = "dc-route-group-title"; title.textContent = label;
-    details.append(title);
-    appendRouteRows(details, entries);
-  }
-  container.append(details);
-}
-
-function appendForwardingTable(container, model, ownerID, title) {
-  const entries = (model.route_state?.forwarding ?? []).filter((item) => item.owner_id === ownerID);
-  const details = document.createElement("details");
-  details.className = "dc-interface-details";
-  const summary = document.createElement("summary"); summary.textContent = `${title} · ${entries.length} wpisów`;
-  details.append(summary);
-  if (ownerID.startsWith("customer-") && entries.length === 0) {
-    const note = document.createElement("p"); note.textContent = "Brak wpisów w tej konfiguracji."; details.append(note);
-  }
-  appendRouteRows(details, entries);
-  container.append(details);
-}
-
 function appendSessionRoutes(container, model, session) {
   const entries = model.route_state?.advertisements?.filter((item) => item.session_id === session.id) ?? [];
   for (const [title, routes] of [
@@ -1252,7 +1369,7 @@ function appendSessionRoutes(container, model, session) {
   }
 }
 
-function appendControlPath(container, session, path) {
+function appendControlPath(container, session, path, model) {
   const details = document.createElement("details"); details.className = "dc-interface-details";
   const summary = document.createElement("summary"); summary.textContent = "Fizyczna droga pakietu BGP";
   const endpoints = document.createElement("p");
@@ -1261,6 +1378,15 @@ function appendControlPath(container, session, path) {
   physical.textContent = path.reachable ? `Węzły underlay: ${path.physical_node_ids.join(" → ") || "obie końcówki na tym samym hoście"}` : `Brak drogi: ${trafficReasonText(path.reason)}`;
   const links = document.createElement("p"); links.textContent = `Łącza fizyczne: ${path.physical_link_ids.join(", ") || "brak"}`;
   details.append(summary, endpoints, physical, links);
+  const header = document.createElement("p");
+  header.textContent = `Nagłówek transportu: IPv6 ${session.a.address} → ${session.b.address} · TCP 49152 → 179. Port źródłowy i Hop Limit 64 są poglądowe; UPDATE można rozwinąć w eksportach sesji.`;
+  details.append(header);
+  for (const endpoint of [session.a, session.b]) {
+    const local = model.local_links?.find((item) => item.vm_id === endpoint.entity_id);
+    if (!local) continue;
+    const tap = model.local_interfaces.find((item) => item.id === local.tap_interface_id);
+    const attachment = document.createElement("p"); attachment.textContent = `${endpoint.label}: eth0 ↔ ${tap.name} na ${local.host_id}`; details.append(attachment);
+  }
   if (path.ecmp_next_hops?.length) {
     const ecmp = document.createElement("p"); ecmp.textContent = `Równokosztowe next hops: ${path.ecmp_next_hops.join(", ")}`; details.append(ecmp);
   }
@@ -1273,6 +1399,9 @@ function trafficReasonText(reason) {
     "no-matching-vpc-route": "brak pasującej trasy w tej VPC",
     "unresolved-underlay-next-hop": "next hop nie jest osiągalny w underlay",
     "destination-vm-not-found": "VM docelowa nie istnieje",
+    "no-expected-advertisement-path": "brak oczekiwanych eksportów tej trasy między wybranymi końcami",
+    "tenant-target-not-supported": "VM klienta wymaga celu w tej samej VPC albo ogłaszanego prefiksu border; nie ma trasy do tego celu w underlay",
+    "endpoint-address-unavailable": "wybrany koniec nie ma adresu w tej rodzinie IP",
   };
   return messages[reason] ?? reason ?? "nieznana przyczyna";
 }
@@ -1294,7 +1423,7 @@ function appendEndpointSessions(container, model, entityID) {
   container.append(details);
 }
 
-function appendRouteRows(container, entries) {
+function appendRouteRows(container, entries, simple = false) {
   if (!entries?.length) {
     const empty = document.createElement("p"); empty.textContent = "Brak tras."; container.append(empty); return;
   }
@@ -1322,7 +1451,12 @@ function appendRouteRows(container, entries) {
     const path = pathNodes?.length ? ` · ${pathNodes.join(" → ")}` : "";
     const label = document.createElement("strong"); label.textContent = `${prefix}${vpc}${family}`;
     const info = document.createElement("span"); info.textContent = `${rd}${rt}${vni}${origin}${peer}${direction}${nextHop}${nextHopInterface}${asPath}${policy}${resolution}${path}`.replace(/^ · /, "");
+    if (simple) info.textContent = `${nextHop}${peer || (route.received_from === "" ? " · lokalna" : "")}${route.received_from === "" ? "" : asPath}${vni}`.replace(/^ · /, "");
     row.append(label, info);
     container.append(row);
+    if (route.from_id && route.to_id) {
+      const inspect = document.createElement("button"); inspect.type = "button"; inspect.className = "dc-inspector-link dc-update-inspect";
+      inspect.dataset.updateId = route.id; inspect.textContent = "Inspektuj ten UPDATE"; container.append(inspect);
+    }
   }
 }

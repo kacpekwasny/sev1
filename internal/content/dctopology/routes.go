@@ -370,8 +370,8 @@ func BuildExpectedRouteState(model Model) RouteState {
 			asPath := []uint32{route.OriginASN}
 			if physicalTransit {
 				asPath = make([]uint32, 0, len(path)-1)
-				for _, pathSpeaker := range path[:len(path)-1] {
-					asPath = append(asPath, entityByID[pathSpeaker].ASN)
+				for index := len(path) - 2; index >= 0; index-- {
+					asPath = append(asPath, entityByID[path[index]].ASN)
 				}
 			}
 			candidate := RouteCandidate{
@@ -481,6 +481,9 @@ func reachableRouteSpeakers(start string, route Route, peers map[string][]routeP
 		if !physicalTransit && current != start && !isRouteServerEntity(current) {
 			continue
 		}
+		if physicalTransit && current != start && entities[current].Kind == "host" {
+			continue
+		}
 		for _, peer := range peers[current] {
 			neighbor := peer.Endpoint.EntityID
 			if _, seen := paths[neighbor]; seen || !routeFamilySupported(peer.Session, route) {
@@ -492,7 +495,9 @@ func reachableRouteSpeakers(start string, route Route, peers map[string][]routeP
 				}
 			}
 			if entity := entities[neighbor]; entity.EntityType == "node" && entity.Kind == "host" {
-				if !hostVPCs[neighbor][vpcID] {
+				// Retain EVPN in the global RIB. RT/VPC filtering happens when
+				// importing into forwarding, not when receiving the EVPN NLRI.
+				if !physicalTransit && route.RouteType != 5 && !hostVPCs[neighbor][vpcID] {
 					continue
 				}
 			}
@@ -588,6 +593,9 @@ func buildRouteAdvertisements(model Model, selected map[string][]RouteCandidate,
 	for speakerID, candidates := range selected {
 		for _, candidate := range candidates {
 			physicalTransit := candidate.OriginKind == "underlay"
+			if physicalTransit && entities[speakerID].Kind == "host" && candidate.OriginID != speakerID {
+				continue // Hosts advertise local/service prefixes, not fabric transit.
+			}
 			peers := overlayPeers
 			if physicalTransit {
 				peers = underlayPeers
@@ -616,7 +624,7 @@ func buildRouteAdvertisements(model Model, selected map[string][]RouteCandidate,
 				asPath := append([]uint32(nil), candidate.ASPath...)
 				nextHop, nextHopNodeID, nextHopInterfaceID := candidate.NextHop, candidate.NextHopNodeID, candidate.NextHopInterfaceID
 				if physicalTransit {
-					asPath = append(asPath, entities[speakerID].ASN)
+					asPath = append([]uint32{entities[speakerID].ASN}, asPath...)
 					for _, endpoint := range []SessionEndpoint{peer.Session.A, peer.Session.B} {
 						if endpoint.EntityID == speakerID {
 							nextHop, nextHopNodeID, nextHopInterfaceID = endpoint.Address, speakerID, endpoint.InterfaceID
@@ -708,6 +716,7 @@ func forwardingEntry(ownerID, ownerType, sourceNVE string, candidate RouteCandid
 type underlayGraph struct {
 	neighbors map[string][]string
 	links     map[string]string
+	hosts     map[string]bool
 }
 
 type underlayResult struct {
@@ -717,7 +726,12 @@ type underlayResult struct {
 }
 
 func newUnderlay(model Model) underlayGraph {
-	graph := underlayGraph{neighbors: make(map[string][]string), links: make(map[string]string)}
+	graph := underlayGraph{neighbors: make(map[string][]string), links: make(map[string]string), hosts: make(map[string]bool)}
+	for _, node := range model.Nodes {
+		if node.Kind == NodeHost {
+			graph.hosts[node.ID] = true
+		}
+	}
 	for _, link := range model.Links {
 		graph.neighbors[link.ANodeID] = append(graph.neighbors[link.ANodeID], link.BNodeID)
 		graph.neighbors[link.BNodeID] = append(graph.neighbors[link.BNodeID], link.ANodeID)
@@ -767,6 +781,10 @@ func (g underlayGraph) resolve(speakerID, nextHopNodeID string, nodes map[string
 }
 
 func resolveTraffic(model Model, forwarding []ForwardingEntry, underlay underlayGraph) []ResolvedTraffic {
+	return resolveTrafficInFamily(model, forwarding, underlay, "ipv4")
+}
+
+func resolveTrafficInFamily(model Model, forwarding []ForwardingEntry, underlay underlayGraph, family string) []ResolvedTraffic {
 	vms := make(map[int]VM)
 	vmByID := make(map[string]VM)
 	nodes := make(map[string]Node)
@@ -806,13 +824,17 @@ func resolveTraffic(model Model, forwarding []ForwardingEntry, underlay underlay
 				results = append(results, result)
 				continue
 			}
-			address, err := netip.ParseAddr(value.IPv4)
+			destinationAddress, bits := value.IPv4, 32
+			if family == "ipv6" {
+				destinationAddress, bits = value.IPv6, 128
+			}
+			address, err := netip.ParseAddr(destinationAddress)
 			if err != nil {
 				result.Reason = "destination-address-invalid"
 				results = append(results, result)
 				continue
 			}
-			prefix = netip.PrefixFrom(address, 32)
+			prefix = netip.PrefixFrom(address, bits)
 		} else {
 			parsed, err := netip.ParsePrefix(request.DestinationPrefix)
 			if err != nil {
@@ -950,6 +972,9 @@ func (g underlayGraph) shortestPaths(source, destination string) [][]string {
 	for len(queue) > 0 {
 		current := queue[0]
 		queue = queue[1:]
+		if g.hosts[current] && current != source && current != destination {
+			continue
+		}
 		for _, neighbor := range g.neighbors[current] {
 			if _, seen := distance[neighbor]; seen {
 				continue
@@ -964,6 +989,9 @@ func (g underlayGraph) shortestPaths(source, destination string) [][]string {
 	var paths [][]string
 	var walk func(current string, path []string)
 	walk = func(current string, path []string) {
+		if g.hosts[current] && current != source && current != destination {
+			return
+		}
 		if current == destination {
 			paths = append(paths, append([]string(nil), path...))
 			return

@@ -58,6 +58,7 @@ func newAPIHandler(store *configStore, initialYAML []byte) http.Handler {
 	mux.HandleFunc("GET /api/status", store.status)
 	mux.HandleFunc("GET /api/model", store.model)
 	mux.HandleFunc("GET /api/inspector", store.inspector)
+	mux.HandleFunc("GET /api/explore", store.explore)
 	mux.HandleFunc("POST /api/config", store.load)
 	mux.HandleFunc("POST /api/counts", store.updateCounts)
 	mux.HandleFunc("GET /api/config.yaml", store.export)

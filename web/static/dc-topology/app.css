@@ -105,9 +105,26 @@ body.dc-harness { margin: 0; min-width: 320px; background: #0b1018; }
 .dc-empty { padding: 24px; color: var(--dc-muted); }
 /* The inspector belongs to the canvas. It is non-modal so another device can be selected. */
 .dc-inspector, .dc-config-dialog { --dc-ink: #243546; --dc-muted: #66758a; --dc-accent: #18785e; --dc-border: #dde5eb; color: var(--dc-ink); color-scheme: light; background: #f9fbfc; border: 1px solid #c6d4df; border-radius: 14px; box-shadow: 0 16px 70px #0006; }
-.dc-inspector { position: absolute; top: 18px; right: 18px; width: min(470px, calc(100% - 36px)); max-height: calc(100% - 36px); z-index: 5; display: flex; flex-direction: column; animation: dc-popup-in .18s ease-out; }
+.dc-inspector { position: absolute; top: 18px; right: 18px; width: min(470px, calc(100% - 36px)); max-height: calc(100% - 36px); z-index: 5; display: flex; flex-direction: column; animation: dc-popup-in .18s ease-out; scroll-margin-top: 80px; }
 .dc-inspector-bar { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 14px 18px; border-bottom: 1px solid var(--dc-border); flex: none; }
 .dc-inspector-bar .dc-kicker { margin: 0; }
+.dc-rib-control { display: flex; align-items: center; gap: 6px; margin-left: auto; color: var(--dc-muted); font-size: 9px; }
+.dc-rib-control select { background: white; border: 1px solid var(--dc-border); border-radius: 6px; padding: 4px; color: var(--dc-ink); font-size: 10px; }
+.dc-terminal { background: #14202c; color: #d5e8df; border-radius: 8px; padding: 12px; overflow: auto; font: 10px/1.65 ui-monospace, monospace; }
+.dc-explorer { border-top: 1px solid var(--dc-border); padding: 14px 20px; }
+.dc-explorer > summary { color: var(--dc-accent); cursor: pointer; font-size: 11px; font-weight: 600; }
+.dc-explorer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 14px; }
+.dc-explorer-form { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--dc-border); border-radius: 10px; background: #14202c; min-width: 0; }
+.dc-explorer-form h3 { margin: 0; font-size: 12px; color: var(--dc-ink); }
+.dc-explorer-form label { display: grid; gap: 5px; min-width: 0; font-size: 10px; color: var(--dc-muted); }
+.dc-explorer-form select { width: 100%; min-width: 0; background: #0e1621; border: 1px solid var(--dc-border); color: var(--dc-ink); border-radius: 6px; padding: 7px; font-size: 11px; }
+.dc-endpoints { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.dc-explore-status { font-size: 10px; color: var(--dc-muted); margin: 0; overflow-wrap: anywhere; }
+.dc-decoded-fields { display: grid; grid-template-columns: minmax(85px, 1fr) minmax(0, 2fr); gap: 7px 12px; background: #edf2f5; border-radius: 8px; padding: 12px; }
+.dc-decoded-fields dt { color: #66758a; }
+.dc-decoded-fields dd { margin: 0; font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+.dc-local-path { stroke: #ffc36c; stroke-width: 2; stroke-dasharray: 4 3; pointer-events: none; }
+.dc-interface-details.is-current > summary { color: #18785e; background: #e1eee8; border-radius: 5px; }
 .dc-icon-button { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--dc-border); border-radius: 7px; background: transparent; color: var(--dc-ink); font-size: 21px !important; line-height: 1; }
 .dc-icon-button:hover { background: #e2ece8; }
 .dc-details { overflow: auto; padding: 16px 18px 22px; font-size: 11px; overscroll-behavior: contain; }
@@ -162,10 +179,14 @@ body.dc-harness { margin: 0; min-width: 320px; background: #0b1018; }
   .dc-toolbar { padding: 12px; }
   .dc-layer-title { width: 100%; }
   .dc-graph-scroll { height: 62dvh; min-height: 380px; }
-  .dc-inspector { top: 12px; right: 8px; width: calc(100% - 16px); max-height: calc(100% - 24px); }
+  .dc-inspector { top: 12px; right: 8px; width: calc(100% - 16px); max-height: calc(100% - 24px); scroll-margin-top: 160px; }
   .dc-graph-footer { padding: 12px; flex-wrap: wrap; gap: 8px; }
   .dc-traffic-list, .dc-playback { padding: 10px 12px; }
   .dc-count-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dc-explorer { padding: 12px; }
+  .dc-explorer-grid { grid-template-columns: 1fr; }
+  .dc-inspector-bar { gap: 8px; }
+  .dc-inspector-bar .dc-kicker { max-width: 110px; font-size: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .dc-app *, .dc-app *::after { animation: none !important; transition: none !important; }

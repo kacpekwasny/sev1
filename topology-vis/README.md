@@ -51,6 +51,30 @@ illustrative host → RS Bolt → RS Ctrl → border sequence on valid sessions.
 It does not learn routes or change tables. Reduced-motion settings keep static
 direction arrows. Packet examples use their calculated physical paths separately.
 
+Sprawdź przepływ między urządzeniami adds two endpoint selectors for each flow.
+Choose nodes or individual VMs, then show an UPDATE or packet in the canvas popup.
+UPDATE flow follows actual expected exports of a compatible route; choose another
+route from the populated list. Expand each step to inspect NLRI, next hop, AS path,
+and EVPN attributes. Session export rows also have an UPDATE inspection button.
+Custom flow still uses the Przepływ tras switch and does not change routing state.
+
+Packet examples use IPv4 ICMP or IPv6 ICMPv6 Echo Request. Customer VM pairs obey
+VPC forwarding/isolation; choosing a border targets a compatible advertised prefix.
+Nodes and infra VMs use underlay paths. Unsupported tenant destinations report why
+they cannot be reached. Inspection includes inner/outer headers, UDP/VNI, selected
+ECMP path, and interfaces at each hop. Closing the custom packet popup keeps its
+path for playback; Inspektuj pakiet reopens it. Highlighted steps follow playback.
+TTL, Echo fields, and payload are illustrative; this is not a packet capture.
+
+Every VM has eth0 and a local host TAP, listed in inspection and used by packet
+paths. Local attachments remain separate from physical cables. Host RIBs visibly
+separate EVPN Type 5, IPv4, and IPv6; EVPN retention does not imply importing another
+VPC into forwarding. Select GUI or Linux / FRR in the inspector to switch between
+concise cards and command-style expected BGP/kernel output. No commands are run.
+Formatting references: [FRR BGP/EVPN](https://docs.frrouting.org/en/latest/bgp.html),
+[Linux iproute2](https://www.man7.org/linux/man-pages/man8/ip-route.8.html), and
+[Linux TAP](https://docs.kernel.org/networking/tuntap.html).
+
 Konfiguracja opens YAML editing, count controls, reset, and export. Invalid input
 preserves the last valid scenario. Export/reload reproduces its network and expected
 tables, preserving all RS members and actual placements even when dragged/collapsed.
@@ -80,6 +104,8 @@ go build ./cmd/dc-topology
 go test -race ./internal/content/dctopology ./internal/live ./internal/web
 node --input-type=module --check < web/static/dc-topology/app.js
 node --input-type=module --check < web/static/dc-topology/dev.js
+node --input-type=module --check < web/static/dc-topology/tables.js
+node --input-type=module --check < web/static/dc-topology/inspection.js
 ```
 
 The optional browser walkthrough in [tests/browser.mjs](tests/browser.mjs) uses an
@@ -90,11 +116,17 @@ to the application. With Playwright available outside the repo and the site runn
 PLAYWRIGHT_MODULE=/absolute/path/to/playwright-core/index.mjs \
 TOPOLOGY_URL=http://127.0.0.1:8081/topologie/dc/ \
 node topology-vis/tests/browser.mjs
+
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright-core/index.mjs \
+TOPOLOGY_URL=http://127.0.0.1:8081/topologie/dc/ \
+node topology-vis/tests/exploration.mjs
 ```
 
 The walkthrough checks desktop/narrow popup behavior, stale responses, mouse/touch
 and keyboard dragging, invariant tables/export, layers/clusters, reduced motion,
 packet illustration, invalid/zero-count rebuilds, YAML reload, browser isolation,
 capped scale, and teardown. Screenshots default to `/tmp/dc-topology-browser`.
+The endpoint walkthrough adds decoded UPDATE/packet inspection, TAP/VXLAN paths,
+IPv4/IPv6 selection, delayed-query ordering, and narrow control/popup checks.
 Measured timings are local observations, not a performance guarantee; see
 [PROGRESS.md](PROGRESS.md) for the latest verification.

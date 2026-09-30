@@ -65,8 +65,13 @@ func TestDefaultRouteStateAndForwarding(t *testing.T) {
 	if countRoutesByVPC(remote.LocallyOriginated, 1) != 2 || countRoutesByVPC(remote.Selected, 1) != 13 {
 		t.Fatalf("remote VPC host route table mismatch: local=%d selected=%d", countRoutesByVPC(remote.LocallyOriginated, 1), countRoutesByVPC(remote.Selected, 1))
 	}
-	if got := countRoutesByVPC(tables["host-b1-h2"].Selected, 1); got != 0 {
-		t.Errorf("host with no VPC attachment imported %d tenant routes", got)
+	if got := countRoutesByVPC(tables["host-b1-h2"].Selected, 1); got != 7 {
+		t.Errorf("host without a VPC should retain seven EVPN routes in the RIB: got %d", got)
+	}
+	for _, entry := range state.Forwarding {
+		if entry.OwnerID == "host-b1-h2" {
+			t.Errorf("host without VPC imported forwarding entry: %+v", entry)
+		}
 	}
 	if got := countRoutesByVPC(tables["rs-ctrl-m1"].Selected, 1); got != 13 {
 		t.Errorf("RS Ctrl selected route count=%d; want 13", got)
@@ -182,8 +187,8 @@ func assertUnderlayServiceReachability(model Model, tables map[string]BGPSpeaker
 				if name == "remote" && (candidate.NextHop == "" || candidate.NextHopInterfaceID == "") {
 					return fmt.Errorf("remote underlay route lost its interface-scoped eBGP next hop: %+v", candidate)
 				}
-				if name == "remote" && (len(candidate.ASPath) == 0 || candidate.ASPath[0] != modelNodeASN(model, user.HostID)) {
-					return fmt.Errorf("remote underlay path does not begin with the origin host ASN: %+v", candidate.ASPath)
+				if name == "remote" && (len(candidate.ASPath) == 0 || candidate.ASPath[len(candidate.ASPath)-1] != modelNodeASN(model, user.HostID) || candidate.ASPath[0] != modelNodeASN(model, candidate.ReceivedFrom)) {
+					return fmt.Errorf("underlay AS_PATH must start with the sending peer and end with the origin: %+v", candidate.ASPath)
 				}
 			}
 		}
