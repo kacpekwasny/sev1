@@ -19,6 +19,7 @@ These requirements supersede earlier simulator and inspector-layout requirements
 - Commit existing work before starting the redesign, then commit each verified working increment. Inspect ownership and staged changes first.
 - D17 reopens visibility, disclosure hierarchy, popup resizing/dismissal/back alignment, session hover, slug labels, border/customer routing, and packet geometry. Follow its twelve user-listed steps in order and commit each verified step separately; consult PROGRESS for completed steps.
 - D17 is implemented: border exports are empty; configured border prefixes and both border identities use labeled static forwarding, outside BGP RIBs. Customer exports appear in the sequential UPDATE illustration. Packet markers share physical-port/TAP geometry with yellow tracks. Presentation uses host/RS slugs while API/config IDs stay stable.
+- D18 refines the destination popup size, whole-field hover/focus across packet rows, and shallower disclosure indents. The RIB route-detail question is answer-only: leave its topology-wide export list unchanged. Commit the three UI changes separately.
 
 The user already approved defaults and said **“You can make assumptions here”**, authorizing autonomous work while unavailable. Choose reasonable defaults, record material choices, and proceed without repeatedly asking for confirmation. Preserve the confirmed physical topology, BGP peering matrix, count limits, VM-placement rules, synthetic addressing, and YAML load/export behavior unless the latest requirements require a change.
 

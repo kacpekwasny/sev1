@@ -29,7 +29,7 @@ Click a device, VM, cluster, link, or session to open a popup over the topology.
 Expected BGP/forwarding tables and exports load on demand inside the popup.
 Escape or the close button dismisses it and restores focus. The topology remains
 visible; on narrow screens the popup fills most of the canvas width.
-Every disclosure groups its children with an indented branch. Resize the inspector
+Every disclosure groups its children with a shallow indented branch. Resize the inspector
 using its bottom-right handle, or focus that handle and use arrow keys; Home
 restores the default size. Hover/focus session rows to preview their connections.
 

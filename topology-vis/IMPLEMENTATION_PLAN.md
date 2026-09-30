@@ -1,6 +1,6 @@
 # DC topology visualizer: implementation plan for GPT-Luna
 
-Status on 2026-09-30: **R00–R12 are implemented, including `/topologie/dc/` integration, D12 layout, and D13–D17 interactive packet/route inspection.** The user committed the baseline as `9c50463`; rework commits and verification are recorded in [PROGRESS.md](PROGRESS.md). The milestones and older steps below remain the implementation/acceptance contract, not a request to repeat completed work. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
+Status on 2026-09-30: **R00–R13 are implemented, including `/topologie/dc/` integration, D12 layout, and D13–D18 interactive packet/route inspection.** The user committed the baseline as `9c50463`; rework commits and verification are recorded in [PROGRESS.md](PROGRESS.md). The milestones and older steps below remain the implementation/acceptance contract, not a request to repeat completed work. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
 
 ## Current rework contract and execution order
 
@@ -26,6 +26,7 @@ These milestones define the revised scope; consult progress before executing an 
 
 | R11 — Refine playback and visibility | Apply D16: explicit custom packet playback, sequential UPDATE markers, and Inspect packet scrolling to visible fields. | Commit after each of the three points. Verify packet movement/pause/rewind under reduced motion, one route marker with successive prefixes and stable tables, and packet fields visible in the viewport at desktop/narrow widths, including asynchronous and session inspection. Consult PROGRESS for completion. |
 | R12 — Refine visibility, inspection and routing | Apply D17: underlay hiding, outside dismissal, disclosure children, resize/back alignment, session hover, host/RS slugs, no border exports, customer exports to RS User, static routes to borders, and packet markers on yellow link geometry. | Twelve separate commits in user order. Check GUI/Linux navigation, desktop/narrow popup interaction, packet movement, customer exports, border reachability without BGP advertisements, and stable YAML/API IDs. Consult PROGRESS for completion and checks. |
+| R13 — Compact inspector presentation | Apply D18: smaller destination action popup, whole wrapped-field hover/focus, and shallow child indentation. Answer the host RIB route-detail question without changing its exports view. | Three UI commits. Check desktop/narrow controls and hierarchy, four-row IPv6 fields, other wrapped fields, keyboard focus, and retained click selection. Consult PROGRESS for checks. |
 
 The 48-layout-unit drag bound, ephemeral offsets, popup behavior, and illustrative-flow defaults are specified in the guide and D11. These are authorized defaults that may be refined during usability checks. The latest user explicitly resumed implementation; the earlier instructions-only limit no longer applies.
 

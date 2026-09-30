@@ -4,7 +4,7 @@ Updated: 2026-09-30
 
 ## Current status
 
-R00–R12 and the revised Steps 00–13 are implemented and verified. The explorer is
+R00–R13 and the revised Steps 00–13 are implemented and verified. The explorer is
 integrated at `/topologie/dc/`, linked from Topologie, and shares its source with
 the standalone harness. Git and parent-site writes are available. D03 remains
 absent; the original `TODO.md` is unchanged.
@@ -241,4 +241,13 @@ Latest local default load was 168 ms; maximum rebuild was 2,702 ms (128 devices,
 3. Host RIB route-detail question — answered without changing route inspection.
    The list contains expected exports of the selected route across topology-wide
    BGP sessions, rather than extra routes in the inspected host's RIB.
-4. Shallower disclosure hierarchy — pending.
+4. Disclosure children now add only 6 px per level (previously 16 px); removed
+   extra RIB-family indents that compounded the nesting. Branch lines and tinted
+   backgrounds retain visible parent/child relationships in every disclosure.
+   Desktop/narrow screenshots checked; Chrome refinements and Go tests pass.
+
+Commits: `cf181a2` (smaller action popup), `380f11d` (whole packet-field hover),
+and the commit containing this checkpoint (shallow indentation). RIB route-detail
+behavior was left unchanged as requested. Final Go tests and embedded build pass;
+the full browser and endpoint walkthroughs pass against the fresh embedded binary,
+with no page errors. Packet-bit checks and desktop/narrow wrapped IPv6 hover pass.
