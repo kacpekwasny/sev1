@@ -304,6 +304,13 @@ resize), and the commit containing this checkpoint (focused route details).
    overlapping members. The initial snapshot and route tables stay unchanged.
    Domain tests verify every edge/depth against the canonical export; Chrome checks
    movement, single-prefix branching, grouping and reduced motion at both widths.
-   Commit: the commit containing this checkpoint.
-3. Complete BGP illustrations at end devices — pending.
+   Commit: `4299002`.
+3. Complete delivery paths now end at hosts, customer VMs or borders. Dangling
+   RS exports are omitted from illustrative paths, without removing any actual
+   expected exports. Custom UPDATE inspection includes the complete prefix fanout
+   even when its selected endpoint is an RS; decoded selected steps remain focused.
+   Changing the prefix playlist restarts its clock at the source. Domain tests
+   verify onward hops and terminal waves; desktop/narrow Chrome observes end-device
+   arrival for default and RS-targeted custom flows. Existing walkthroughs, Go
+   tests and build pass. Commit: the commit containing this checkpoint.
 4. Default advertisement-explanation sequence — pending.

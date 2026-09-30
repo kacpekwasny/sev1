@@ -61,7 +61,10 @@ Przepływ tras is off initially. Enable it with the BGP layer to show a sequence
 of expected-export illustrations through valid RS hierarchy sessions, including
 customer VM exports to RS User and EVPN. Each prefix branches into simultaneous
 UPDATEs at route servers; only one prefix is illustrated at a time. Marker tooltips
-identify the prefix and sender/recipient. A selected UPDATE adds a focused sequence first.
+identify the prefix and sender/recipient. A selected UPDATE adds its complete prefix fanout first. Each illustrated branch
+continues to a host, customer VM or border; redundant RS-only ends are omitted.
+Inspection retains the chosen endpoint path and decoded steps while the animation
+shows onward delivery.
 It does not learn routes or change tables. Reduced-motion settings keep static
 direction arrows. Packet examples use their calculated physical paths separately.
 

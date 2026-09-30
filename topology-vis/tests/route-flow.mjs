@@ -9,6 +9,10 @@ try {
   const api=new URL(await page.locator('#dc-topology-app').getAttribute('data-api-base'),target).href;
   const model=await (await page.request.get(`${api}/model`)).json();
   assert(model.route_state.flow_examples.length>=4);
+  const isEnd=id=>/^(host-|customer-|border-)/.test(id);
+  for(const example of model.route_state.flow_examples) {
+   for(const s of example.steps)if(!isEnd(s.to_id))assert(example.steps.some(n=>n.from_id===s.to_id&&n.wave===s.wave+1),'RS branches must continue');
+  }
   await page.locator('#dc-show-sessions').check();await page.locator('#dc-show-route-flow').check();
   for(const collapsed of [true,false]) {
    await page.locator('#dc-collapse-rs').setChecked(collapsed);
@@ -19,6 +23,23 @@ try {
    for(const m of seen)assert(example.steps.some(s=>s.from_id===m.from&&s.to_id===m.to&&s.wave===+m.wave),'Every marker must follow an actual expected export');
    const before=seen[0];await page.waitForFunction(({from,to,cx,cy})=>Array.from(document.querySelectorAll('.dc-route-marker[visibility=visible]')).some(m=>m.dataset.from===from&&m.dataset.to===to&&Math.hypot(+m.getAttribute('cx')-cx,+m.getAttribute('cy')-cy)>1),before);
   }
+
+  // Observe a whole example reach its end devices before another prefix begins.
+  const prefix=await page.locator('#dc-route-marker').getAttribute('data-route-id');
+  const last=Math.max(...model.route_state.flow_examples.find(e=>e.route.id===prefix).steps.map(s=>s.wave));
+  await page.waitForFunction(({prefix,last})=>{const ms=Array.from(document.querySelectorAll('.dc-route-marker[visibility=visible]'));return ms.length&&ms.every(m=>m.dataset.routeId===prefix&&+m.dataset.wave===last)}, {prefix,last}, {timeout:20000});
+  const terminals=await page.locator('.dc-route-marker[visibility=visible]').evaluateAll(ms=>ms.map(m=>m.dataset.to));assert(terminals.every(isEnd));
+  // A custom inspection targeting an RS also continues to end-device deliveries.
+  await page.locator('#dc-explorer > summary').click();
+  await page.locator('#dc-update-form [name="from"]').selectOption('host-b1-h1');
+  await page.locator('#dc-update-form [name="to"]').selectOption('rs-ctrl-m1');
+  const response=page.waitForResponse(r=>r.url().includes('/explore?kind=update'));
+  await page.locator('#dc-update-form button[type=submit]').click();
+  const flow=(await (await response).json()).update_flow;assert(flow.reachable);
+  const final=Math.max(...flow.example.steps.map(s=>s.wave));
+  await page.waitForFunction(({prefix,last})=>{const ms=Array.from(document.querySelectorAll('.dc-route-marker[visibility=visible]'));return ms.length&&ms.every(m=>m.dataset.routeId===prefix&&+m.dataset.wave===last)}, {prefix:flow.route.id,last:final}, {timeout:20000});
+  assert((await page.locator('.dc-route-marker[visibility=visible]').evaluateAll(ms=>ms.map(m=>m.dataset.to))).every(isEnd));
+  await page.keyboard.press('Escape');
   await page.emulateMedia({reducedMotion:'reduce'});
   await page.waitForFunction(()=>!document.querySelector('.dc-route-marker[visibility=visible]'));
   assert(await page.locator('.dc-session.illustrative').count()>0);

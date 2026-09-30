@@ -9,6 +9,7 @@ import (
 )
 
 type UpdateFlow struct {
+	Example   *FlowExample         `json:"example,omitempty"`
 	FromID    string               `json:"from_id"`
 	ToID      string               `json:"to_id"`
 	Reachable bool                 `json:"reachable"`
@@ -179,6 +180,8 @@ func InspectUpdateFlow(model Model, from, to, routeID string) UpdateFlow {
 		if !flow.Reachable && (routeID == "" || routeID == route.ID) {
 			copy := route
 			flow.Route = &copy
+			example := completeFlowExample(route, exports[route.ID])
+			flow.Example = &example
 			flow.Steps = path
 			flow.Reachable = true
 			flow.Reason = ""

@@ -541,3 +541,50 @@ func TestFlowExamplesUseExpectedExportWaves(t *testing.T) {
 		t.Fatal("missing route-server fanout")
 	}
 }
+
+func TestIllustratedRSBranchesAlwaysContinueToEndDevices(t *testing.T) {
+	model, err := BuildTopology(exampleConfig(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, example := range model.Routes.FlowExamples {
+		for _, step := range example.Steps {
+			if isFlowEndDevice(step.ToID) {
+				continue
+			}
+			continues := false
+			for _, next := range example.Steps {
+				if next.FromID == step.ToID && next.Wave == step.Wave+1 {
+					continues = true
+				}
+			}
+			if !continues {
+				t.Errorf("%s stops at transit device %s, wave %d", example.Route.ID, step.ToID, step.Wave)
+			}
+		}
+		last := -1
+		for _, step := range example.Steps {
+			if step.Wave > last {
+				last = step.Wave
+			}
+		}
+		for _, step := range example.Steps {
+			if step.Wave == last && !isFlowEndDevice(step.ToID) {
+				t.Errorf("last wave stops at %s", step.ToID)
+			}
+		}
+	}
+	flow := InspectUpdateFlow(model, "host-b1-h1", "rs-ctrl-m1", "")
+	if !flow.Reachable || flow.Example == nil {
+		t.Fatal("missing inspected prefix illustration")
+	}
+	end := false
+	for _, step := range flow.Example.Steps {
+		if isFlowEndDevice(step.ToID) && step.ToID != flow.Route.OriginID {
+			end = true
+		}
+	}
+	if !end {
+		t.Fatal("inspecting an RS endpoint must still illustrate delivery to end devices")
+	}
+}

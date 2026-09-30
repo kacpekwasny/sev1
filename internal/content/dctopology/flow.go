@@ -1,6 +1,9 @@
 package dctopology
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // FlowExample projects the computed exports onto a small explanatory wave sequence.
 // It is a snapshot, not BGP event/convergence state.
@@ -31,13 +34,37 @@ func buildFlowExamples(state RouteState) []FlowExample {
 		if seen[key] || len(byRoute[route.ID]) == 0 {
 			continue
 		}
-		seen[key] = true
-		example := FlowExample{Route: route}
-		for _, export := range byRoute[route.ID] {
+		example := completeFlowExample(route, byRoute[route.ID])
+		if len(example.Steps) > 0 {
+			seen[key] = true
+			result = append(result, example)
+		}
+	}
+	return result
+}
+
+// Keep the prefixes of complete delivery paths. An export to a redundant RS
+// whose selected path cannot carry this branch onward is not a delivery example.
+func completeFlowExample(route Route, exports []RouteAdvertisement) FlowExample {
+	complete := map[string]bool{}
+	for _, export := range exports {
+		if !isFlowEndDevice(export.ToID) {
+			continue
+		}
+		for length := 2; length <= len(export.PropagationPath); length++ {
+			complete[strings.Join(export.PropagationPath[:length], "\x00")] = true
+		}
+	}
+	example := FlowExample{Route: route}
+	for _, export := range exports {
+		if complete[strings.Join(export.PropagationPath, "\x00")] {
 			example.Steps = append(example.Steps, FlowStep{SessionID: export.SessionID, FromID: export.FromID,
 				ToID: export.ToID, Wave: len(export.PropagationPath) - 2})
 		}
-		result = append(result, example)
 	}
-	return result
+	return example
+}
+
+func isFlowEndDevice(id string) bool {
+	return strings.HasPrefix(id, "host-") || strings.HasPrefix(id, "customer-") || strings.HasPrefix(id, "border-")
 }

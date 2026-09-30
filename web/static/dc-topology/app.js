@@ -773,7 +773,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     flowNote.textContent = !showRouteFlow.checked ? "Adresy i tablice są obliczanym przykładem."
       : !showSessions.checked ? "Przepływ poglądowy — włącz warstwę Sesje BGP."
       : !illustration.sequence.length ? "Brak zgodnego przykładu przepływu tras w tej konfiguracji."
-      : exploration.update ? `UPDATE: ${exploration.update.from_id} → ${exploration.update.to_id} · ${exploration.update.route.prefix}. Tablice pozostają stałe.`
+      : exploration.update ? `UPDATE: ${exploration.update.from_id} → ${exploration.update.to_id} · ${exploration.update.route.prefix}. Rozgałęzienia pokazują dostarczenie tego prefiksu do urządzeń końcowych.`
       : `Poglądowo: ${illustration.streams.length} ogłoszeń płynie kolejno przez RS, jeden prefiks naraz, z rozgałęzieniami na RS. Tablice pozostają stałe.`;
     if(routeHover||selected?.type==="route")flowNote.textContent="Fioletowa strzałka wskazuje kierunek propagacji oglądanej trasy do tego RIB.";
     flowNote.textContent=displayNames(flowNote.textContent);
@@ -821,7 +821,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       marker.querySelector("title").textContent=displayNames(`${stream.route.prefix} · ${step.fromID} → ${step.toID}`);
     }
     for(;index<markers.length;index++)markers[index].setAttribute("visibility","hidden");
-    for(const item of detailsEl.querySelectorAll(".dc-update-step"))item.classList.toggle("is-current",stream.focused&&Number(item.dataset.stepIndex)===waveIndex);
+    for(const item of detailsEl.querySelectorAll(".dc-update-step"))item.classList.toggle("is-current",stream.focused&&wave.some(step=>step.fromID===exploration.update?.steps[Number(item.dataset.stepIndex)]?.from_id&&step.toID===exploration.update?.steps[Number(item.dataset.stepIndex)]?.to_id));
   }
 
   function animationDuration() {
@@ -1075,6 +1075,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     root.querySelector("#dc-route-legend").hidden = !routeHover && selected?.type !== "route";
     illustration.streams = showRouteFlow.checked && !routeHover && selected?.type !== "route" ? routeFlowStreams(model, exploration.update)
       .filter(stream=>stream.steps.every(step=>positions.entityPoints.has(step.fromID)&&positions.entityPoints.has(step.toID))) : [];
+    const playlistKey=illustration.streams.map(stream=>`${stream.route.id}/${stream.focused}/${stream.waves.length}`).join("|");
+    if(playlistKey!==illustration.key) {illustration.key=playlistKey;illustration.startedAt=performance.now();}
     illustration.sequence = illustration.streams.flatMap(stream=>stream.waves);
     const illustrationIDs = new Set(illustration.sequence.flat().map((step) => step.sessionID));
     const groupLayer = svgElement("g", { class: "dc-groups", "aria-hidden": "true" });
