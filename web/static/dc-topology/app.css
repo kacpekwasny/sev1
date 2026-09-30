@@ -226,8 +226,9 @@ body.dc-page { background: #0b1018; }
 .dc-route-legend .points-to { color:#ffe16a; }
 .dc-route-provenance .learned { color:#7040b1; }
 .dc-route-provenance .points-to { color:#836500; }
-.dc-route-paths { pointer-events:none; }
+.dc-route-paths, .dc-route-propagation { pointer-events:none; }
 .dc-route-learned { stroke:#bc8aff; stroke-width:3; stroke-dasharray:7 3; opacity:.95; }
+.dc-route-propagation-marker { fill:#e2cfff; stroke:#7040b1; stroke-width:1; filter:drop-shadow(0 0 4px #bc8aff); }
 .dc-route-points-to { stroke:#ffe16a; stroke-width:3; opacity:.95; }
 .dc-pick-actions { display:flex; flex-wrap:wrap; gap:7px; }
 .dc-pick-actions .dc-button { font-size:10px; padding:6px 9px; }

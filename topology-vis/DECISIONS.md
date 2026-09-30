@@ -352,6 +352,18 @@ and session endpoints so the independently enabled BGP layer shows border–RS C
 sessions. Unchecking it restores the fully hidden fabric view. This is view state;
 YAML, topology, routing and physical-path playback semantics remain unchanged.
 
+### D20 — Directional route inspection, edge resizing, and focused details
+
+Latest request: visualize propagation direction on route hover and click; resize
+the white inspector by dragging its borders; remove the topology-wide export list
+from route details. Commit each point separately. The third instruction supersedes
+D18's former answer-only constraint. Session export inspection remains available.
+
+Route inspection follows that RIB candidate's learned path using one purple
+direction marker, independent of the general Przepływ tras toggle. Reduce motion
+to a stationary direction arrow when requested by the OS; keep yellow next-hop
+context. Pause the general illustrative stream during route inspection/preview.
+
 ## Recording an answer
 
 Record the latest user direction and affected milestones. If it changes previously implemented work, reopen the affected acceptance checks; do not claim the old checks verify new behavior. Distinguish direct user requirements from authorized implementation defaults. Preserve the original TODO while keeping this decision record and the active plan authoritative for later changes.

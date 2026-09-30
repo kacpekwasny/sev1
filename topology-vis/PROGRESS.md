@@ -264,3 +264,15 @@ Go tests, embedded build, JS syntax and diff checks pass. Chrome refinements pas
 at desktop/narrow widths, including default border retention, exact border–Ctrl
 sessions, hiding/restoring borders, parent/child control visibility, and invariant
 YAML. Screenshots at both widths were inspected against the fresh embedded preview.
+
+## D20 inspection refinements
+
+1. One purple direction marker follows the hovered/inspected RIB candidate's
+   learned propagation path. It works with the general route-flow switch off;
+   active inspection suppresses that general stream. Reduced motion keeps a
+   stationary direction arrow. The marker renders above nodes and VM badges.
+   Chrome verifies hover movement/direction, click retention, leaving/back, cached
+   metadata, and reduced motion; desktop/narrow endpoint walkthrough and Go tests pass.
+2. Inspector border resizing — pending.
+3. Remove topology-wide route exports from route details — pending. This latest
+   request supersedes the former answer-only constraint.

@@ -739,12 +739,13 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function syncIllustration() {
-    const active = !routeHover && showRouteFlow.checked && showSessions.checked && illustration.sequence.length > 0;
+    const active = !routeHover && selected?.type !== "route" && showRouteFlow.checked && showSessions.checked && illustration.sequence.length > 0;
     flowNote.textContent = !showRouteFlow.checked ? "Adresy i tablice są obliczanym przykładem."
       : !showSessions.checked ? "Przepływ poglądowy — włącz warstwę Sesje BGP."
       : !illustration.sequence.length ? "Brak zgodnego przykładu przepływu tras w tej konfiguracji."
       : exploration.update ? `UPDATE: ${exploration.update.from_id} → ${exploration.update.to_id} · ${exploration.update.route.prefix}. Tablice pozostają stałe.`
       : `Poglądowo: ${illustration.streams.length} ogłoszeń płynie kolejno przez RS, po jednym UPDATE. Tablice pozostają stałe.`;
+    if(routeHover||selected?.type==="route")flowNote.textContent="Fioletowa strzałka wskazuje kierunek propagacji oglądanej trasy do tego RIB.";
     flowNote.textContent=displayNames(flowNote.textContent);
     if (!active || reducedMotion.matches) {
       if (illustration.frame) cancelAnimationFrame(illustration.frame);
@@ -1033,7 +1034,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const interfaceByID = new Map(model.interfaces.map((iface) => [iface.id, iface]));
     const inspectedPaths = routePaths(model, routeHover??selected);
     root.querySelector("#dc-route-legend").hidden = !routeHover && selected?.type !== "route";
-    illustration.streams = showRouteFlow.checked ? routeFlowStreams(model, exploration.update)
+    illustration.streams = showRouteFlow.checked && !routeHover && selected?.type !== "route" ? routeFlowStreams(model, exploration.update)
       .filter(stream=>stream.steps.every(step=>positions.entityPoints.has(step.fromID)&&positions.entityPoints.has(step.toID))) : [];
     illustration.sequence = illustration.streams.flatMap(stream=>stream.steps);
     const illustrationIDs = new Set(illustration.sequence.map((step) => step.sessionID));
@@ -1121,7 +1122,9 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     }
 
     const pathLayer = svgElement("g", {class:"dc-route-paths", "aria-hidden":"true"});
+    const propagationLayer=svgElement("g",{class:"dc-route-propagation","aria-hidden":"true"});
     const pathDefs = svgElement("defs", {});
+    const propagationSegments=[];
     for (const [kind, ids, color] of [["learned", inspectedPaths.learned, "#bc8aff"], ["points-to", inspectedPaths.pointsTo, "#ffe16a"]]) {
       const marker = svgElement("marker", {id:`dc-arrow-${kind}`,viewBox:"0 0 10 10",refX:9,refY:5,markerWidth:5,markerHeight:5,orient:"auto"});
       marker.append(svgElement("path",{d:"M 0 0 L 10 5 L 0 10 z",fill:color}));pathDefs.append(marker);
@@ -1130,7 +1133,20 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         if(!a||!b||(a.x===b.x&&a.y===b.y))continue;
         const shift=kind==="learned"?-4:4;
         pathLayer.append(svgElement("line",{x1:a.x+shift,y1:a.y,x2:b.x+shift,y2:b.y,class:`dc-route-${kind}`,"marker-end":`url(#dc-arrow-${kind})`,"data-from":ids[i-1],"data-to":ids[i]}));
+        if(kind==="learned")propagationSegments.push({a:{x:a.x+shift,y:a.y},b:{x:b.x+shift,y:b.y},from:ids[i-1],to:ids[i]});
       }
+    }
+    if(propagationSegments.length) {
+      const arrow=svgElement("path",{class:"dc-route-propagation-marker",d:"M -6 -4 L 5 0 L -6 4 L -3 0 Z",
+        "data-from":propagationSegments[0].from,"data-to":propagationSegments.at(-1).to});
+      if(reducedMotion.matches) {
+        const {a,b}=propagationSegments[0];
+        arrow.setAttribute("transform",`translate(${(a.x+b.x)/2} ${(a.y+b.y)/2}) rotate(${Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI})`);
+      } else {
+        arrow.append(svgElement("animateMotion",{dur:`${Math.max(2,propagationSegments.length*.9)}s`,repeatCount:"indefinite",rotate:"auto",
+          path:propagationSegments.map(({a,b})=>`M ${a.x} ${a.y} L ${b.x} ${b.y}`).join(" ")}));
+      }
+      propagationLayer.append(arrow);
     }
     svg.append(pathDefs,rsLayer,pathLayer);
     const nodeLayer = svgElement("g", { class: "dc-nodes" });
@@ -1188,7 +1204,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       group.append(svgText(0, 4, item.label, "dc-vm-label"));
       vmLayer.append(group);
     }
-    svg.append(vmLayer);
+    svg.append(vmLayer,propagationLayer);
     svg.append(svgElement("circle", { id: "dc-packet-marker", class: "dc-packet-marker", r: 7, visibility: "hidden" }));
     const routeMarker = svgElement("circle", {id:"dc-route-marker",class:"dc-route-marker",r:5,visibility:"hidden"});
     routeMarker.append(svgElement("title", {})); svg.append(routeMarker);
