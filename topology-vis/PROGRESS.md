@@ -324,7 +324,19 @@ resize), and `451aa76` (focused route details).
    All five browser walkthroughs pass against embedded production assets, run
    from /tmp; packet bit checks, go test ./..., build and vet pass. The final
    route-flow check also verifies closing custom inspection resumes the samples.
-   Commit: the commit containing this checkpoint.
+   Commit: `6b2569d`.
 
 Next: no pending D20/D21 work. Preview: http://127.0.0.1:8099/topologie/dc/.
 Examples illustrate the expected snapshot; they do not simulate convergence.
+
+
+## D22 — in progress
+
+1. RS User → customer VM exports are blocked in reachability and export policy.
+   Customer tables retain their own origins without received peer routes; original
+   unicast advertisements continue via User/Ctrl/Bolt to hosts. Domain tests verify
+   directional sessions and the complete hierarchy. Go tests/build pass; Chrome
+   checks exclude VM recipients at desktop/narrow widths.
+   Commit: the commit containing this checkpoint.
+2. All-host fanout plus default/public VRF VNI 3 and recursive forwarding — pending.
+3. Continuous ingress-to-egress packet travel through nodes — pending.

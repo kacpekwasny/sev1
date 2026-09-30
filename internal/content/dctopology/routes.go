@@ -521,6 +521,9 @@ func reachableRouteSpeakers(start string, route Route, peers map[string][]routeP
 		}
 		for _, peer := range peers[current] {
 			neighbor := peer.Endpoint.EntityID
+			if entities[current].Kind == string(VMUserRS) && entities[neighbor].Kind == string(VMCustomer) {
+				continue // Customer sessions import from the VM; RS User never exports back.
+			}
 			if _, seen := paths[neighbor]; seen || !routeFamilySupported(peer.Session, route) {
 				continue
 			}
@@ -642,6 +645,9 @@ func buildRouteAdvertisements(model Model, selected map[string][]RouteCandidate,
 			}
 			for _, peer := range peers[speakerID] {
 				recipient := peer.Endpoint.EntityID
+				if entities[speakerID].Kind == string(VMUserRS) && entities[recipient].Kind == string(VMCustomer) {
+					continue
+				}
 				if recipient == candidate.ReceivedFrom || !routeFamilySupported(peer.Session, candidate.Route) ||
 					containsASN(entities[recipient].ASN, candidate.ASPath) {
 					continue

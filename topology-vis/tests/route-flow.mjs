@@ -9,6 +9,7 @@ try {
   const api=new URL(await page.locator('#dc-topology-app').getAttribute('data-api-base'),target).href;
   const model=await (await page.request.get(`${api}/model`)).json();
   assert(model.route_state.flow_examples.length>=6);
+  for(const example of model.route_state.flow_examples)for(const s of example.steps)assert(!s.to_id.startsWith("customer-"),"RS User must never export to customer VMs");
   assert.equal(await page.locator('#dc-show-sessions').isChecked(),true);
   assert.equal(await page.locator('#dc-show-route-flow').isChecked(),true);
   assert.equal(await page.locator('#dc-flow-examples').isVisible(),true);

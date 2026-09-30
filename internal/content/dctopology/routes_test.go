@@ -83,8 +83,8 @@ func TestDefaultRouteStateAndForwarding(t *testing.T) {
 	if got := countRoutesByVPC(tables["rs-ctrl-m1"].Selected, 1); got != 12 {
 		t.Errorf("RS Ctrl selected route count=%d; want 12", got)
 	}
-	if got := len(tables["customer-1"].Selected); got != 6 {
-		t.Errorf("selected customer BGP table should contain its own and two peer VM routes: got %d, want 6", got)
+	if got := len(tables["customer-1"].Selected); got != 2 {
+		t.Errorf("selected customer BGP table should contain only its two local routes: got %d, want 2", got)
 	}
 	for _, candidate := range remote.Selected {
 		if candidate.VPCID != 1 {
@@ -589,5 +589,56 @@ func TestIllustratedRSBranchesAlwaysContinueToEndDevices(t *testing.T) {
 	}
 	if !end {
 		t.Fatal("inspecting an RS endpoint must still illustrate delivery to end devices")
+	}
+}
+
+func TestRSUserCustomerSessionsOnlyImport(t *testing.T) {
+	model, err := BuildTopology(exampleConfig(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]map[string]bool{}
+	for _, ad := range model.Routes.Advertisements {
+		if strings.HasPrefix(ad.FromID, "rs-user-") && strings.HasPrefix(ad.ToID, "customer-") {
+			t.Fatalf("RS User exported back to a VM: %+v", ad)
+		}
+		if strings.HasPrefix(ad.FromID, "customer-") && strings.HasPrefix(ad.ToID, "rs-user-") {
+			if seen[ad.FromID] == nil {
+				seen[ad.FromID] = map[string]bool{}
+			}
+			seen[ad.FromID][ad.AFI] = true
+		}
+	}
+	for _, vm := range model.VMs {
+		if vm.Role == VMCustomer && (!seen[vm.ID]["ipv4"] || !seen[vm.ID]["ipv6"]) {
+			t.Errorf("missing VM exports: %s", vm.ID)
+		}
+	}
+	for _, table := range model.Routes.Tables {
+		if strings.HasPrefix(table.SpeakerID, "customer-") && len(table.Received) > 0 {
+			t.Errorf("customer received routes from RS User: %s", table.SpeakerID)
+		}
+	}
+	for _, example := range model.Routes.FlowExamples {
+		if example.Route.OriginKind != "customer" {
+			continue
+		}
+		for _, step := range example.Steps {
+			if strings.HasPrefix(step.ToID, "customer-") {
+				t.Fatalf("illustration exports back to VM: %+v", step)
+			}
+		}
+		path := []string{example.Route.OriginID, "rs-user-m1", "rs-ctrl-m1", "rs-bolt-b2-m1", "host-b2-h1"}
+		for i := 1; i < len(path); i++ {
+			found := false
+			for _, step := range example.Steps {
+				if step.FromID == path[i-1] && step.ToID == path[i] {
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("missing customer propagation hop %s → %s", path[i-1], path[i])
+			}
+		}
 	}
 }

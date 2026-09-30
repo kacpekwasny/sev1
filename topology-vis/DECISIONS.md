@@ -384,6 +384,17 @@ end-device delivery context. Reduced motion retains static direction and labels.
 This supersedes earlier off-by-default and single-marker defaults; tables remain
 independent of playback.
 
+### D22 — Directional customer exports and continuous traffic
+
+RS User only imports customer VM advertisements, never exports to those VMs.
+Original IPv4/IPv6 routes continue through Ctrl and Bolt to every host neighbor
+(and borders); no conversion into EVPN happens at Ctrl. Hosts install public routes
+in the default VRF and recursively resolve their VM next hops through EVPN.
+Default VMs belong to the default/public VRF on VNI 3, not private VPC 1.
+Keep explicit private VPCs and forwarding isolation. Packet markers traverse each
+node continuously between incoming and outgoing link contacts. Commit each of the
+three requested points, incorporating the public-VRF clarification into point 2.
+
 ## Recording an answer
 
 Record the latest user direction and affected milestones. If it changes previously implemented work, reopen the affected acceptance checks; do not claim the old checks verify new behavior. Distinguish direct user requirements from authorized implementation defaults. Preserve the original TODO while keeping this decision record and the active plan authoritative for later changes.
