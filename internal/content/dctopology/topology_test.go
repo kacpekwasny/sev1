@@ -37,8 +37,8 @@ func TestBuildDefaultPhysicalTopology(t *testing.T) {
 			if a.BoltID != b.BoltID || a.RackID != b.RackID {
 				t.Errorf("host link escaped its rack: %+v", link)
 			}
-		} else if link.Unnumbered {
-			t.Errorf("only host-to-ToR links should be unnumbered: %+v", link)
+		} else if !link.Unnumbered {
+			t.Errorf("fabric links must be unnumbered: %+v", link)
 		}
 		if a.Kind == NodeLeaf && b.Kind == NodeToR || a.Kind == NodeToR && b.Kind == NodeLeaf {
 			if a.BoltID != b.BoltID {
@@ -97,29 +97,13 @@ func TestPhysicalAndIdentityAddressUniqueness(t *testing.T) {
 		}
 		identityV6[node.IPv6] = node.ID
 	}
-	interfaces := map[string]string{}
 	for _, intf := range model.Interfaces {
-		if intf.IPv4Address == "" {
-			if intf.LinkLocalIPv6 == "" || intf.IPv6Address != "" {
-				t.Errorf("invalid unnumbered interface: %+v", intf)
-			}
-			continue
-		}
-		if previous, exists := interfaces[intf.IPv4Address]; exists {
-			t.Errorf("IPv4 interface address %s shared by %s and %s", intf.IPv4Address, previous, intf.ID)
-		}
-		interfaces[intf.IPv4Address] = intf.ID
-		if previous, exists := interfaces[intf.IPv6Address]; exists {
-			t.Errorf("IPv6 interface address %s collides with %s", intf.IPv6Address, previous)
-		}
-		interfaces[intf.IPv6Address] = intf.ID
-		if _, err := netip.ParsePrefix(intf.IPv4Prefix); err != nil {
-			t.Errorf("invalid IPv4 interface prefix %q: %v", intf.IPv4Prefix, err)
-		}
-		if _, err := netip.ParsePrefix(intf.IPv6Prefix); err != nil {
-			t.Errorf("invalid IPv6 interface prefix %q: %v", intf.IPv6Prefix, err)
+		address, err := netip.ParseAddr(intf.LinkLocalIPv6)
+		if err != nil || !address.IsLinkLocalUnicast() || intf.IPv4Address != "" || intf.IPv4Prefix != "" || intf.IPv6Address != "" || intf.IPv6Prefix != "" {
+			t.Errorf("physical interface must have only scoped link-local IPv6: %+v", intf)
 		}
 	}
+
 }
 
 func TestIdentifiersAndAddressesDoNotShiftWhenCountsGrow(t *testing.T) {
@@ -242,10 +226,10 @@ func TestBuildDefaultVMPlacementsAndBGPSessions(t *testing.T) {
 				t.Errorf("RS Ctrl-RS User session unexpectedly carries EVPN: %+v", session)
 			}
 		}
-		if session.Kind == "host-tor" {
+		if session.Kind == "host-tor" || session.Kind == "fabric" {
 			checkedUnnumbered = true
 			if session.Transport != "ipv6-link-local-unnumbered" || session.A.InterfaceID == "" || session.B.InterfaceID == "" || !strings.HasPrefix(session.A.Address, "fe80:") || !strings.HasPrefix(session.B.Address, "fe80:") {
-				t.Errorf("host-ToR BGP transport lost link-local interface scope: %+v", session)
+				t.Errorf("physical BGP transport lost link-local interface scope: %+v", session)
 			}
 		}
 	}

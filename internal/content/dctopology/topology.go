@@ -100,7 +100,6 @@ func BuildTopology(config Config) (Model, error) {
 		model.Nodes = append(model.Nodes, node)
 		return nil
 	}
-	linkSlots := map[uint64]string{}
 	addGroup := func(group Group) { model.Groups = append(model.Groups, group) }
 	t := config.Topology
 	for id := 1; id <= t.Borders; id++ {
@@ -153,7 +152,7 @@ func BuildTopology(config Config) (Model, error) {
 		addGroup(group)
 	}
 
-	addLinks := func(aID, bID string, unnumbered bool) error {
+	addLinks := func(aID, bID string) error {
 		if _, ok := nodeIndex[aID]; !ok {
 			return &BuildError{Message: "nieznany koniec łącza: " + aID}
 		}
@@ -174,60 +173,45 @@ func BuildTopology(config Config) (Model, error) {
 		}
 		aIfID := aID + "/if/" + bID
 		bIfID := bID + "/if/" + aID
-		slot := uint64(0)
-		if !unnumbered {
-			var ok bool
-			slot, ok = stableLinkSlot(model.Nodes[nodeIndex[aID]], model.Nodes[nodeIndex[bID]], t)
-			if !ok {
-				return &BuildError{Message: "brak stabilnego przydziału adresów dla łącza " + linkID}
-			}
-			if previous, exists := linkSlots[slot]; exists {
-				return &BuildError{Message: fmt.Sprintf("kolidujące przydziały adresów łączy: %s i %s", previous, linkID)}
-			}
-			linkSlots[slot] = linkID
-		}
-		aInterface, bInterface, err := buildLinkInterfaces(linkID, aID, bID, aIfID, bIfID, unnumbered, slot)
-		if err != nil {
-			return err
-		}
+		aInterface, bInterface := buildLinkInterfaces(linkID, aID, bID, aIfID, bIfID)
 		model.Interfaces = append(model.Interfaces, aInterface, bInterface)
 		model.Nodes[nodeIndex[aID]].InterfaceIDs = append(model.Nodes[nodeIndex[aID]].InterfaceIDs, aIfID)
 		model.Nodes[nodeIndex[bID]].InterfaceIDs = append(model.Nodes[nodeIndex[bID]].InterfaceIDs, bIfID)
 		model.Links = append(model.Links, PhysicalLink{
 			ID: linkID, ANodeID: aID, BNodeID: bID,
-			AInterfaceID: aIfID, BInterfaceID: bIfID, Unnumbered: unnumbered,
+			AInterfaceID: aIfID, BInterfaceID: bIfID, Unnumbered: true,
 		})
 		return nil
 	}
-	connect := func(left, right []Node, unnumbered bool) error {
+	connect := func(left, right []Node) error {
 		for _, a := range left {
 			for _, b := range right {
-				if err := addLinks(a.ID, b.ID, unnumbered); err != nil {
+				if err := addLinks(a.ID, b.ID); err != nil {
 					return err
 				}
 			}
 		}
 		return nil
 	}
-	if err := connect(nodesOfKind(model.Nodes, NodeBorder), nodesOfKind(model.Nodes, NodeStem), false); err != nil {
+	if err := connect(nodesOfKind(model.Nodes, NodeBorder), nodesOfKind(model.Nodes, NodeStem)); err != nil {
 		return Model{}, err
 	}
-	if err := connect(nodesOfKind(model.Nodes, NodeStem), nodesOfKind(model.Nodes, NodeSpine), false); err != nil {
+	if err := connect(nodesOfKind(model.Nodes, NodeStem), nodesOfKind(model.Nodes, NodeSpine)); err != nil {
 		return Model{}, err
 	}
 	spines := nodesOfKind(model.Nodes, NodeSpine)
 	for bolt := 1; bolt <= t.Bolts; bolt++ {
-		if err := connect(spines, nodesForBolt(model.Nodes, NodeLeaf, bolt), false); err != nil {
+		if err := connect(spines, nodesForBolt(model.Nodes, NodeLeaf, bolt)); err != nil {
 			return Model{}, err
 		}
 		leaves := nodesForBolt(model.Nodes, NodeLeaf, bolt)
 		for rack := 1; rack <= t.RacksPerBolt; rack++ {
 			tors := nodesForRack(model.Nodes, bolt, rack, NodeToR)
-			if err := connect(leaves, tors, false); err != nil {
+			if err := connect(leaves, tors); err != nil {
 				return Model{}, err
 			}
 			hosts := nodesForRack(model.Nodes, bolt, rack, NodeHost)
-			if err := connect(hosts, tors, true); err != nil {
+			if err := connect(hosts, tors); err != nil {
 				return Model{}, err
 			}
 		}
@@ -355,86 +339,9 @@ func identityIPv6(role, scope uint16, entity uint32) netip.Addr {
 	return netip.AddrFrom16(raw)
 }
 
-func buildLinkInterfaces(linkID, aID, bID, aIfID, bIfID string, unnumbered bool, slot uint64) (Interface, Interface, error) {
-	a := Interface{ID: aIfID, NodeID: aID, PeerNodeID: bID, LinkID: linkID, Name: "to-" + bID}
-	b := Interface{ID: bIfID, NodeID: bID, PeerNodeID: aID, LinkID: linkID, Name: "to-" + aID}
-	if unnumbered {
-		a.LinkLocalIPv6, b.LinkLocalIPv6 = "fe80::1", "fe80::2"
-		return a, b, nil
-	}
-	v4Offset := slot * 2
-	v4Prefix := prefixFromOffset("10.128.0.0/12", v4Offset, 31)
-	v4a := addIPv4Offset(netip.MustParseAddr("10.128.0.0"), v4Offset)
-	v4b := addIPv4Offset(netip.MustParseAddr("10.128.0.0"), v4Offset+1)
-	v6Base := netip.MustParseAddr("2001:db8:100::")
-	v6Offset := slot * 2
-	v6Prefix := prefixFromOffsetV6(v6Base, v6Offset, 127)
-	v6a := addIPv6Offset(v6Base, v6Offset)
-	v6b := addIPv6Offset(v6Base, v6Offset+1)
-	a.IPv4Address, b.IPv4Address = v4a.String(), v4b.String()
-	a.IPv4Prefix, b.IPv4Prefix = v4Prefix, v4Prefix
-	a.IPv6Address, b.IPv6Address = v6a.String(), v6b.String()
-	a.IPv6Prefix, b.IPv6Prefix = v6Prefix, v6Prefix
-	return a, b, nil
-}
-
-func stableLinkSlot(a, b Node, topology TopologyConfig) (uint64, bool) {
-	if a.Kind == NodeStem && b.Kind == NodeBorder {
-		a, b = b, a
-	}
-	if a.Kind == NodeBorder && b.Kind == NodeStem {
-		return uint64(1 + (a.RoleIndex-1)*4 + (b.RoleIndex - 1)), true
-	}
-	if a.Kind == NodeStem && b.Kind == NodeSpine || a.Kind == NodeSpine && b.Kind == NodeStem {
-		if a.Kind == NodeSpine {
-			a, b = b, a
-		}
-		return uint64(1 + 16 + (a.RoleIndex-1)*8 + (b.RoleIndex - 1)), true
-	}
-	if a.Kind == NodeSpine && b.Kind == NodeLeaf || a.Kind == NodeLeaf && b.Kind == NodeSpine {
-		if a.Kind == NodeLeaf {
-			a, b = b, a
-		}
-		leafIndex := (b.BoltID-1)*4 + b.RoleIndex - 1
-		return uint64(1 + 48 + (a.RoleIndex-1)*16 + leafIndex), true
-	}
-	if a.Kind == NodeLeaf && b.Kind == NodeToR || a.Kind == NodeToR && b.Kind == NodeLeaf {
-		if a.Kind == NodeToR {
-			a, b = b, a
-		}
-		leafIndex := a.RoleIndex - 1
-		torIndex := (b.BoltID-1)*32 + leafIndex*8 + (b.RackID-1)*2 + b.RoleIndex - 1
-		return uint64(1 + 176 + torIndex), true
-	}
-	if a.Kind == NodeHost && b.Kind == NodeToR || a.Kind == NodeToR && b.Kind == NodeHost {
-		if a.Kind == NodeToR {
-			a, b = b, a
-		}
-		hostInRack := a.HostID - (a.RackID-1)*topology.HostsPerRack - 1
-		torIndex := (a.BoltID-1)*32 + (a.RackID-1)*8 + hostInRack*2 + b.RoleIndex - 1
-		return uint64(1 + 304 + torIndex), false
-	}
-	return 0, false
-}
-
-func prefixFromOffset(base string, offset uint64, bits int) string {
-	address := addIPv4Offset(netip.MustParseAddr(netip.MustParsePrefix(base).Addr().String()), offset)
-	return netip.PrefixFrom(address, bits).Masked().String()
-}
-
-func prefixFromOffsetV6(base netip.Addr, offset uint64, bits int) string {
-	return netip.PrefixFrom(addIPv6Offset(base, offset), bits).Masked().String()
-}
-
-func addIPv4Offset(base netip.Addr, offset uint64) netip.Addr {
-	bytes := base.As4()
-	value := uint64(binary.BigEndian.Uint32(bytes[:])) + offset
-	return netip.AddrFrom4([4]byte{byte(value >> 24), byte(value >> 16), byte(value >> 8), byte(value)})
-}
-
-func addIPv6Offset(base netip.Addr, offset uint64) netip.Addr {
-	bytes := base.As16()
-	value := binary.BigEndian.Uint64(bytes[8:]) + offset
-	binary.BigEndian.PutUint64(bytes[8:], value)
-	return netip.AddrFrom16(bytes)
+// Link-local addresses are reusable because every endpoint carries its interface scope.
+func buildLinkInterfaces(linkID, aID, bID, aIfID, bIfID string) (Interface, Interface) {
+	a := Interface{ID: aIfID, NodeID: aID, PeerNodeID: bID, LinkID: linkID, Name: "to-" + bID, LinkLocalIPv6: "fe80::1"}
+	b := Interface{ID: bIfID, NodeID: bID, PeerNodeID: aID, LinkID: linkID, Name: "to-" + aID, LinkLocalIPv6: "fe80::2"}
+	return a, b
 }

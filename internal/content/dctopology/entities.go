@@ -310,7 +310,7 @@ func buildSessions(model *Model) error {
 				nodeEndpoint(tor, torIf.LinkLocalIPv6, torIf.ID), underlayFamilies())
 			continue
 		}
-		add("fabric", "ipv6", nodeEndpoint(a, aIf.IPv6Address, aIf.ID), nodeEndpoint(b, bIf.IPv6Address, bIf.ID), underlayFamilies())
+		add("fabric", "ipv6-link-local-unnumbered", nodeEndpoint(a, aIf.LinkLocalIPv6, aIf.ID), nodeEndpoint(b, bIf.LinkLocalIPv6, bIf.ID), underlayFamilies())
 	}
 
 	boltRS := vmByRole[VMBoltRS]

@@ -315,3 +315,13 @@ Keep EVPN Type-5 identity and VPC import context distinct, retain underlay ECMP 
 | Independent development and eventual sev1 integration | 01, 12 / R06 |
 | Desktop/narrow verification, cleanup, scale and delivery | 13 / R06 |
 | Commit baseline, then each working increment | R00 and every milestone; `LUNA_GUIDE.md` |
+
+## R21 — Link-local physical fabric (D25)
+
+Implemented: all physical links and physical BGP sessions use scoped link-local
+IPv6 only. Preserve numbered loopbacks, IPv4 VTEPs and both unicast AFIs.
+
+## R22 — Configurable IPv6 identities (D25)
+
+Pending: expose the identity addressing scheme in YAML, validate it and retain
+its values through rebuild/export/load. Omitted settings preserve existing identities.

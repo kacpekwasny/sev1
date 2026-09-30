@@ -398,3 +398,12 @@ Final embedded assets pass kernel inspection, refinements and packet playback at
 both widths; screenshots reviewed. Go tests/build/vet pass, including IPv4/IPv6
 external-packet destinations and distinct private border FDB mappings.
 Commit: the commit containing this checkpoint.
+
+## D25 — in progress
+
+All physical links now use scoped link-local IPv6 and unnumbered BGP, without
+IPv4/global IPv6 interface addresses. Removed the unused numbered-link allocator.
+Loopbacks, VXLAN VTEPs and advertised families are preserved. Go tests and
+embedded production build pass. Chrome verifies GUI/Linux FIBs, scoped
+link-local nexthops and route inspection at desktop/narrow widths.
+Commit: the commit containing this checkpoint. Configurable IPv6 identities are next.

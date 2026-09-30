@@ -426,6 +426,15 @@ Specific routes take precedence. The external uplink is not a drawn device, so
 default packet paths end at their border and preserve the requested destination.
 The review and default-route feature are committed separately.
 
+### D25 — Link-local fabric and configurable IPv6
+
+All physical links have only interface-scoped link-local IPv6: no IPv4 or
+global IPv6 addresses or connected prefixes. Both host–ToR and fabric BGP
+use these scoped endpoints, retaining IPv4/IPv6 AFIs. Device loopbacks and
+IPv4 VXLAN VTEPs remain numbered identities. The second increment exposes
+the IPv6 identity scheme in YAML with backward-compatible defaults.
+Commit the two requirements separately.
+
 ## Recording an answer
 
 Record the latest user direction and affected milestones. If it changes previously implemented work, reopen the affected acceptance checks; do not claim the old checks verify new behavior. Distinguish direct user requirements from authorized implementation defaults. Preserve the original TODO while keeping this decision record and the active plan authoritative for later changes.

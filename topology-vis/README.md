@@ -241,3 +241,6 @@ hierarchy, resizing, session hover, slugs, customer exports, static border route
 and packet-marker alignment with its yellow track at both viewport widths.
 Measured timings are local observations, not a performance guarantee; see
 [PROGRESS.md](PROGRESS.md) for the latest verification.
+
+Every physical fabric and host link is IPv6 link-local only; BGP transport
+includes interface scope. Device loopbacks and IPv4 VTEPs remain numbered.
