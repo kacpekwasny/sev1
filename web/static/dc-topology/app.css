@@ -39,6 +39,9 @@ body.dc-harness { margin: 0; min-width: 320px; background: #0b1018; }
 .dc-layer-title h2 { margin: 0; font-size: 12px; font-weight: 600; color: var(--dc-ink); }
 .dc-status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dc-accent); box-shadow: 0 0 14px #92efcb44; }
 .dc-toolbar label { display: inline-flex; align-items: center; gap: 7px; font-size: 10px; color: #a7b6c8; cursor: pointer; }
+.dc-session-options { display: flex; flex-direction: column; gap: 6px; }
+.dc-session-types { display: flex; flex-wrap: wrap; gap: 8px; margin-left: 6px; padding-left: 6px; border-left: 1px solid #53677c; }
+.dc-toolbar .dc-session-types label { font-size: 9px; }
 .dc-underlay-options { display:flex; flex-direction:column; align-items:flex-start; gap:6px; }
 .dc-toolbar .dc-underlay-suboption { margin-left:6px; padding-left:6px; border-left:1px solid #53677c; font-size:9px; }
 .dc-toolbar .dc-underlay-suboption[hidden] { display:none; }

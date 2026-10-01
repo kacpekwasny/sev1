@@ -72,7 +72,15 @@ apply the physical-cabling or grouped-overlay workspace switches in one click.
 A pressed preset matches the current controls; manual adjustments remain possible.
 They preserve YAML, calculated routes, dragged offsets and the flow switch.
 
-Łącza and Sesje BGP are independent switches. RS grouping retains four actual
+Łącza and Sesje BGP are independent switches. The master Sesje BGP switch reveals
+BGP underlay and BGP overlay child switches, initially both enabled. Underlay
+controls fabric and host–ToR peering; overlay controls host/Bolt/Ctrl/User,
+customer/User and border/Ctrl peering regardless of AFI or physical placement.
+The overlay preset enables overlay BGP only; enabling Sesje BGP after the
+underlay preset enables underlay BGP only. Flow omits whole examples crossing a
+hidden layer instead of stopping them at an RS. Explicit originated-route or
+session hover can still preview the inspected context with the layers off.
+RS grouping retains four actual
 members per cluster. With RS na hostach enabled, a collapsed icon anchors to the
 first member's real host; the other members keep their own placements and tables.
 VM badges occupy the upper part of taller hosts, above their names. Turn off
@@ -298,6 +306,7 @@ node --input-type=module --check < web/static/dc-topology/packet-bits.js
 node --input-type=module --check < web/static/dc-topology/route-paths.js
 node topology-vis/tests/packet-bits.mjs
 node topology-vis/tests/packet-path.mjs
+node topology-vis/tests/session-layers.mjs
 node topology-vis/tests/address-ownership.mjs
 node topology-vis/tests/customer-rib.mjs
 ```

@@ -1,6 +1,7 @@
 const NS = "http://www.w3.org/2000/svg";
 import { appendRIB, appendFIB, identifyRoute, appendRoutingRIB, appendOriginatedRoutes } from "./tables.js";
 import { routeFlowStreams, originatedRouteFlow } from "./route-flow.js";
+import { bgpSessionLayer, bgpSessionVisible, filterRouteFlowLayers } from "./session-layers.js";
 import { displayNames } from "./labels.js";
 import { physicalPoints, tapPoints, packetSegments, packetTraversal, packetPosition } from "./packet-path.js";
 import { mountAddressHints } from "./addresses.js";
@@ -28,7 +29,13 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     <section class="dc-graph-card" aria-labelledby="dc-graph-title">
       <div class="dc-toolbar"><div class="dc-layer-title"><span class="dc-status-dot" aria-hidden="true"></span><h2 id="dc-graph-title">Eksplorator</h2></div>
         <label><input id="dc-show-links" type="checkbox" checked> Łącza</label>
-        <label><input id="dc-show-sessions" type="checkbox" checked> Sesje BGP</label>
+        <div class="dc-session-options">
+          <label><input id="dc-show-sessions" type="checkbox" checked> Sesje BGP</label>
+          <div id="dc-session-types" class="dc-session-types">
+            <label><input id="dc-show-underlay-bgp" type="checkbox" checked> BGP underlay</label>
+            <label><input id="dc-show-overlay-bgp" type="checkbox" checked> BGP overlay</label>
+          </div>
+        </div>
         <label><input id="dc-show-infra-hosts" type="checkbox" checked> RS na hostach</label>
         <label><input id="dc-collapse-rs" type="checkbox"> Grupuj RS</label>
         <div class="dc-underlay-options">
@@ -163,6 +170,10 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   const playStatus = root.querySelector("#dc-play-status");
   const showLinks = root.querySelector("#dc-show-links");
   const showSessions = root.querySelector("#dc-show-sessions");
+  const showUnderlayBGP = root.querySelector("#dc-show-underlay-bgp");
+  const showOverlayBGP = root.querySelector("#dc-show-overlay-bgp");
+  const sessionVisibility = () => ({ enabled: showSessions.checked, underlay: showUnderlayBGP.checked, overlay: showOverlayBGP.checked });
+  const sessionsEnabled = () => showSessions.checked && (showUnderlayBGP.checked || showOverlayBGP.checked);
   const showRouteFlow = root.querySelector("#dc-show-route-flow");
   const flowNote = root.querySelector("#dc-flow-note");
   const flowExampleSelect = root.querySelector("#dc-flow-example");
@@ -174,8 +185,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   const showUnderlay = root.querySelector("#dc-show-underlay");
   const keepBorders = root.querySelector("#dc-keep-borders");
   const viewPresets = {
-    underlay: [[showLinks, true], [showSessions, false], [showUnderlay, true], [keepBorders, true], [showInfraOnHosts, true], [collapseRouteServers, false]],
-    overlay: [[showLinks, false], [showSessions, true], [showUnderlay, false], [keepBorders, true], [showInfraOnHosts, false], [collapseRouteServers, true]],
+    underlay: [[showLinks, true], [showSessions, false], [showUnderlayBGP, true], [showOverlayBGP, false], [showUnderlay, true], [keepBorders, true], [showInfraOnHosts, true], [collapseRouteServers, false]],
+    overlay: [[showLinks, false], [showSessions, true], [showUnderlayBGP, false], [showOverlayBGP, true], [showUnderlay, false], [keepBorders, true], [showInfraOnHosts, false], [collapseRouteServers, true]],
   };
   const nodeVisible = node => showUnderlay.checked || node.kind === "host" || (node.kind === "border" && keepBorders.checked);
   const zoomInput = root.querySelector("#dc-zoom");
@@ -528,6 +539,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   listen(root.querySelector("#dc-reset"), "click", onReset);
   listen(showLinks, "change", onLayerChange);
   listen(showSessions, "change", onLayerChange);
+  listen(showUnderlayBGP, "change", onLayerChange);
+  listen(showOverlayBGP, "change", onLayerChange);
   listen(showRouteFlow, "change", onLayerChange);
   listen(flowExampleSelect, "change", () => renderGraph());
   listen(reducedMotion, "change", onLayerChange);
@@ -795,7 +808,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     resetAnimation();
     form.querySelector("button[type=submit]").disabled = true;
     root.querySelector(`#dc-${kind}-status`).textContent = "Sprawdzam wybrane końce…";
-    if (kind === "update") { showSessions.checked = true; showRouteFlow.checked = true; flowExampleSelect.value=""; }
+    if (kind === "update") { showSessions.checked = true; showUnderlayBGP.checked = true; showOverlayBGP.checked = true; showRouteFlow.checked = true; flowExampleSelect.value=""; }
     else showLinks.checked = true;
     renderGraph(); renderInspector(); openInspector();
     inspectorEl.scrollIntoView({ block: "start" });
@@ -854,9 +867,9 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
 
   function syncIllustration() {
     const preview = originatedRouteFlow(state.model, routeHover??selected);
-    const active = (preview || (!routeHover && selected?.type !== "route" && showRouteFlow.checked)) && (showSessions.checked || preview) && illustration.sequence.length > 0;
+    const active = (preview || (!routeHover && selected?.type !== "route" && showRouteFlow.checked)) && (sessionsEnabled() || preview) && illustration.sequence.length > 0;
     flowNote.textContent = !showRouteFlow.checked ? "Adresy i tablice są obliczanym przykładem."
-      : !showSessions.checked ? "Przepływ poglądowy — włącz warstwę Sesje BGP."
+      : !sessionsEnabled() ? "Przepływ poglądowy — włącz Sesje BGP i przynajmniej jedną warstwę BGP."
       : !illustration.sequence.length ? "Brak zgodnego przykładu przepływu tras w tej konfiguracji."
       : exploration.update ? `UPDATE: ${exploration.update.from_id} → ${exploration.update.to_id} · ${exploration.update.route.prefix}. Rozgałęzienia pokazują dostarczenie tego prefiksu do urządzeń końcowych.`
       : `Poglądowo: ${illustration.streams.length} ogłoszeń płynie kolejno przez RS, jeden prefiks naraz, z rozgałęzieniami na RS. Tablice pozostają stałe.`;
@@ -884,7 +897,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function updateIllustrationMarker(now) {
-    if ((!showRouteFlow.checked && !originatedRouteFlow(state.model,routeHover??selected)) || (!showSessions.checked && !originatedRouteFlow(state.model,routeHover??selected)) || reducedMotion.matches || !illustration.sequence.length) return;
+    if ((!showRouteFlow.checked && !originatedRouteFlow(state.model,routeHover??selected)) || (!sessionsEnabled() && !originatedRouteFlow(state.model,routeHover??selected)) || reducedMotion.matches || !illustration.sequence.length) return;
     const scaled = (Math.max(0, now - illustration.startedAt) % (illustration.sequence.length * 1100)) / 1100;
     let waveIndex=Math.floor(scaled),streamIndex=0;
     while(waveIndex>=illustration.streams[streamIndex].waves.length)waveIndex-=illustration.streams[streamIndex++].waves.length;
@@ -1132,6 +1145,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
 
   function renderGraph() {
     root.querySelector("#dc-border-option").hidden = showUnderlay.checked;
+    root.querySelector("#dc-session-types").hidden = !showSessions.checked;
     for (const [name, controls] of Object.entries(viewPresets)) root.querySelector(`#dc-preset-${name}`).setAttribute("aria-pressed", String(controls.every(([control, checked]) => control.checked === checked)));
     const model = state.model;
     if (!model) {
@@ -1143,6 +1157,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       collapseRouteServers: collapseRouteServers.checked,
       offsets: viewOffsets,
     });
+    const visibility = sessionVisibility();
     for (const node of model.nodes) if (!nodeVisible(node)) positions.entityPoints.delete(node.id);
     const svg = document.createElementNS(NS, "svg");
     const zoom = Number(zoomInput.value) / 100;
@@ -1165,6 +1180,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       : showRouteFlow.checked && !routeHover && selected?.type !== "route" ? routeFlowStreams(model, selected?.type==="update"&&!inspectorEl.hidden?exploration.update:null)
         .filter(stream=>!flowExampleSelect.value||stream.route.id===flowExampleSelect.value) : [];
     illustration.streams=illustration.streams.filter(stream=>stream.steps.every(step=>positions.entityPoints.has(step.fromID)&&positions.entityPoints.has(step.toID)));
+    if (!originatedFlow) illustration.streams = filterRouteFlowLayers(illustration.streams, model.bgp_sessions, visibility);
     root.querySelector("#dc-flow-examples").hidden=!showRouteFlow.checked;
     illustration.phaseKey=null;
     const playlistKey=illustration.streams.map(stream=>`${stream.route.id}/${stream.focused}/${stream.waves.length}`).join("|");
@@ -1229,10 +1245,10 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     }
     svg.append(edgeLayer);
 
-    if (showSessions.checked || sessionHover || originatedFlow) {
+    if (sessionsEnabled() || sessionHover || originatedFlow) {
       const sessionLayer = svgElement("g", { class: "dc-sessions" });
       for (const session of model.bgp_sessions) {
-        if(!showSessions.checked&&session.id!==sessionHover&&!illustrationIDs.has(session.id))continue;
+        if (!bgpSessionVisible(session, visibility) && session.id !== sessionHover && !(originatedFlow && illustrationIDs.has(session.id))) continue;
         const step = illustration.sequence.flat().find((item) => item.sessionID === session.id);
         const a = positions.entityPoints.get(step?.fromID ?? session.a.entity_id);
         const b = positions.entityPoints.get(step?.toID ?? session.b.entity_id);
@@ -1243,6 +1259,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         const group = svgElement("g", {
           class: `dc-session${selectedClass}`, role: "button", tabindex: "0",
           "data-entity-type": "session", "data-entity-id": session.id,
+          "data-session-layer": bgpSessionLayer(session),
           "aria-label": `Sesja BGP ${session.a.label} — ${session.b.label}, ${session.families.map((family) => `${family.afi}/${family.safi}`).join(", ")}`,
         });
         const aY = a.y;
@@ -1532,7 +1549,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const session = state.model.bgp_sessions.find((item) => item.id === selected.id);
       if (!session) { selected = null; return renderInspector(); }
       appendInspectorTitle("Sesja BGP", session.id);
-      if (!showSessions.checked) appendHiddenNote("Warstwa sesji BGP jest obecnie ukryta.");
+      if (!bgpSessionVisible(session, sessionVisibility())) appendHiddenNote(`Warstwa BGP ${bgpSessionLayer(session)} jest obecnie ukryta.`);
       const summary = document.createElement("p");
       summary.textContent = `${session.a.label} (AS ${session.a.asn}) ↔ ${session.b.label} (AS ${session.b.asn}) · ${session.state}`;
       const transport = document.createElement("p");

@@ -518,7 +518,14 @@ reimplement or recommit these changes.
    preference, YAML, route state and dragged offsets remain unchanged.
    JavaScript syntax, full Go tests and build pass. Browser runtime unavailable and
    external Chrome exits during launch, so desktop/narrow acceptance is unverified.
-2. Separate underlay/overlay BGP switches: next.
+2. BGP underlay / BGP overlay child switches implemented under the master
+   Sesje BGP control. Physical fabric and host–ToR sessions are underlay;
+   logical RS/customer/border–Ctrl sessions are overlay regardless of AFI.
+   Presets set the matching child preferences. Complete example filtering
+   follows layer visibility, with no partial wave/RS dead ends. Existing
+   originated-route/session context previews remain independent of switches.
+   Pure session-role/complete-flow visibility tests and JavaScript syntax pass;
+   full Go tests/build pass. Browser acceptance remains blocked.
 3. Automatic playlist without IPv4/IPv6 repeats of one path: next.
 
 Sandboxed staging of step 1 failed again creating `.git/index.lock` with

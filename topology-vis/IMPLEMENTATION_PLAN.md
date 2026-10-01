@@ -374,4 +374,4 @@ are updated but have not been rerun for D27. See PROGRESS for exact limitations.
 - R31: suppress duplicate family paths only during automatic example playback;
   preserve explicit IPv4/IPv6 selection, UPDATE inspection and distinct paths.
 
-R29 implemented; R30–R31 next. See PROGRESS for validation and commit status.
+R29–R30 implemented; R31 next. See PROGRESS for validation and commit status.

@@ -533,7 +533,11 @@ Latest user direction, as three separate increments:
    manual changes remain available and never modify YAML, routes or drag offsets.
 2. Add separate underlay/overlay BGP visibility switches. Classify physical
    fabric and host–ToR sessions as underlay; RS/client/border–Ctrl sessions as
-   overlay, independently of transported AFIs or endpoint placement.
+   overlay, independently of transported AFIs or endpoint placement. Retain
+   Sesje BGP as a master with visibly nested child switches; both start enabled.
+   Presets set the child preferences too: underlay only versus overlay only.
+   Automatic/focused UPDATE flows require every session in the visible layers;
+   preserve independent originated-route/session inspection previews.
 3. Automatic playback should not repeat the same propagation path just because
    the next example uses the other IP family. Keep both families available for
    explicit selection and inspection; retain examples with different paths.
