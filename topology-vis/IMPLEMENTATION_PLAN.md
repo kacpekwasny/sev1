@@ -1,6 +1,6 @@
 # DC topology visualizer: implementation plan for GPT-Luna
 
-Status on 2026-09-30: **R00–R20 are implemented.** The user committed the baseline as `9c50463`; rework commits and verification are recorded in [PROGRESS.md](PROGRESS.md). The milestones and older steps below remain the implementation/acceptance contract, not a request to repeat completed work. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
+Status on 2026-10-01: **R00–R31 are implemented.** The user committed the baseline as `9c50463`; rework commits and verification are recorded in [PROGRESS.md](PROGRESS.md). The milestones and older steps below remain the implementation/acceptance contract, not a request to repeat completed work. Read [DECISIONS.md](DECISIONS.md) and [LUNA_GUIDE.md](LUNA_GUIDE.md).
 
 ## Current rework contract and execution order
 
@@ -44,7 +44,7 @@ The user wants a browser-based, dynamic, clickable view of a DC's physical netwo
 
 The user's smaller default scenario supersedes the TODO's original four-border/four-stem/four-leaf/eight-spine example. The defaults and delegated modest limits are listed below. Two ToRs per rack and four members per RS cluster remain: four RS User VMs per DC, four RS Ctrl VMs per DC, and four RS Bolt VMs per bolt. Spine, bolt, rack, host, and VM controls are requested. Use distinct configuration names such as `spine_count` and `hosts_per_rack` instead of the repeated `S` labels in TODO.
 
-The [original TODO](TODO.md) remains unchanged. Later answers establish single cables and full mesh between adjacent fabric tiers (leaf–ToR stays within its bolt), dual-ToR host attachment, and the full-member RS hierarchy. YAML-selected customer VMs peer with all four RS User members and exchange IPv4/IPv6 routes. Every border peers with all four RS Ctrl members and receives IPv4/IPv6/EVPN Type-5 routes, but exports none under D17; border destinations use static forwarding. Each fabric-switch adjacency carries eBGP. These route families are separate from session transport. D02/D05 are approved; D04/D06/D08/D10 defaults are documented as agent-selected under the user's authorization in `DECISIONS.md`.
+The [original requirements](TODO.md) have been edited for clarity; later decisions take precedence. Later answers establish single cables and full mesh between adjacent fabric tiers (leaf–ToR stays within its bolt), dual-ToR host attachment, and the full-member RS hierarchy. YAML-selected public customer VMs peer with all four RS User members once primary connectivity exists, and advertise additional IPv4/IPv6 prefixes without receiving customer routes. Borders retain their RS Ctrl sessions; their loopbacks and defaults originate only over physical underlay BGP. D22 and D27 supersede the earlier customer and border policies. Each fabric-switch adjacency carries eBGP. These route families are separate from session transport. D02/D05 are approved; D04/D06/D08/D10 defaults are documented as agent-selected under the user's authorization in `DECISIONS.md`.
 
 Expected-table and forwarding context includes **EVPN Type 5, VXLAN, VPCs, and underlay ECMP**. BGP convergence, timed updates, and withdrawals are outside the revised scope. Both customer and RS VM placements may be explicit in YAML; omitted placements use deterministic round-robin across hosts, spreading members of each RS cluster across different hosts where possible. V counts customer VMs only.
 
@@ -191,7 +191,7 @@ Unnumbered sessions use modeled link-local endpoints plus explicit interface IDs
 
 **Develop:** add V customer VMs plus the three RS roles. Honor explicit YAML placement and generate only omitted placements using deterministic round-robin. Establish stable host ordering by bolt/host ID and stable VM ordering by role/cluster/member or customer ID. Preserve explicit placements first; for each RS cluster, prefer the next host not already used by a member of that cluster while such a host exists, then reuse hosts if necessary. Continue round-robin for unplaced customer VMs. Document the cursor/order convention so repeated loads produce the same placements. Each RS member retains `cluster`, `served_bolt` where applicable, and `host` separately. Keep customer VPC attachments independent of physical placement. Show VMs within hosts and differentiate customer VMs and RS VMs. Derive labels/addresses from the canonical model.
 
-**Verify/fix:** independently count four RS User members, four RS Ctrl members, and `4 × bolts` RS Bolt members: `8 + 4 × bolts` RS VMs in total, in addition to exactly V customer VMs. Verify valid host placement and deterministic distribution. Test fully explicit, fully generated, and mixed placements for both customer and RS VMs; explicit placements must survive fallback generation unchanged and invalid explicit placements must report errors. Test host diversity when at least four hosts exist, graceful host reuse with fewer hosts, explicit co-location, and an RS VM hosted outside the bolt it serves. Check zero customer VMs and the configured maximum. Equivalent inputs and repeated loads must reproduce placements.
+**Verify/fix:** independently count four RS User members, four RS Ctrl members, and `4 × bolts` RS Bolt members: `8 + 4 × bolts` RS VMs in total, in addition to exactly V customer VMs. Verify valid host placement and deterministic distribution. Test fully explicit, fully generated, and mixed placements for both customer and RS VMs; explicit placements must survive fallback generation unchanged and invalid explicit placements must report errors. Test host diversity when at least four hosts exist, graceful host reuse with fewer hosts, explicit co-location, and rejection of an RS Bolt VM placed outside the bolt it serves (D14). Check zero customer VMs and the configured maximum. Equivalent inputs and repeated loads must reproduce placements.
 
 **Commit:** `feat(topology): place customer VMs and route-server clusters`.
 
@@ -221,7 +221,7 @@ Unnumbered sessions use modeled link-local endpoints plus explicit interface IDs
 
 **Develop:** calculate a deterministic expected snapshot when loading/rebuilding valid YAML. Use topology, origins, VPC policy, next-hop resolution, and the documented route-selection profile to produce useful expected speaker tables, expected peer exports, and forwarding views. Reuse existing static calculations where correct; do not build a BGP state machine, update queue, convergence guard, timed learning sequence, or event trace for playback. Keep large details on demand and cache the initial result rather than recomputing on clicks or animation frames.
 
-Keep EVPN Type-5 identity and VPC import context distinct, retain underlay ECMP information, and preserve RS next hops and include every RS ASN in AS_PATH (D15). Label tables as expected state. Complete table filters and empty states in the inspector overlay; do not claim to display live router or guest OS tables.
+Keep EVPN Type-5 identity and VPC import context distinct, retain underlay ECMP information, preserve RS next hops, and include every RS ASN in AS_PATH (D15). Label tables as expected state. Complete table filters and empty states in the inspector overlay; do not claim to display live router or guest OS tables.
 
 **Verify/fix:** compare against small independent expected tables and exports, including origin, family, recipient, next hop, VPC, and selected/installed status where relevant. Test VPC isolation with overlapping prefixes, family filtering, unreachable next hops, redundant RS paths, and deterministic repeated load/rebuild. Verify a view toggle, drag, inspector selection, or decorative animation cannot alter the snapshot. Protocol convergence and repeated update-event tests are not acceptance requirements.
 
@@ -374,6 +374,7 @@ are updated but have not been rerun for D27. See PROGRESS for exact limitations.
 - R31: suppress duplicate family paths only during automatic example playback;
   preserve explicit IPv4/IPv6 selection, UPDATE inspection and distinct paths.
 
-All three increments are implemented. Go tests/build, syntax and pure JS layer/
-playlist checks pass, including the shipped model. Browser verification and
-sandboxed commits remain blocked. See PROGRESS for exact checks and patches.
+All three increments are implemented and committed as `8d68aec`, `56c0d67`, and
+`3ea300e`. Go tests/build, syntax, and pure JS layer/playlist checks passed,
+including the shipped model. Browser verification was blocked in that session;
+see PROGRESS for the historical limitations.

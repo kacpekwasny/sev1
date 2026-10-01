@@ -1,8 +1,8 @@
 # Decisions and implementation defaults
 
-Status on 2026-09-30: **D15 is the latest direction.** It refines RS placement, EVPN IPv4 next hops, packet fields and click selection, popup movement, and route provenance/navigation. D11–D13 continue to define the JavaScript workspace, static expected-state model, and optional illustrative flow. Earlier decisions apply only where they do not conflict with these updates.
+Status on 2026-10-01: **D28 is the latest recorded direction.** It adds view presets, independent underlay/overlay BGP visibility, and distinct automatic advertisement paths. D11 defines the JavaScript workspace and expected-state model; later decisions refine that contract. Earlier decisions apply where they do not conflict with later requirements.
 
-The user approved defaults and authorized reasonable assumptions and autonomous work while unavailable. Git/parent-site writes are available, and desktop/narrow browser acceptance has run; see progress for actual checks.
+The user approved reasonable defaults and autonomous work. Verification and historical execution limitations are recorded in [PROGRESS.md](PROGRESS.md).
 
 ## Decision record
 
@@ -210,14 +210,14 @@ Implemented defaults under the existing autonomy authorization:
   VM pairs use the installed VPC forwarding entries; border selection uses a
   compatible advertised prefix. Other nodes/infra VMs use underlay transport via
   the VM's hosting host. Unsupported tenant destinations and cross-VPC traffic
-  report a missing/permitted-route error. RS VMs are not customer-data transit.
+  report an explanation of the missing route or policy restriction. RS VMs are not customer-data transit.
 - Packet inspection shows addresses, sample TTL/payload, VXLAN/UDP/VNI when used,
   ECMP choice, and ingress/egress interfaces at each hop. Local VM delivery uses
   TAP/vNIC hops without fabric links. Generic ICMP fields are illustrative, not
   a capture; addresses and routing/attachment context come from the model.
 - VM attachments have separate local links, host TAPs, and guest eth0 interfaces;
   they do not increase physical cable/BGP adjacency counts. TAP names are stable
-  and valid Linux interface lengths, with guest addresses/VPC in their own scope.
+  and respect Linux interface-name length limits, with guest addresses/VPC in their own scope.
 - Hosts retain global EVPN RIB entries even without an attached tenant; RT/VPC
   filtering remains in forwarding import. Underlay reception is independent of
   tenant attachment. Hosts cannot become unrelated underlay transit shortcuts.
@@ -346,7 +346,7 @@ route, not additional routes in the inspected host's RIB.
 
 ### D19 — Keep borders visible when hiding underlay
 
-Add a subordinate Zostaw border option to underlay visibility. Authorized default:
+Add a subordinate Zachowaj routery border option to underlay visibility. Authorized default:
 checked, shown only when underlay is hidden. Preserve border nodes, tier labels,
 and session endpoints so the independently enabled BGP layer shows border–RS Ctrl
 sessions. Unchecking it restores the fully hidden fabric view. This is view state;

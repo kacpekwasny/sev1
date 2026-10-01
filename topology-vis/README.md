@@ -89,7 +89,7 @@ Ctrl centered, and User at the top right. Expanded cards show all four members;
 Grupuj RS replaces them with one aggregate icon. Rack outlines stay inside their
 bolt, with gaps between neighboring racks and bolts.
 Urządzenia underlay hides fabric switches and their links while retaining hosts
-and VMs. Its Zostaw border suboption appears when underlay is hidden and is enabled
+and VMs. Its Zachowaj routery border suboption appears when underlay is hidden and is enabled
 by default: border devices remain visible with their RS Ctrl sessions when Sesje
 BGP is on. Turn the suboption off to hide borders too. Hidden physical paths pause
 playback; the configuration stays unchanged.

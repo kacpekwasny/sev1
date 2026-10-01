@@ -1,75 +1,59 @@
-
-I'd like to create a visualization tool for our DC topology and all the routing and traffic that goes on inside.
-It should be for web browser, all dynamic, clickable, probably all written in JS (but i don't know).
+I'd like a browser-based visualization tool for our DC topology, routing, and traffic. It should be dynamic and interactive. JavaScript is a possible implementation choice.
 
 Rules:
-- there has to be a yaml file that is used for configuring/describing everything
-- divide the work into steps, commit after each step
+- Describe and configure the model in a YAML file.
+- Divide the work into steps and commit after each step.
 
-I'd like to show:
-- physical topology
-- bgp peerings
-- customer VMs
-- infrastructure VMs (like route servers)
-- bgp peerings to the route servers
-- what routes are being advertised from where to where
-- route tables on hosts - inspecting after clicking on the host
-- route tables on VMs - inspecting after clicking on the VM
-- flow of advertised routes
-- flow of traffic between vms
-- flow of traffic between devices (like control traffic - BGP)
-- the traffic to be shown as a flow, on the lines of the session / links
-- parts of the underlay
-- parts of the overlay
-- click to inspect links,
-- click to inspect bgp sessions
-    - AFIs, IPs, routes
+Show:
+- The physical topology.
+- BGP peerings, including peerings with route servers.
+- Customer and infrastructure VMs, including route servers.
+- Which routes are advertised, by whom, and to which peers.
+- Host and VM route tables, available by clicking the host or VM.
+- The flow of route advertisements.
+- Traffic between VMs and between devices, including BGP control traffic.
+- Traffic moving along the relevant session or link lines.
+- Underlay and overlay components.
+- Clickable links and BGP sessions, with AFIs, IP addresses, and routes.
 
-Switches for controlling the visualization:
-- show just one RS per RS cluster
-- show physical links
-- show bgp peerings
-- show RSs abstracted from the hosts they live on
-- S - spines
-- B - bolts
-- R - racks per bolt
-- S - servers per rack
-- V - number of vms in the whole DC distributed across the servers/hosts
+Visualization controls:
+- Show one icon per RS cluster.
+- Show physical links.
+- Show BGP peerings.
+- Show RSs separately from their hosting machines.
+- Set the number of spines (S).
+- Set the number of bolts (B).
+- Set the number of racks per bolt (R).
+- Set the number of servers per rack (H).
+- Set the total number of customer VMs (V), distributed across hosts.
 
+Original DC hierarchy (later defaults are recorded in DECISIONS.md):
 
-
-Our DC looks like this:
-
-4x border
-4x stem
-8x spine (can be more)
-Bx 4x leaf (4 leafs make a bolt in akamai terminology; B is number of bolts in a DC)
-Rx 2x tor (2 tors per rack; T is number of tors in a bolt)
-Sx server (number of servers in a rack)
-VMs in a server
+- 4 borders.
+- 4 stems.
+- 8 spines, with support for more.
+- B bolts, each with 4 leaves. A group of four leaves is called a bolt in Akamai terminology.
+- R racks per bolt, each with 2 ToRs.
+- H servers per rack.
+- VMs hosted on servers.
 
 BGP peerings:
-- host - tor via bgp unnumbered
-- host - RS Bolt via bgp v6
-- RS bolt - RS Ctrl v6
-- RS Ctrl - RS User v6
+- Host ↔ ToR: BGP unnumbered.
+- Host ↔ RS Bolt: BGP over IPv6.
+- RS Bolt ↔ RS Ctrl: BGP over IPv6.
+- RS Ctrl ↔ RS User: BGP over IPv6.
 
-One DC has:
-- 4x RS User per DC
-- 4x RS Ctrl per DC
-- Bx 4x RS Bolt per DC
+Each DC has:
+- 4 RS User VMs.
+- 4 RS Ctrl VMs.
+- 4 RS Bolt VMs per bolt.
 
-RS addresses:
-- RS Bolt: 2600:<bolt id>:F::<id>
-- RS ctrl: 2600:F::<id>
-- RS ctrl: 2600:F1::<id>
+Original address examples, superseded by the synthetic scheme in DECISIONS.md:
+- RS Bolt: `2600:<bolt id>:F::<id>`.
+- RS Ctrl: `2600:F::<id>`.
+- RS User: `2600:F1::<id>`.
+- Host: `2600:<bolt id>::<host id>`.
 
+Host labels concatenate `h`, the bolt ID, and the host ID padded to three digits: `h2003`, `h13045`, `h20999`.
 
-Hosts have addresses
-- 2600:<bolt id>::<host id>
-hosta have labels: 
-- h<bolt id><host id (width 3)> = h2003, h13045, h20999
-
-The bgp overlay topology is 
-
-
+The complete BGP overlay relationships are recorded in DECISIONS.md.

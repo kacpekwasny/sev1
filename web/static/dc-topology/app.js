@@ -40,7 +40,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         <label><input id="dc-collapse-rs" type="checkbox"> Grupuj RS</label>
         <div class="dc-underlay-options">
           <label><input id="dc-show-underlay" type="checkbox" checked> Urządzenia underlay</label>
-          <label id="dc-border-option" class="dc-underlay-suboption" hidden><input id="dc-keep-borders" type="checkbox" checked> Zostaw border</label>
+          <label id="dc-border-option" class="dc-underlay-suboption" hidden><input id="dc-keep-borders" type="checkbox" checked> Zachowaj routery border</label>
         </div>
         <label title="Ilustracja po sesjach BGP; tablice tras pozostają bez zmian."><input id="dc-show-route-flow" type="checkbox" checked> Przepływ tras</label>
         <button id="dc-layout-reset" class="dc-tool-button" type="button">Reset układu</button>
@@ -52,7 +52,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         <label class="dc-zoom"><span class="dc-sr-only">Powiększenie</span><input id="dc-zoom" type="range" min="50" max="150" value="85" step="5"><output id="dc-zoom-value">85%</output></label>
       </div>
       <div id="dc-flow-examples" class="dc-flow-examples">
-        <label>Ogłoszenie <select id="dc-flow-example"><option value="">Kolejno różne drogi ogłoszeń</option></select></label>
+        <label>Ogłoszenie <select id="dc-flow-example"><option value="">Kolejne ścieżki ogłoszeń</option></select></label>
         <span id="dc-current-advertisement"></span>
       </div>
       <div class="dc-workspace">
@@ -71,11 +71,11 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
           ${["n","e","s","w","ne","se","sw","nw"].map(edge=>`<div class="dc-popup-edge" data-resize="${edge}" aria-hidden="true"></div>`).join("")}
           <button id="dc-inspector-resize" class="dc-popup-resize" type="button" aria-label="Zmień rozmiar inspektora; strzałki zmieniają wymiary, Home przywraca">◢</button>
         </aside>
-        <div id="dc-route-legend" class="dc-route-legend" hidden><span class="learned">● Fioletowy: droga ogłoszenia do tego RIB</span><span class="points-to">● Żółty: droga do next hop / celu</span></div>
+        <div id="dc-route-legend" class="dc-route-legend" hidden><span class="learned">● Fioletowy: droga ogłoszenia do tego RIB</span><span class="points-to">● Żółty: droga do następnego skoku / celu</span></div>
       </div>
       <div class="dc-graph-footer"><span class="dc-legend"><i class="legend-switch"></i> fabric <i class="legend-host"></i> host <i class="legend-vm"></i> route server <i class="legend-customer"></i> VM klienta</span>
         <span class="dc-canvas-note"><span aria-hidden="true">◎</span> Kliknij: szczegóły · przeciągnij: ustawienie</span>
-        <span id="dc-flow-note">Adresy i tablice są obliczanym przykładem.</span></div>
+        <span id="dc-flow-note">Adresy i tablice przedstawiają obliczony model sieci.</span></div>
       <div id="dc-traffic-list" class="dc-traffic-list" aria-label="Scenariusze ruchu"></div>
       <div class="dc-playback" role="group" aria-label="Sterowanie ilustracją pakietu">
         <button id="dc-play" class="dc-button" type="button" disabled>Odtwórz pakiet</button>
@@ -95,9 +95,9 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         <div class="dc-count-grid">
           <label>Spines <input name="spines" type="number" min="1" max="8" required></label>
           <label>Bolts <input name="bolts" type="number" min="1" max="4" required></label>
-          <label>Racks / bolt <input name="racks_per_bolt" type="number" min="1" max="4" required></label>
-          <label>Hosty / rack <input name="hosts_per_rack" type="number" min="1" max="4" required></label>
-          <label>VM klientów <input name="customer_vms" type="number" min="0" max="64" required></label>
+          <label>Szafy / bolt <input name="racks_per_bolt" type="number" min="1" max="4" required></label>
+          <label>Hosty / szafę <input name="hosts_per_rack" type="number" min="1" max="4" required></label>
+          <label>VM klienta <input name="customer_vms" type="number" min="0" max="64" required></label>
         </div><button class="dc-button" type="submit">Przebuduj topologię</button>
       </form>
       <form id="dc-config-form"><label class="dc-editor-label" for="dc-editor">Konfiguracja YAML</label>
@@ -841,7 +841,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const key=examples.map(e=>e.route.id).join("|");
     if(flowExampleSelect.dataset.key===key)return;
     const previous=flowExampleSelect.value;
-    flowExampleSelect.replaceChildren(new Option("Kolejno różne drogi ogłoszeń",""),...examples.map(e=>new Option(exampleLabel(e.route),e.route.id)));
+    flowExampleSelect.replaceChildren(new Option("Kolejne ścieżki ogłoszeń",""),...examples.map(e=>new Option(exampleLabel(e.route),e.route.id)));
     flowExampleSelect.value=examples.some(e=>e.route.id===previous)?previous:"";
     flowExampleSelect.dataset.key=key;
   }
@@ -868,7 +868,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   function syncIllustration() {
     const preview = originatedRouteFlow(state.model, routeHover??selected);
     const active = (preview || (!routeHover && selected?.type !== "route" && showRouteFlow.checked)) && (sessionsEnabled() || preview) && illustration.sequence.length > 0;
-    flowNote.textContent = !showRouteFlow.checked ? "Adresy i tablice są obliczanym przykładem."
+    flowNote.textContent = !showRouteFlow.checked ? "Adresy i tablice przedstawiają obliczony model sieci."
       : !sessionsEnabled() ? "Przepływ poglądowy — włącz Sesje BGP i przynajmniej jedną warstwę BGP."
       : !illustration.sequence.length ? "Brak zgodnego przykładu przepływu tras w tej konfiguracji."
       : exploration.update ? `UPDATE: ${exploration.update.from_id} → ${exploration.update.to_id} · ${exploration.update.route.prefix}. Rozgałęzienia pokazują dostarczenie tego prefiksu do urządzeń końcowych.`

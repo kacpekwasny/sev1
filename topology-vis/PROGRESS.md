@@ -1,13 +1,14 @@
 # Visualizer progress
 
-Updated: 2026-09-30
+Updated: 2026-10-01
 
 ## Current status
 
-R00–R15 and the revised Steps 00–13 are implemented and verified. The explorer is
+R00–R31 and the revised Steps 00–13 are implemented. Browser verification covers
+work through D26; D27/D28 have automated checks with visual checks still pending. The explorer is
 integrated at `/topologie/dc/`, linked from Topologie, and shares its source with
 the standalone harness. Git and parent-site writes are available. D03 remains
-absent; the original `TODO.md` is unchanged.
+absent; the original requirements in `TODO.md` are preserved with copy corrections.
 
 Baseline: user commit `9c50463`. Working rework commits:
 
@@ -35,8 +36,9 @@ preserve containment while host movement carries its badges. The interaction hin
 sits below the canvas so it cannot obscure host labels.
 
 Go calculates expected route/forwarding snapshots on initial load and configuration
-rebuild. Route flow is an independent, initially disabled stream of prefix illustrations
-using valid RS hierarchy sessions; hidden layers and reduced motion stop its clock.
+rebuild. BGP sessions and illustrative route flow start enabled. The automatic
+playlist uses distinct propagation paths; hidden layers filter complete examples,
+and reduced motion stops the decorative clock.
 YAML export and route tables are unaffected by dragging, clustering, or animation.
 Packet examples remain separate. Browser edits use isolated, bounded in-memory
 workspaces; expired workspaces report errors instead of mismatched tables.
@@ -192,7 +194,7 @@ repeat completed rework milestones.
 7. Host names use `h2001`-style slugs throughout inspector text, GUI/Linux tables,
    provenance, controls and accessibility labels. Canonical API/config IDs remain
    stable. Desktop/narrow checks and Go tests pass.
-8. Border exports no BGP routes, including underlay identities. Configured uplink
+8. Borders export no BGP routes, including underlay identities. Configured uplink
    destinations remain reachable as explicitly labeled static forwarding entries;
    they do not enter BGP RIBs or animated UPDATEs. Tests cover zero border exports,
    static alternatives, tenant isolation and retained packet reachability. Go tests pass.
@@ -254,7 +256,7 @@ with no page errors. Packet-bit checks and desktop/narrow wrapped IPv6 hover pas
 
 ## D19 border visibility suboption
 
-Zostaw border is a child of underlay visibility, shown when underlay is hidden
+Zachowaj routery border is a child of underlay visibility, shown when underlay is hidden
 and enabled by default. Borders and their eight default RS Ctrl session endpoints
 remain visible; Sesje BGP still controls the session layer. Uncheck the child to
 hide borders too. A shared node-visibility rule drives drawing and hidden-path
@@ -509,7 +511,7 @@ Next action when browser tools allow: run desktop/narrow walkthroughs. Do not
 reimplement or recommit these changes.
 
 
-## D28 — implemented; sandboxed commits and visual checks blocked
+## D28 — implemented and committed; visual checks pending
 
 1. Preset buttons implemented beside Reset układu / Dopasuj. Underlay enables
    devices/links, hides sessions, places RS members on hosts and expands them.
@@ -538,10 +540,7 @@ reimplement or recommit these changes.
    build, syntax and existing routing/ownership/packet JS checks pass; browser
    acceptance remains blocked.
 
-Sandboxed staging of step 1 failed again creating `.git/index.lock` with
-`Operation not permitted`. No D28 commits have been created. Each increment is
-saved as a separate sequential patch for commits outside this session's boundary:
-`/tmp/sev1-d28-step1.patch` (view presets), `/tmp/sev1-d28-step2.patch`
-(session layers), `/tmp/sev1-d28-step3.patch` (automatic family-path deduplication).
-Next when tools allow: run desktop/narrow browser acceptance and commit these
-three increments separately. Do not repeat implementation.
+Staging was blocked during the original session. The three increments were later
+committed as `8d68aec` (view presets), `56c0d67` (session layers), and `3ea300e`
+(automatic family-path deduplication). Desktop and narrow browser acceptance
+remains pending for these changes. Do not repeat the implementation or commits.
