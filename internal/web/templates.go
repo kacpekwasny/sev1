@@ -17,8 +17,10 @@ import (
 // templates holds one template set per page (base + partials + the page) and
 // one set with just the partials, used for the htmx/SSE fragments.
 type templates struct {
-	pages map[string]*template.Template
-	frags *template.Template
+	pages     map[string]*template.Template
+	frags     *template.Template
+	localized map[string]*templates
+	translate func(any) string
 }
 
 var funcs = template.FuncMap{
@@ -51,21 +53,52 @@ var funcs = template.FuncMap{
 }
 
 func parseTemplates(files fs.FS) (*templates, error) {
+	base, err := parseTemplatesLanguage(files, "pl")
+	if err != nil {
+		return nil, err
+	}
+	english, err := parseTemplatesLanguage(files, "en")
+	if err != nil {
+		return nil, err
+	}
+	base.localized = map[string]*templates{"en": english}
+	return base, nil
+}
+
+func (t *templates) forLanguage(language string) *templates {
+	if localized := t.localized[language]; localized != nil {
+		return localized
+	}
+	return t
+}
+
+func parseTemplatesLanguage(files fs.FS, language string) (*templates, error) {
+	catalog, err := readCatalog(files, language)
+	if err != nil {
+		return nil, err
+	}
+	translate := translator(catalog)
+	localizedFuncs := template.FuncMap{}
+	for key, value := range funcs {
+		localizedFuncs[key] = value
+	}
+	localizedFuncs["tr"] = translate
+
 	pageFiles, err := fs.Glob(files, "templates/pages/*.html")
 	if err != nil {
 		return nil, err
 	}
-	t := &templates{pages: map[string]*template.Template{}}
+	t := &templates{pages: map[string]*template.Template{}, translate: translate}
 	for _, page := range pageFiles {
 		name := strings.TrimSuffix(path.Base(page), ".html")
-		set, err := template.New("base.html").Funcs(funcs).ParseFS(files,
+		set, err := template.New("base.html").Funcs(localizedFuncs).ParseFS(files,
 			"templates/base.html", "templates/partials/*.html", page)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", page, err)
 		}
 		t.pages[name] = set
 	}
-	frags, err := template.New("partials").Funcs(funcs).ParseFS(files, "templates/partials/*.html")
+	frags, err := template.New("partials").Funcs(localizedFuncs).ParseFS(files, "templates/partials/*.html")
 	if err != nil {
 		return nil, err
 	}
@@ -121,12 +154,14 @@ func baseURL(r *http.Request) string {
 }
 
 func (s *Server) render(w http.ResponseWriter, r *http.Request, page string, data map[string]any) {
-	tpl := s.templates()
+	tpl := s.templates().forLanguage(requestLanguage(r))
 	set, ok := tpl.pages[page]
 	if !ok {
 		http.Error(w, "brak szablonu "+page, http.StatusInternalServerError)
 		return
 	}
+	data["Language"] = requestLanguage(r)
+	data["ReturnURL"] = r.URL.RequestURI()
 	data["Path"] = r.URL.Path
 	data["BaseURL"] = baseURL(r)
 	data["Visibility"] = s.lib().Visibility
@@ -136,6 +171,8 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, page string, dat
 	if _, ok := data["Description"]; !ok {
 		data["Description"] = defaultDescription
 	}
+	data["Title"] = tpl.translate(data["Title"])
+	data["Description"] = tpl.translate(data["Description"])
 	// Render into a buffer first: a template error halfway through would
 	// otherwise leave a half-written page on the wire.
 	var buf bytes.Buffer
@@ -148,8 +185,8 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, page string, dat
 	_, _ = buf.WriteTo(w)
 }
 
-func (s *Server) renderFragment(w http.ResponseWriter, name string, data any) {
-	html, err := s.templates().fragment(name, data)
+func (s *Server) renderFragment(w http.ResponseWriter, r *http.Request, name string, data any) {
+	html, err := s.templates().forLanguage(requestLanguage(r)).fragment(name, data)
 	if err != nil {
 		log.Printf("render %s: %v", name, err)
 		http.Error(w, "błąd renderowania", http.StatusInternalServerError)

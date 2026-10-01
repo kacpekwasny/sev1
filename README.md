@@ -251,3 +251,17 @@ Slug (nazwa pliku) wpisuje się do agendy wykładu jako `topologies: [spine-leaf
   siatce, wizualizacja enkapsulacji pakietu,
 - zapis wyników ankiet do pliku po wykładzie (teraz znikają z restartem),
 - eksport agendy do PDF/slajdów.
+
+## Languages
+
+Polish is the default. Use the language selector in the shared header to choose
+Polski or English; the choice is remembered for a year in this browser. A `lang`
+query parameter overrides the cookie for a single request. The language endpoint
+returns to the current local page and preserves its other query parameters.
+
+UI translations use source-language keys in `web/static/i18n/en.json` and the
+`tr` template helper. Browser modules use `t` from `web/static/i18n.js`, including
+tagged templates with numbered placeholders. Translated materials belong in
+`content/i18n/en/` with the same slugs, poll IDs, glossary IDs, and internal links
+as their Polish sources. Live state is shared across languages; submitted text
+and nicknames remain as written. Visibility always follows `content/visibility.yaml`.

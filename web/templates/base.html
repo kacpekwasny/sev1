@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pl">
+<html lang="{{.Language}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -34,6 +34,15 @@
     {{if .Visibility.Topologies}}<a href="/topologie/" {{if or (eq .Path "/topologie/") .DCTopology}}class="on"{{end}}>Topologie</a>{{end}}
     {{if .Visibility.Tasks}}<a href="/zadania/" {{if eq .Path "/zadania/"}}class="on"{{end}}>Zadania</a>{{end}}
     {{template "live-nav" .OnAir}}
+    <form class="language-switch" action="/language" method="get">
+      <input type="hidden" name="return" value="{{.ReturnURL}}">
+      <label for="site-language">{{tr "Język"}}</label>
+      <select id="site-language" name="lang" aria-label="{{tr "Język strony"}}">
+        <option value="pl"{{if eq .Language "pl"}} selected{{end}}>Polski</option>
+        <option value="en"{{if eq .Language "en"}} selected{{end}}>English</option>
+      </select>
+      <button type="submit">{{tr "Zmień"}}</button>
+    </form>
   </nav>
 </header>
 

@@ -554,3 +554,10 @@ a.card:hover { border-color: var(--accent); text-decoration: none; transform: tr
 .addrs td { padding: 0.3rem 0.6rem 0.3rem 0; border-bottom: 1px solid var(--line); }
 .addrs .ip { font-family: var(--mono); }
 .addrs tr.unrouted { color: var(--muted); }
+
+/* The language choice is available on the poster, materials and live pages. */
+.language-switch { display: flex; align-items: center; gap: .4rem; margin: 0; font-size: .75rem; }
+.language-switch label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.language-switch select, .language-switch button { font: inherit; color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 999px; padding: .35rem .55rem; width: auto; margin: 0; }
+.language-switch select option { color: #18211f; background: #fff; }
+.language-switch button { cursor: pointer; }

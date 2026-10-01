@@ -34,10 +34,11 @@ type Server struct {
 	hub  *live.Hub
 	mux  *http.ServeMux
 
-	mu    sync.RWMutex
-	cache *content.Library
-	tpl   *templates
-	dcAPI http.Handler
+	mu        sync.RWMutex
+	cache     *content.Library
+	localized map[string]*content.Library
+	tpl       *templates
+	dcAPI     http.Handler
 }
 
 type section uint8
@@ -65,11 +66,21 @@ func New(opts Options) (*Server, error) {
 	}
 	s.dcAPI = dcAPI
 	s.cache, s.tpl = lib, tpl
+	s.localized = map[string]*content.Library{}
+	if translated, err := content.Load(filepath.Join(opts.ContentDir, "i18n", "en")); err != nil {
+		return nil, err
+	} else if len(translated.Lectures)+len(translated.Notes)+len(translated.Tasks) > 0 {
+		translated.Visibility = lib.Visibility
+		s.localized["en"] = translated
+	}
 	s.routes()
 	return s, nil
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	language := requestLanguage(r)
+	w.Header().Set("Content-Language", language)
+	w.Header().Add("Vary", "Cookie")
 	s.mux.ServeHTTP(w, r)
 }
 
@@ -108,6 +119,7 @@ func (s *Server) routes() {
 	}
 	s.mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(static))))
 
+	s.mux.HandleFunc("GET /language", s.handleLanguage)
 	s.mux.HandleFunc("GET /{$}", s.handleIntro)
 	s.mux.HandleFunc("GET /wyklady/{$}", s.handleHub)
 	s.mux.HandleFunc("GET /wyklady/{slug}", s.onlySection(sectionLectures, s.handleLecture))
@@ -156,7 +168,7 @@ func (s *Server) routes() {
 
 func (s *Server) onlySection(which section, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		visibility := s.lib().Visibility
+		visibility := s.libFor(r).Visibility
 		enabled := false
 		switch which {
 		case sectionLectures:
@@ -184,7 +196,7 @@ func (s *Server) onlySection(which section, next http.HandlerFunc) http.HandlerF
 // that they did not ask for. Everything the site actually holds is behind
 // the button, on the hub.
 func (s *Server) handleIntro(w http.ResponseWriter, r *http.Request) {
-	lib := s.lib()
+	lib := s.libFor(r)
 	s.render(w, r, "intro", map[string]any{
 		"Title":    "Jak rozpętałem drugą Sev1",
 		"Bare":     true, // pasek bez tła, bez stopki - strona ma być plakatem
@@ -195,7 +207,7 @@ func (s *Server) handleIntro(w http.ResponseWriter, r *http.Request) {
 // handleHub is the page the button leads to: the programme, the notes and
 // the tasks, for people who came or are about to.
 func (s *Server) handleHub(w http.ResponseWriter, r *http.Request) {
-	lib := s.lib()
+	lib := s.libFor(r)
 	s.render(w, r, "hub", map[string]any{
 		"Title":    "Wykłady",
 		"Lectures": lib.Lectures,
@@ -206,7 +218,7 @@ func (s *Server) handleHub(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleLecture(w http.ResponseWriter, r *http.Request) {
-	lib := s.lib()
+	lib := s.libFor(r)
 	lec, ok := lib.LectureBySlug[r.PathValue("slug")]
 	if !ok {
 		s.notFound(w, r)
@@ -220,7 +232,7 @@ func (s *Server) handleLecture(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleNotes(w http.ResponseWriter, r *http.Request) {
-	lib := s.lib()
+	lib := s.libFor(r)
 	s.render(w, r, "notes", map[string]any{
 		"Title": "Notatki",
 		"Notes": lib.Notes,
@@ -228,7 +240,7 @@ func (s *Server) handleNotes(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleNote(w http.ResponseWriter, r *http.Request) {
-	lib := s.lib()
+	lib := s.libFor(r)
 	note, ok := lib.NoteBySlug[r.PathValue("slug")]
 	if !ok {
 		s.notFound(w, r)
@@ -242,7 +254,7 @@ func (s *Server) handleNote(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleNoteRaw(w http.ResponseWriter, r *http.Request) {
-	note, ok := s.lib().NoteBySlug[r.PathValue("slug")]
+	note, ok := s.libFor(r).NoteBySlug[r.PathValue("slug")]
 	if !ok {
 		s.notFound(w, r)
 		return
@@ -253,7 +265,7 @@ func (s *Server) handleNoteRaw(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleVault(w http.ResponseWriter, r *http.Request) {
-	zipped, err := s.lib().Vault()
+	zipped, err := s.libFor(r).Vault()
 	if err != nil {
 		http.Error(w, "nie udało się spakować notatek", http.StatusInternalServerError)
 		return
@@ -269,18 +281,18 @@ func (s *Server) handleGraphPage(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleGraphJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	_ = json.NewEncoder(w).Encode(s.lib().Graph())
+	_ = json.NewEncoder(w).Encode(s.libFor(r).Graph())
 }
 
 func (s *Server) handleTopologies(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, "topologies", map[string]any{
 		"Title":      "Topologie",
-		"Topologies": s.lib().Topologies,
+		"Topologies": s.libFor(r).Topologies,
 	})
 }
 
 func (s *Server) handleTopology(w http.ResponseWriter, r *http.Request) {
-	lib := s.lib()
+	lib := s.libFor(r)
 	topo, ok := lib.TopologyBySlug[r.PathValue("slug")]
 	if !ok {
 		s.notFound(w, r)
@@ -299,7 +311,7 @@ func (s *Server) handleTopology(w http.ResponseWriter, r *http.Request) {
 // swaps in place. No JavaScript of ours, and the page keeps working without
 // htmx - the buttons are then just links to a full page.
 func (s *Server) handleTopologyView(w http.ResponseWriter, r *http.Request) {
-	topo, ok := s.lib().TopologyBySlug[r.PathValue("slug")]
+	topo, ok := s.libFor(r).TopologyBySlug[r.PathValue("slug")]
 	if !ok {
 		s.notFound(w, r)
 		return
@@ -309,18 +321,18 @@ func (s *Server) handleTopologyView(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "nie ma takiego widoku", http.StatusNotFound)
 		return
 	}
-	s.renderFragment(w, "topology-figure", topologyView(topo, view))
+	s.renderFragment(w, r, "topology-figure", topologyView(topo, view))
 }
 
 func (s *Server) handleTasks(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, "tasks", map[string]any{
 		"Title": "Zadania",
-		"Tasks": s.lib().Tasks,
+		"Tasks": s.libFor(r).Tasks,
 	})
 }
 
 func (s *Server) handleTask(w http.ResponseWriter, r *http.Request) {
-	lib := s.lib()
+	lib := s.libFor(r)
 	task, ok := lib.TaskBySlug[r.PathValue("slug")]
 	if !ok {
 		s.notFound(w, r)
@@ -335,7 +347,7 @@ func (s *Server) handleTask(w http.ResponseWriter, r *http.Request) {
 
 // handleHint reveals hints one by one instead of dumping the solution.
 func (s *Server) handleHint(w http.ResponseWriter, r *http.Request) {
-	task, ok := s.lib().TaskBySlug[r.PathValue("slug")]
+	task, ok := s.libFor(r).TaskBySlug[r.PathValue("slug")]
 	if !ok {
 		s.notFound(w, r)
 		return
@@ -345,7 +357,7 @@ func (s *Server) handleHint(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "nie ma takiej podpowiedzi", http.StatusNotFound)
 		return
 	}
-	s.renderFragment(w, "hint-revealed", map[string]any{
+	s.renderFragment(w, r, "hint-revealed", map[string]any{
 		"Task":  task,
 		"Hint":  task.Hints[n],
 		"Index": n,
@@ -356,7 +368,7 @@ func (s *Server) handleHint(w http.ResponseWriter, r *http.Request) {
 // --- live audience -------------------------------------------------------
 
 func (s *Server) handleLive(w http.ResponseWriter, r *http.Request) {
-	lib := s.lib()
+	lib := s.libFor(r)
 	// Opening the page is also how somebody gets a nickname and how they show
 	// up on the presenter's list of people.
 	id := s.participant(w, r)
@@ -385,7 +397,7 @@ func (s *Server) handleNick(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		view.Error = err.Error()
 	}
-	s.renderFragment(w, "whoami", view)
+	s.renderFragment(w, r, "whoami", view)
 }
 
 func (s *Server) handleVote(w http.ResponseWriter, r *http.Request) {
@@ -394,9 +406,9 @@ func (s *Server) handleVote(w http.ResponseWriter, r *http.Request) {
 	if _, ok := s.hub.Vote(id, option); !ok {
 		option = "" // poll was closed in the meantime
 	}
-	view := pollView(s.lib(), s.hub.SnapshotFor(live.Viewer{ID: id}))
+	view := pollView(s.libFor(r), s.hub.SnapshotFor(live.Viewer{ID: id}))
 	view.Chosen = option
-	s.renderFragment(w, "vote-card", view)
+	s.renderFragment(w, r, "vote-card", view)
 }
 
 // handleMood is the "zgubiłem się" / "fajnie wytłumaczone" button. The reply
@@ -405,14 +417,14 @@ func (s *Server) handleVote(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleMood(w http.ResponseWriter, r *http.Request) {
 	id := s.participant(w, r)
 	s.hub.React(id, r.FormValue("mood"))
-	s.renderFragment(w, "mood", s.hub.SnapshotFor(live.Viewer{ID: id}).Mood)
+	s.renderFragment(w, r, "mood", s.hub.SnapshotFor(live.Viewer{ID: id}).Mood)
 }
 
 func (s *Server) handleAsk(w http.ResponseWriter, r *http.Request) {
 	id := s.participant(w, r)
 	sent := s.hub.AskQuestion(id, r.FormValue("text"))
 	me, _ := s.hub.Who(id)
-	s.renderFragment(w, "ask-form", AskView{
+	s.renderFragment(w, r, "ask-form", AskView{
 		Me:      me,
 		Sent:    sent,
 		Problem: writingProblem(me, s.hub.SnapshotFor(live.Viewer{ID: id})),
@@ -423,21 +435,21 @@ func (s *Server) handleOwnQuestionAnswered(w http.ResponseWriter, r *http.Reques
 	id := s.participant(w, r)
 	s.hub.MarkAnsweredBy(id, r.PathValue("id"))
 	snap := s.hub.SnapshotFor(live.Viewer{ID: id})
-	s.renderFragment(w, "questions", questionsView(snap, id))
+	s.renderFragment(w, r, "questions", questionsView(snap, id))
 }
 
 func (s *Server) handleOwnQuestionDelete(w http.ResponseWriter, r *http.Request) {
 	id := s.participant(w, r)
 	s.hub.DeleteQuestionBy(id, r.PathValue("id"))
 	snap := s.hub.SnapshotFor(live.Viewer{ID: id})
-	s.renderFragment(w, "questions", questionsView(snap, id))
+	s.renderFragment(w, r, "questions", questionsView(snap, id))
 }
 
 func (s *Server) handleUpvote(w http.ResponseWriter, r *http.Request) {
 	id := s.participant(w, r)
 	s.hub.UpvoteQuestion(id, r.PathValue("id"))
 	snap := s.hub.SnapshotFor(live.Viewer{ID: id})
-	s.renderFragment(w, "questions", questionsView(snap, id))
+	s.renderFragment(w, r, "questions", questionsView(snap, id))
 }
 
 // handleAnswerForm opens the box for answering one question, or closes it
@@ -450,23 +462,23 @@ func (s *Server) handleAnswerForm(w http.ResponseWriter, r *http.Request) {
 	meParticipant, _ := s.hub.Who(id)
 	snap := s.hub.SnapshotFor(live.Viewer{ID: id})
 	if problem := writingProblem(meParticipant, snap); problem != "" {
-		s.renderFragment(w, "answer-box", map[string]any{"Problem": problem})
+		s.renderFragment(w, r, "answer-box", map[string]any{"Problem": problem})
 		return
 	}
 	me := live.Viewer{ID: id}
 	question, ok := s.hub.Question(me, r.URL.Query().Get("pytanie"))
 	if !ok {
-		s.renderFragment(w, "answer-box", map[string]any{})
+		s.renderFragment(w, r, "answer-box", map[string]any{})
 		return
 	}
-	s.renderFragment(w, "answer-box", map[string]any{"Question": question})
+	s.renderFragment(w, r, "answer-box", map[string]any{"Question": question})
 }
 
 func (s *Server) handleAnswer(w http.ResponseWriter, r *http.Request) {
 	id := s.participant(w, r)
 	added := s.hub.AddComment(id, r.PathValue("id"), r.FormValue("text"))
 	me, _ := s.hub.Who(id)
-	s.renderFragment(w, "answer-box", map[string]any{
+	s.renderFragment(w, r, "answer-box", map[string]any{
 		"Sent":    added,
 		"Problem": writingProblem(me, s.hub.SnapshotFor(live.Viewer{ID: id})),
 	})
@@ -476,19 +488,19 @@ func (s *Server) handleUpvoteAnswer(w http.ResponseWriter, r *http.Request) {
 	id := s.participant(w, r)
 	s.hub.UpvoteComment(id, r.PathValue("id"), r.PathValue("cid"))
 	snap := s.hub.SnapshotFor(live.Viewer{ID: id})
-	s.renderFragment(w, "questions", questionsView(snap, id))
+	s.renderFragment(w, r, "questions", questionsView(snap, id))
 }
 
 // handleLiveNav answers the menu's own poll: one link, telling the page
 // whether the lecture has started since it was loaded.
 func (s *Server) handleLiveNav(w http.ResponseWriter, r *http.Request) {
-	s.renderFragment(w, "live-nav", s.hub.OnAir())
+	s.renderFragment(w, r, "live-nav", s.hub.OnAir())
 }
 
 // handleIntroLive answers the poster's own poll, so its live link appears
 // without a full-page refresh, just like the link in the top navigation.
 func (s *Server) handleIntroLive(w http.ResponseWriter, r *http.Request) {
-	s.renderFragment(w, "intro-live", s.hub.OnAir())
+	s.renderFragment(w, r, "intro-live", s.hub.OnAir())
 }
 
 // handleStream pushes rendered HTML fragments over SSE. htmx swaps them in,
@@ -529,32 +541,32 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done():
 			return
 		case snap := <-updates:
-			view := pollView(s.lib(), snap)
+			view := pollView(s.libFor(r), snap)
 			if snap.PollVersion != lastPollVersion {
 				// The question itself changed, so everyone gets a fresh
 				// voting card. Plain vote updates must not do this, or we
 				// would wipe out "you voted" on other people's screens.
 				lastPollVersion = snap.PollVersion
-				s.sendEvent(w, "vote", "vote-card", view)
-				s.sendEvent(w, "glossary", "glossary", glossaryView(s.lib(), snap))
+				s.sendEvent(w, r, "vote", "vote-card", view)
+				s.sendEvent(w, r, "glossary", "glossary", glossaryView(s.libFor(r), snap))
 			}
-			s.sendEvent(w, "results", "poll-results", view)
+			s.sendEvent(w, r, "results", "poll-results", view)
 			if panel {
-				s.sendEvent(w, "mood", "panel-mood", snap.Mood)
-				s.sendEvent(w, "questions", "panel-questions", snap)
-				s.sendEvent(w, "moderation", "panel-moderation", snap)
+				s.sendEvent(w, r, "mood", "panel-mood", snap.Mood)
+				s.sendEvent(w, r, "questions", "panel-questions", snap)
+				s.sendEvent(w, r, "moderation", "panel-moderation", snap)
 			} else {
-				s.sendEvent(w, "mood", "mood", snap.Mood)
-				s.sendEvent(w, "questions", "questions", questionsView(snap, me.ID))
+				s.sendEvent(w, r, "mood", "mood", snap.Mood)
+				s.sendEvent(w, r, "questions", "questions", questionsView(snap, me.ID))
 				if snap.OnAir != lastOnAir || snap.QuestionsLocked != lastQuestionsLocked {
-					s.sendEvent(w, "live-status", "live-status", snap)
+					s.sendEvent(w, r, "live-status", "live-status", snap)
 					lastOnAir = snap.OnAir
 					lastQuestionsLocked = snap.QuestionsLocked
 				}
 				meParticipant, _ := s.hub.Who(me.ID)
 				problem := writingProblem(meParticipant, snap)
 				if problem != lastAskProblem {
-					s.sendEvent(w, "ask", "ask-form", AskView{Me: meParticipant, Problem: problem})
+					s.sendEvent(w, r, "ask", "ask-form", AskView{Me: meParticipant, Problem: problem})
 					lastAskProblem = problem
 				}
 			}
@@ -563,8 +575,8 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) sendEvent(w http.ResponseWriter, event, tplName string, data any) {
-	html, err := s.templates().fragment(tplName, data)
+func (s *Server) sendEvent(w http.ResponseWriter, r *http.Request, event, tplName string, data any) {
+	html, err := s.templates().forLanguage(requestLanguage(r)).fragment(tplName, data)
 	if err != nil {
 		log.Printf("render %s: %v", tplName, err)
 		return
@@ -603,7 +615,7 @@ func (s *Server) requirePanel(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func (s *Server) handlePanel(w http.ResponseWriter, r *http.Request) {
-	lib := s.lib()
+	lib := s.libFor(r)
 	snap := s.hub.SnapshotFor(live.Presenter)
 	s.render(w, r, "panel", map[string]any{
 		"Title":           "Panel prowadzącego",
@@ -624,13 +636,13 @@ func (s *Server) handlePanelVisibility(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.saveVisibility(visibility); err != nil {
 		log.Printf("save visibility: %v", err)
-		s.renderFragment(w, "panel-visibility", VisibilityPanelView{
-			Visibility: s.lib().Visibility,
+		s.renderFragment(w, r, "panel-visibility", VisibilityPanelView{
+			Visibility: s.libFor(r).Visibility,
 			Error:      "Nie udało się zapisać ustawień. Sprawdź uprawnienia do katalogu content/.",
 		})
 		return
 	}
-	s.renderFragment(w, "panel-visibility", VisibilityPanelView{
+	s.renderFragment(w, r, "panel-visibility", VisibilityPanelView{
 		Visibility: visibility,
 		Saved:      true,
 	})
@@ -698,9 +710,9 @@ func (s *Server) handlePanelPoll(w http.ResponseWriter, r *http.Request) {
 	case "reset":
 		s.hub.ResetPoll()
 	}
-	s.renderFragment(w, "panel-controls", map[string]any{
-		"Lib":  s.lib(),
-		"Poll": pollView(s.lib(), s.hub.SnapshotFor(live.Presenter)),
+	s.renderFragment(w, r, "panel-controls", map[string]any{
+		"Lib":  s.libFor(r),
+		"Poll": pollView(s.libFor(r), s.hub.SnapshotFor(live.Presenter)),
 	})
 }
 
@@ -712,26 +724,26 @@ func (s *Server) handlePanelQuestion(w http.ResponseWriter, r *http.Request) {
 	case "usun":
 		s.hub.DeleteQuestion(id)
 	}
-	s.renderFragment(w, "panel-questions", s.hub.SnapshotFor(live.Presenter))
+	s.renderFragment(w, r, "panel-questions", s.hub.SnapshotFor(live.Presenter))
 }
 
 func (s *Server) handlePanelDeleteAnswer(w http.ResponseWriter, r *http.Request) {
 	s.hub.DeleteComment(r.PathValue("id"), r.PathValue("cid"))
-	s.renderFragment(w, "panel-questions", s.hub.SnapshotFor(live.Presenter))
+	s.renderFragment(w, r, "panel-questions", s.hub.SnapshotFor(live.Presenter))
 }
 
 // handlePanelLock closes or opens writing for the whole room at once. Voting
 // and upvoting keep working - the switch is for "stop typing, listen".
 func (s *Server) handlePanelLock(w http.ResponseWriter, r *http.Request) {
 	s.hub.SetQuestionsLocked(r.FormValue("locked") == "tak")
-	s.renderFragment(w, "panel-moderation", s.hub.SnapshotFor(live.Presenter))
+	s.renderFragment(w, r, "panel-moderation", s.hub.SnapshotFor(live.Presenter))
 }
 
 // handlePanelOnAir is the "we are starting" switch. It lights the red dot in
 // the menu and opens or closes audience question writing.
 func (s *Server) handlePanelOnAir(w http.ResponseWriter, r *http.Request) {
 	s.hub.SetOnAir(r.FormValue("onair") == "tak")
-	s.renderFragment(w, "panel-onair", s.hub.SnapshotFor(live.Presenter))
+	s.renderFragment(w, r, "panel-onair", s.hub.SnapshotFor(live.Presenter))
 }
 
 // handlePanelParticipant applies and lifts the two kinds of ban. Neither one
@@ -749,7 +761,7 @@ func (s *Server) handlePanelParticipant(w http.ResponseWriter, r *http.Request) 
 	case "odbanuj-ip":
 		s.hub.BanIP(id, false)
 	}
-	s.renderFragment(w, "panel-moderation", s.hub.SnapshotFor(live.Presenter))
+	s.renderFragment(w, r, "panel-moderation", s.hub.SnapshotFor(live.Presenter))
 }
 
 // --- helpers -------------------------------------------------------------

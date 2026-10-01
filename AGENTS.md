@@ -25,6 +25,7 @@ Go serves HTML with htmx and SSE; content is Markdown/YAML and live state is in 
 | Startup, flags, embedding, HTTP server lifecycle | `main.go` |
 | Routes, handlers, cookies, presenter authorization, SSE | `internal/web/server.go` |
 | Template loading, helpers, render data | `internal/web/templates.go` |
+| Languages, UI catalogs, translated content | `internal/web/language.go`, `web/static/i18n/`, `content/i18n/` |
 | Page layout and interactions | `web/templates/pages/`, matching `web/templates/partials/` |
 | Shared navigation, metadata, footer | `web/templates/base.html` |
 | Styling, responsive layout, palette | `web/static/app.css` |
@@ -69,7 +70,8 @@ go test -race ./internal/live ./internal/web  # when changing concurrency/SSE
 
 - Follow the existing Go + `html/template` + htmx approach. Keep browser assets local
   under `web/static/`; fonts and htmx are vendored so the site needs no CDN at runtime.
-- Keep user-facing copy in Polish and retain Polish characters. Use the existing
+- Keep Polish as the default language and retain Polish characters. Translate authored
+  copy through `tr`/the local catalogs; keep English material under `content/i18n/en/`. Use the existing
   CSS variables and Poppins typography; `design/` supplies the visual reference.
 - `/` is the poster-like entry page (`pages/intro.html`, `Bare` rendering).
   `/wyklady/` is the materials hub (`pages/hub.html`). Keep those roles distinct
