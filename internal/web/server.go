@@ -510,6 +510,14 @@ func (s *Server) handleIntroLive(w http.ResponseWriter, r *http.Request) {
 // handleStream pushes rendered HTML fragments over SSE. htmx swaps them in,
 // so there is no hand-written JavaScript for the live parts.
 func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("widok") == "panel" {
+		s.requirePanel(s.stream)(w, r)
+		return
+	}
+	s.stream(w, r)
+}
+
+func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, s.translate(r, "streaming nieobsługiwany"), http.StatusInternalServerError)

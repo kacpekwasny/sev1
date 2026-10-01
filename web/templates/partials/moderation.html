@@ -14,6 +14,7 @@
   </form>
 
   {{if .Participants}}
+    <div class="people-scroll" tabindex="0" role="region" aria-label="{{tr "Sala"}}">
     <table class="people">
       <thead>
         <tr><th>{{tr "ksywka"}}</th><th>{{tr "adres"}}</th><th title="{{tr "pytania / odpowiedzi"}}">{{tr "pyt./odp."}}</th><th></th></tr>
@@ -47,6 +48,7 @@
         {{end}}
       </tbody>
     </table>
+    </div>
     <p class="muted small">
       <strong>{{tr "Cień"}}</strong> {{tr "jest cichy: ta osoba pisze dalej i widzi swoje pytania tak,\n      jakby nic się nie stało — tylko sala ich nie dostaje. Nie ma się z kim kłócić,\n      a przy okazji widać, czy dalej spamuje. Idzie po ciasteczku, więc wyczyszczenie go\n      omija cień; wtedy zostaje"}} <strong>{{tr "ban adresu"}}</strong>{{tr ", który odmawia pisania wprost."}}
     </p>

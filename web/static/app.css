@@ -74,7 +74,8 @@ h2.question, .next-up h2 { letter-spacing: normal; text-transform: none; }
 .brand:hover { text-decoration: none; }
 .sev { color: var(--danger); }
 .brand-sub { color: var(--muted); font-weight: 400; font-size: 0.8rem; }
-.topbar nav { display: flex; gap: 1.1rem; flex-wrap: wrap; }
+html { scroll-padding-top: var(--site-header-height, 80px); }
+.topbar nav { display: flex; align-items: center; gap: .65rem 1.1rem; flex-wrap: wrap; }
 .topbar nav a { color: var(--muted); font-size: 0.95rem; }
 .topbar nav a:hover, .topbar nav a.on { color: var(--text); }
 
@@ -326,7 +327,7 @@ a.card:hover { border-color: var(--accent); text-decoration: none; transform: tr
 .live-state small { color: var(--muted); font-size: 0.78rem; line-height: 1.4; margin-top: 0.2rem; }
 .live-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem); gap: 1.4rem; align-items: start; }
 .live-interactions { display: grid; gap: 1rem; min-width: 0; }
-.interaction-card { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 1.25rem; }
+.interaction-card { min-width: 0; overflow-wrap: anywhere; margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 1.25rem; }
 .interaction-heading { display: flex; gap: 0.8rem; align-items: flex-start; }
 .interaction-heading h2 { margin: 0; font-size: 1.05rem; letter-spacing: normal; text-transform: none; }
 .interaction-heading .kicker { margin: 0 0 0.15rem; }
@@ -374,7 +375,7 @@ a.card:hover { border-color: var(--accent); text-decoration: none; transform: tr
 }
 .qa .questions { margin-bottom: 0; }
 .sent { color: var(--accent); }
-.questions { list-style: none; padding: 0; margin-top: 1.2rem; display: grid; gap: 0.5rem; }
+.questions { list-style: none; padding: 0; margin-top: 1.2rem; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
 .questions li { display: flex; gap: 0.8rem; align-items: flex-start;
                 padding: 0.7rem 0.9rem; background: var(--panel); border: 1px solid var(--line);
                 border-radius: 10px; }
@@ -387,9 +388,9 @@ a.card:hover { border-color: var(--accent); text-decoration: none; transform: tr
           border: 1px solid var(--line); border-radius: 8px; padding: 0.2rem 0.5rem; cursor: pointer; }
 .upvote.static { cursor: default; }
 .upvote.tiny { font-size: 0.75rem; padding: 0.05rem 0.4rem; }
-.qbody { flex: 1; }
+.qbody { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .qtext { display: inline; }
-.qactions { display: flex; gap: 0.3rem; }
+.qactions { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 
 .answers { list-style: none; padding: 0 0 0 0.2rem; margin: 0.5rem 0 0;
            display: grid; gap: 0.35rem; border-left: 2px solid var(--line); }
@@ -397,6 +398,7 @@ a.card:hover { border-color: var(--accent); text-decoration: none; transform: tr
    wygląda wtedy najlepiej wyśrodkowana w pionie względem tekstu. */
 .answers li { display: flex; gap: 0.5rem; align-items: center;
               padding: 0.1rem 0 0.1rem 0.7rem; font-size: 0.92rem; color: var(--soft); }
+.answers li > span { min-width: 0; overflow-wrap: anywhere; }
 .btn.link { background: none; border: none; color: var(--muted); padding: 0.2rem 0;
             margin: 0.4rem 0 0; font-size: 0.8rem; text-decoration: underline; }
 .btn.link:hover { color: var(--accent); }
@@ -423,8 +425,9 @@ a.card:hover { border-color: var(--accent); text-decoration: none; transform: tr
 
 /* --- presenter panel ------------------------------------------------------- */
 
-.panel-grid { display: grid; gap: 2rem; grid-template-columns: 1fr 1fr; }
-@media (max-width: 860px) { .panel-grid { grid-template-columns: 1fr; } }
+.panel-grid { display: grid; gap: 2rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.panel-col { min-width: 0; }
+@media (max-width: 860px) { .panel-grid { grid-template-columns: minmax(0, 1fr); } }
 .panel-visibility { margin-bottom: 1.5rem; padding: 1rem 1.2rem;
                     border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
 .panel-visibility h2 { margin-top: 0; }
@@ -449,6 +452,7 @@ a.card:hover { border-color: var(--accent); text-decoration: none; transform: tr
 
 .lockswitch { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
               margin-bottom: 0.8rem; font-size: 0.85rem; }
+.people-scroll { max-width: 100%; overflow-x: auto; }
 .people { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .people th { text-align: left; font-weight: 500; color: var(--muted);
              border-bottom: 1px solid var(--line); padding: 0.3rem 0.5rem 0.3rem 0; }
