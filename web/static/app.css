@@ -128,6 +128,8 @@ section { margin-bottom: 3rem; }
           text-transform: uppercase; color: var(--muted); margin: 0 0 0.6rem; }
 .hero h1 { font-size: clamp(2rem, 5vw, 3.2rem); margin: 0 0 0.6rem; }
 .lead { font-size: 1.1rem; color: var(--soft); max-width: 62ch; }
+.hero.promo .lead { max-width: none; }
+.hero.promo .cards { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 .muted { color: var(--muted); }
 .meta { color: var(--muted); font-size: 0.85rem; display: flex; gap: 0.4rem;
         flex-wrap: wrap; align-items: center; }
@@ -196,19 +198,30 @@ body.bare .topbar.clean nav a:hover { color: var(--text); }
 body.bare main { max-width: none; padding: 0; }
 
 .intro {
-  max-width: 76rem; min-height: calc(100vh - 4.5rem); margin: 0 auto;
-  padding: clamp(2rem, 7vh, 5rem) clamp(1.5rem, 5vw, 4rem);
-  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(20rem, 0.9fr);
-  gap: clamp(2rem, 7vw, 7rem); align-items: center;
+  --intro-gutter: clamp(1.5rem, 5vw, 4rem);
+  --intro-gap: clamp(2rem, 7vw, 7rem);
+  --intro-deal-width: min(460px, 40vw, 35vh);
+  --intro-deal-offset-y: 50px;
+  --intro-safe-shift: max(0px, calc(
+    max(0px, 50vw - 38rem) + var(--intro-gutter)
+    + max(0px, calc((min(100vw, 76rem) - var(--intro-gutter) - var(--intro-gutter)
+      - 36rem - var(--intro-deal-width) - var(--intro-gap)) / 2))
+    - 1.375rem
+  ));
+  position: relative; max-width: 76rem; min-height: calc(100vh - 4.5rem); margin: 0 auto;
+  padding: clamp(2rem, 7vh, 5rem) var(--intro-gutter);
+  display: grid; grid-template-columns: fit-content(36rem) fit-content(28rem);
+  grid-template-rows: auto 1fr; justify-content: center;
+  gap: var(--intro-gap); align-items: center;
   text-align: left;
 }
+.intro-visual { grid-column: 1; grid-row: 2; }
 .intro .kicker { color: var(--text); margin-bottom: 1.6rem; }
 .intro h1 { font-size: clamp(2.1rem, 5vw, 3.8rem); margin: 0; max-width: 12em; }
 .intro-logo { display: block; width: min(420px, 100%); height: auto; margin: -210px 0 4rem; }
-.intro-deal-slot { display: flex; height: 15rem; justify-content: center; align-items: center; }
-.intro-deal { display: block; width: min(300px, 76vw); height: auto;
-              transform: rotate(30deg); box-shadow: 0 18px 38px rgb(0 0 0 / 32%); }
-.intro-info { width: fit-content; max-width: 100%; }
+.intro-deal { display: block; width: min(460px, 40vw); height: auto; margin: 2rem 0 0;
+              transform: rotate(25deg); box-shadow: 0 18px 38px rgb(0 0 0 / 32%); }
+.intro-info { grid-column: 2; grid-row: 2; width: fit-content; max-width: 100%; }
 .intro-live-slot { display: flex; justify-content: flex-end; margin-bottom: 0.35rem; }
 .intro-live {
   display: inline-flex; align-items: center; gap: 0.4rem;
@@ -470,11 +483,19 @@ a.card:hover { border-color: var(--accent); text-decoration: none; transform: tr
   .live-sidebar { position: static; }
 }
 
-@media (max-width: 760px) {
+@media (min-width: 761px) {
+  .intro-deal { grid-column: 2; grid-row: 1; justify-self: end; align-self: start;
+                width: var(--intro-deal-width); margin: 0;
+                translate: min(50%, var(--intro-safe-shift)) var(--intro-deal-offset-y); }
+}
+
+@media (max-width: 760px), (orientation: landscape) and (max-height: 520px) {
   .intro { min-height: 0; display: block; padding-top: 3rem; padding-bottom: 2rem; text-align: center; }
   .intro h1 { max-width: none; }
   .intro-logo { width: min(340px, 82%); margin: 0 auto 1.4rem; }
   .intro-info { width: 100%; max-width: none; }
+  .intro-deal { position: static; width: min(240px, 68vw); margin: 4rem auto 0; translate: none;
+                transform: rotate(25deg); }
 }
 
 /* --- hints and graph -------------------------------------------------------- */
