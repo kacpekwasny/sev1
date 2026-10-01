@@ -47,7 +47,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         <button id="dc-layout-reset" class="dc-tool-button" type="button">${t("Reset układu")}</button>
         <button id="dc-fit" class="dc-tool-button" type="button">${t("Dopasuj")}</button>
         <div class="dc-view-presets" role="group" aria-label="${t("Gotowe widoki")}">
-          <button id="dc-preset-underlay" class="dc-tool-button" type="button" aria-pressed="false">${t("Pokaż underlay")}</button>
+          <button id="dc-preset-underlay" class="dc-tool-button" type="button" aria-pressed="false">${t("Pokaż fizyczną topologię")}</button>
+          <button id="dc-preset-underlay-bgp" class="dc-tool-button" type="button" aria-pressed="false">${t("Pokaż underlay BGP")}</button>
           <button id="dc-preset-overlay" class="dc-tool-button" type="button" aria-pressed="false">${t("Pokaż overlay BGP")}</button>
         </div>
         <label class="dc-zoom"><span class="dc-sr-only">${t("Powiększenie")}</span><input id="dc-zoom" type="range" min="50" max="150" value="85" step="5"><output id="dc-zoom-value">85%</output></label>
@@ -187,6 +188,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   const keepBorders = root.querySelector("#dc-keep-borders");
   const viewPresets = {
     underlay: [[showLinks, true], [showSessions, false], [showUnderlayBGP, true], [showOverlayBGP, false], [showUnderlay, true], [keepBorders, true], [showInfraOnHosts, true], [collapseRouteServers, false]],
+    "underlay-bgp": [[showLinks, false], [showSessions, true], [showUnderlayBGP, true], [showOverlayBGP, false], [showUnderlay, true], [keepBorders, true], [showInfraOnHosts, true], [collapseRouteServers, false]],
     overlay: [[showLinks, false], [showSessions, true], [showUnderlayBGP, false], [showOverlayBGP, true], [showUnderlay, false], [keepBorders, true], [showInfraOnHosts, false], [collapseRouteServers, true]],
   };
   const nodeVisible = node => showUnderlay.checked || node.kind === "host" || (node.kind === "border" && keepBorders.checked);

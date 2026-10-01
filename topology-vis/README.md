@@ -69,8 +69,12 @@ step, and Home restores its anchor. Reset układu clears offsets; Dopasuj adjust
 zoom to the canvas width. Moving a host carries its displayed VM anchors.
 Dragging changes only the drawing, and offsets clear on a configuration rebuild.
 
-The Pokaż underlay / Pokaż overlay BGP presets beside Reset układu and Dopasuj
-apply the physical-cabling or grouped-overlay workspace switches in one click.
+The Pokaż fizyczną topologię, Pokaż underlay BGP, and Pokaż overlay BGP presets
+beside Reset układu and Dopasuj apply the workspace switches in one click.
+The physical preset shows devices and cables with BGP sessions hidden.
+The underlay BGP preset shows physical devices with fabric and host–ToR sessions,
+hiding cables and overlay BGP. The overlay preset shows grouped RS tiers and
+overlay BGP with fabric devices and cables hidden.
 A pressed preset matches the current controls; manual adjustments remain possible.
 They preserve YAML, calculated routes, dragged offsets and the flow switch.
 
@@ -79,7 +83,8 @@ BGP underlay and BGP overlay child switches, initially both enabled. Underlay
 controls fabric and host–ToR peering; overlay controls host/Bolt/Ctrl/User,
 customer/User and border/Ctrl peering regardless of AFI or physical placement.
 The overlay preset enables overlay BGP only; enabling Sesje BGP after the
-underlay preset enables underlay BGP only. Flow omits whole examples crossing a
+physical topology preset enables underlay BGP only. The underlay BGP preset
+enables that layer directly. Flow omits whole examples crossing a
 hidden layer instead of stopping them at an RS. Explicit originated-route or
 session hover can still preview the inspected context with the layers off.
 RS grouping retains four actual

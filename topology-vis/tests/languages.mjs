@@ -4,12 +4,15 @@ import { readFile } from 'node:fs/promises';
 const catalog = JSON.parse(await readFile(new URL('../../web/static/i18n/en.json', import.meta.url), 'utf8'));
 // Load browser modules as an English page, without a DOM or a frontend build.
 globalThis.document = { documentElement: { lang: 'en' } };
-globalThis.fetch = async url => {
+globalThis.fetch = async (url, options) => {
   assert.equal(url, '/static/i18n/en.json');
+  assert.equal(options.cache, 'no-store');
   return { ok: true, json: async () => catalog };
 };
 const { t, createTranslator, createRuntimeTranslator, localizeResponse } = await import('../../web/static/i18n.js');
 assert.equal(t('Wybierz odpowiedź'), 'Choose an answer');
+assert.equal(t('Pokaż fizyczną topologię'), 'Show physical topology');
+assert.equal(t('Pokaż underlay BGP'), 'Show underlay BGP');
 assert.equal(t`VM klienta ${3}`, 'Customer VM 3');
 const custom = createTranslator({ 'Od {0} do {1}': 'To {1} from {0}' });
 assert.equal(custom`Od ${'<tag>$&'} do ${'{0}'}`, 'To {0} from <tag>$&');
