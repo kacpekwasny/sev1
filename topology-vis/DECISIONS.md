@@ -541,6 +541,10 @@ Latest user direction, as three separate increments:
 3. Automatic playback should not repeat the same propagation path just because
    the next example uses the other IP family. Keep both families available for
    explicit selection and inspection; retain examples with different paths.
+   Deduplicate only the automatic, unfocused playlist, after visible-layer and
+   endpoint filtering. Compare directed sessions and propagation waves within
+   origin-role/SAFI/type/VPC/VNI context; preserve the first available family.
+   Keep distinct same-family prefixes and leave expected-route metadata intact.
 
 ## Recording an answer
 

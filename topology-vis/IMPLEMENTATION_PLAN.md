@@ -374,4 +374,6 @@ are updated but have not been rerun for D27. See PROGRESS for exact limitations.
 - R31: suppress duplicate family paths only during automatic example playback;
   preserve explicit IPv4/IPv6 selection, UPDATE inspection and distinct paths.
 
-R29–R30 implemented; R31 next. See PROGRESS for validation and commit status.
+All three increments are implemented. Go tests/build, syntax and pure JS layer/
+playlist checks pass, including the shipped model. Browser verification and
+sandboxed commits remain blocked. See PROGRESS for exact checks and patches.

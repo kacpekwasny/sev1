@@ -1,6 +1,6 @@
 const NS = "http://www.w3.org/2000/svg";
 import { appendRIB, appendFIB, identifyRoute, appendRoutingRIB, appendOriginatedRoutes } from "./tables.js";
-import { routeFlowStreams, originatedRouteFlow } from "./route-flow.js";
+import { routeFlowStreams, originatedRouteFlow, automaticRouteFlowStreams } from "./route-flow.js";
 import { bgpSessionLayer, bgpSessionVisible, filterRouteFlowLayers } from "./session-layers.js";
 import { displayNames } from "./labels.js";
 import { physicalPoints, tapPoints, packetSegments, packetTraversal, packetPosition } from "./packet-path.js";
@@ -52,7 +52,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         <label class="dc-zoom"><span class="dc-sr-only">Powiększenie</span><input id="dc-zoom" type="range" min="50" max="150" value="85" step="5"><output id="dc-zoom-value">85%</output></label>
       </div>
       <div id="dc-flow-examples" class="dc-flow-examples">
-        <label>Ogłoszenie <select id="dc-flow-example"><option value="">Kolejno wszystkie przykłady</option></select></label>
+        <label>Ogłoszenie <select id="dc-flow-example"><option value="">Kolejno różne drogi ogłoszeń</option></select></label>
         <span id="dc-current-advertisement"></span>
       </div>
       <div class="dc-workspace">
@@ -841,7 +841,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const key=examples.map(e=>e.route.id).join("|");
     if(flowExampleSelect.dataset.key===key)return;
     const previous=flowExampleSelect.value;
-    flowExampleSelect.replaceChildren(new Option("Kolejno wszystkie przykłady",""),...examples.map(e=>new Option(exampleLabel(e.route),e.route.id)));
+    flowExampleSelect.replaceChildren(new Option("Kolejno różne drogi ogłoszeń",""),...examples.map(e=>new Option(exampleLabel(e.route),e.route.id)));
     flowExampleSelect.value=examples.some(e=>e.route.id===previous)?previous:"";
     flowExampleSelect.dataset.key=key;
   }
@@ -872,7 +872,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       : !sessionsEnabled() ? "Przepływ poglądowy — włącz Sesje BGP i przynajmniej jedną warstwę BGP."
       : !illustration.sequence.length ? "Brak zgodnego przykładu przepływu tras w tej konfiguracji."
       : exploration.update ? `UPDATE: ${exploration.update.from_id} → ${exploration.update.to_id} · ${exploration.update.route.prefix}. Rozgałęzienia pokazują dostarczenie tego prefiksu do urządzeń końcowych.`
-      : `Poglądowo: ${illustration.streams.length} ogłoszeń płynie kolejno przez RS, jeden prefiks naraz, z rozgałęzieniami na RS. Tablice pozostają stałe.`;
+      : `Poglądowo: ${illustration.streams.length} przykładów, jeden prefiks naraz, z rozgałęzieniami na RS. Tryb automatyczny pomija tę samą drogę w drugiej rodzinie IP; wybierz ogłoszenie, aby obejrzeć je osobno. Tablice pozostają stałe.`;
     if(routeHover||selected?.type==="route")flowNote.textContent=preview?"Redystrybucja lokalnego prefiksu: ogłoszenie i rozgałęzienia do urządzeń końcowych.":"Fioletowa strzałka wskazuje kierunek propagacji oglądanej trasy do tego RIB.";
     flowNote.textContent=displayNames(flowNote.textContent);
     if (!active || reducedMotion.matches) {
@@ -1181,6 +1181,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         .filter(stream=>!flowExampleSelect.value||stream.route.id===flowExampleSelect.value) : [];
     illustration.streams=illustration.streams.filter(stream=>stream.steps.every(step=>positions.entityPoints.has(step.fromID)&&positions.entityPoints.has(step.toID)));
     if (!originatedFlow) illustration.streams = filterRouteFlowLayers(illustration.streams, model.bgp_sessions, visibility);
+    if (!originatedFlow && !flowExampleSelect.value && !illustration.streams.some(stream => stream.focused)) illustration.streams = automaticRouteFlowStreams(illustration.streams);
     root.querySelector("#dc-flow-examples").hidden=!showRouteFlow.checked;
     illustration.phaseKey=null;
     const playlistKey=illustration.streams.map(stream=>`${stream.route.id}/${stream.focused}/${stream.waves.length}`).join("|");

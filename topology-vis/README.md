@@ -97,8 +97,12 @@ Hosts use slugs such as `h2001`; individual RSs use `rs13001`, `rsctrl4`, and
 `rsuser3`-style labels. Canonical configuration/API IDs stay stable.
 
 Przepływ tras and Sesje BGP start enabled. The sequence cycles representative
-examples for every available family, origin role and VPC: EVPN first, then
-customer unicast and fabric IPv4/IPv6. Ogłoszenie repeats one chosen example.
+examples for each distinct propagation pattern, origin role and VPC: EVPN first,
+then customer unicast and fabric. Automatic playback keeps the first family when
+IPv4/IPv6 share the same directed session graph and wave structure in the same
+routing context; different branches, directions and VPC/route types remain.
+Both families stay in Ogłoszenie, which repeats one explicitly chosen example.
+Focused UPDATE and originated-route inspection keep their selected family too.
 Its label shows the prefix, origin, family/VPC and propagation wave. One prefix
 runs at a time, branching into UPDATEs at RSs along expected exports. Each branch
 continues to a host, customer VM or border; redundant RS-only ends are omitted.
@@ -307,6 +311,7 @@ node --input-type=module --check < web/static/dc-topology/route-paths.js
 node topology-vis/tests/packet-bits.mjs
 node topology-vis/tests/packet-path.mjs
 node topology-vis/tests/session-layers.mjs
+node topology-vis/tests/automatic-route-flow.mjs
 node topology-vis/tests/address-ownership.mjs
 node topology-vis/tests/customer-rib.mjs
 ```

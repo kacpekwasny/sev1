@@ -509,7 +509,7 @@ Next action when browser tools allow: run desktop/narrow walkthroughs. Do not
 reimplement or recommit these changes.
 
 
-## D28 — in progress
+## D28 — implemented; sandboxed commits and visual checks blocked
 
 1. Preset buttons implemented beside Reset układu / Dopasuj. Underlay enables
    devices/links, hides sessions, places RS members on hosts and expands them.
@@ -526,8 +526,22 @@ reimplement or recommit these changes.
    originated-route/session context previews remain independent of switches.
    Pure session-role/complete-flow visibility tests and JavaScript syntax pass;
    full Go tests/build pass. Browser acceptance remains blocked.
-3. Automatic playlist without IPv4/IPv6 repeats of one path: next.
+3. Automatic playlist now omits the second IP family when the directed export
+   sessions/waves and origin-role/SAFI/type/VPC/VNI context match. Explicit
+   selector, UPDATE and originated-route inspection retain both families; no
+   model metadata is removed. Distinct branches/directions/contexts remain,
+   along with different same-family prefixes. Both automatic option labels now
+   describe different advertisement paths. Pure tests verify fanout/waves,
+   IPv6-first ordering, explicit IPv6 inspection, export-order independence and
+   distinct routing contexts. The current shipped model retains all 18 explicit
+   advertisements while automatic playback uses 10 examples. Full Go tests,
+   build, syntax and existing routing/ownership/packet JS checks pass; browser
+   acceptance remains blocked.
 
 Sandboxed staging of step 1 failed again creating `.git/index.lock` with
-`Operation not permitted`. No D28 commits have been created. Save each increment
-as a separate sequential patch for commits outside this session's boundary.
+`Operation not permitted`. No D28 commits have been created. Each increment is
+saved as a separate sequential patch for commits outside this session's boundary:
+`/tmp/sev1-d28-step1.patch` (view presets), `/tmp/sev1-d28-step2.patch`
+(session layers), `/tmp/sev1-d28-step3.patch` (automatic family-path deduplication).
+Next when tools allow: run desktop/narrow browser acceptance and commit these
+three increments separately. Do not repeat implementation.
