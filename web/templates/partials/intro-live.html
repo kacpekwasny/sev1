@@ -5,8 +5,8 @@
 <div id="intro-live-status" class="intro-live-slot"
      hx-get="/live/intro-status" hx-trigger="every 20s" hx-swap="outerHTML">
   {{if .}}
-  <a class="intro-live" href="/live/" title="Wykład trwa teraz" role="status">
-    <span>live</span><span class="intro-live-dot" aria-hidden="true"></span>
+  <a class="intro-live" href="/live/" title="{{tr "Wykład trwa teraz"}}" role="status">
+    <span>{{tr "live"}}</span><span class="intro-live-dot" aria-hidden="true"></span>
   </a>
   {{end}}
 </div>

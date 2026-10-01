@@ -44,13 +44,23 @@ func (l *Library) Vault() ([]byte, error) {
 
 func (l *Library) vaultIndex() string {
 	var b strings.Builder
-	b.WriteString("# Jak rozpętałem drugą Sev1 - notatki\n\n")
-	fmt.Fprintf(&b, "Wygenerowano: %s\n\n", time.Now().Format("2006-01-02 15:04"))
-	b.WriteString("Rozpakuj katalog jako vault w Obsidianie - linki `[[tak]]` zadziałają od razu.\n\n## Notatki\n\n")
+	if l.Language == "en" {
+		b.WriteString("# How I Caused a Second Sev1 — notes\n\n")
+		fmt.Fprintf(&b, "Generated: %s\n\n", time.Now().Format("2006-01-02 15:04"))
+		b.WriteString("Extract this directory as an Obsidian vault — `[[wikilinks]]` work immediately.\n\n## Notes\n\n")
+	} else {
+		b.WriteString("# Jak rozpętałem drugą Sev1 - notatki\n\n")
+		fmt.Fprintf(&b, "Wygenerowano: %s\n\n", time.Now().Format("2006-01-02 15:04"))
+		b.WriteString("Rozpakuj katalog jako vault w Obsidianie - linki `[[tak]]` zadziałają od razu.\n\n## Notatki\n\n")
+	}
 	for _, note := range l.Notes {
 		fmt.Fprintf(&b, "- [[notatki/%s|%s]]\n", note.Slug, note.Title)
 	}
-	b.WriteString("\n## Zadania\n\n")
+	if l.Language == "en" {
+		b.WriteString("\n## Exercises\n\n")
+	} else {
+		b.WriteString("\n## Zadania\n\n")
+	}
 	for _, task := range l.Tasks {
 		fmt.Fprintf(&b, "- [[zadania/%s|%s]]\n", task.Slug, task.Title)
 	}

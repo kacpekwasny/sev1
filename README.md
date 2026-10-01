@@ -256,7 +256,7 @@ Slug (nazwa pliku) wpisuje się do agendy wykładu jako `topologies: [spine-leaf
 
 Polish is the default. Use the language selector in the shared header to choose
 Polski or English; the choice is remembered for a year in this browser. A `lang`
-query parameter overrides the cookie for a single request. The language endpoint
+query parameter overrides the cookie and remembers that choice as well. The language endpoint
 returns to the current local page and preserves its other query parameters.
 
 UI translations use source-language keys in `web/static/i18n/en.json` and the

@@ -7,6 +7,8 @@ go run . -dev
 ```
 
 Open **http://localhost:8081/topologie/dc/**, also linked from Topologie.
+Use the site header to switch between Polish and English. For the independent
+harness, add `?lang=en` to its URL to use the same English UI catalog.
 The explorer uses local JavaScript modules and SVG; it has no htmx interactions,
 CDN, frontend package manager, or frontend build step.
 
@@ -314,6 +316,7 @@ node topology-vis/tests/session-layers.mjs
 node topology-vis/tests/automatic-route-flow.mjs
 node topology-vis/tests/address-ownership.mjs
 node topology-vis/tests/customer-rib.mjs
+node topology-vis/tests/languages.mjs
 ```
 
 The optional browser walkthrough in [tests/browser.mjs](tests/browser.mjs) uses an

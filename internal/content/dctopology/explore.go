@@ -213,7 +213,7 @@ func InspectTrafficPacket(model Model, id string) PacketInspection {
 }
 
 func inspectPacket(model Model, from, to, family string, preset *ResolvedTraffic) PacketInspection {
-	result := PacketInspection{FromID: from, ToID: to, Family: family, Protocol: "ICMP Echo Request", Payload: "SEV1: przykładowy pakiet", TTL: 64}
+	result := PacketInspection{FromID: from, ToID: to, Family: family, Protocol: "ICMP Echo Request", Payload: "SEV1: sample packet", TTL: 64}
 	if family == "ipv6" {
 		result.Protocol = "ICMPv6 Echo Request"
 	}

@@ -2,7 +2,7 @@
 {{$lib := .Lib}}
 <article class="page">
   {{with .Topo}}
-  <p class="kicker">topologia · <a href="/topologie/">wszystkie</a></p>
+  <p class="kicker">{{tr "topologia ·"}} <a href="/topologie/">{{tr "wszystkie"}}</a></p>
   <h1>{{.Title}}</h1>
   <p class="lead">{{.Summary}}</p>
   {{if and $.Visibility.Notes .Note}}

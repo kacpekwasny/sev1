@@ -157,7 +157,7 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, page string, dat
 	tpl := s.templates().forLanguage(requestLanguage(r))
 	set, ok := tpl.pages[page]
 	if !ok {
-		http.Error(w, "brak szablonu "+page, http.StatusInternalServerError)
+		http.Error(w, s.translate(r, "brak szablonu "+page), http.StatusInternalServerError)
 		return
 	}
 	data["Language"] = requestLanguage(r)
@@ -178,7 +178,7 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, page string, dat
 	var buf bytes.Buffer
 	if err := set.ExecuteTemplate(&buf, "base.html", data); err != nil {
 		log.Printf("render %s: %v", page, err)
-		http.Error(w, "błąd renderowania strony", http.StatusInternalServerError)
+		http.Error(w, s.translate(r, "błąd renderowania strony"), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -189,7 +189,7 @@ func (s *Server) renderFragment(w http.ResponseWriter, r *http.Request, name str
 	html, err := s.templates().forLanguage(requestLanguage(r)).fragment(name, data)
 	if err != nil {
 		log.Printf("render %s: %v", name, err)
-		http.Error(w, "błąd renderowania", http.StatusInternalServerError)
+		http.Error(w, s.translate(r, "błąd renderowania"), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

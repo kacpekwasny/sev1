@@ -2,7 +2,7 @@
      question, and re-rendered for one browser after it votes. */}}
 {{define "vote-card"}}
   {{if .Active}}
-    <p class="kicker">pytanie do sali</p>
+    <p class="kicker">{{tr "pytanie do sali"}}</p>
     <h2 class="question">{{.Poll.Question}}</h2>
     {{if .Open}}
       <div class="options">
@@ -14,14 +14,14 @@
         </button>
         {{end}}
       </div>
-      {{if .Chosen}}<p class="muted">Zagłosowano. Możesz zmienić zdanie — kliknij inną odpowiedź.</p>{{end}}
+      {{if .Chosen}}<p class="muted">{{tr "Zagłosowano. Możesz zmienić zdanie — kliknij inną odpowiedź."}}</p>{{end}}
     {{else}}
-      <p class="muted">Głosowanie zamknięte.</p>
+      <p class="muted">{{tr "Głosowanie zamknięte."}}</p>
       {{if .Poll.Reveal}}<p class="reveal">{{.Poll.Reveal}}</p>{{end}}
     {{end}}
   {{else}}
-    <p class="kicker">pytanie do sali</p>
-    <p class="muted waiting">Czekamy na pytanie od prowadzącego…</p>
+    <p class="kicker">{{tr "pytanie do sali"}}</p>
+    <p class="muted waiting">{{tr "Czekamy na pytanie od prowadzącego…"}}</p>
   {{end}}
 {{end}}
 
@@ -36,7 +36,7 @@
         <span class="bar-count">{{.Count}}</span>
       </div>
       {{end}}
-      <p class="muted">głosów: {{.Total}}</p>
+      <p class="muted">{{tr "głosów:"}} {{.Total}}</p>
     </div>
   {{end}}
 {{end}}

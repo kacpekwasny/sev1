@@ -1,0 +1,90 @@
+# Short reminders for the active live slide; linked notes provide more detail.
+- id: cloud
+  term: cloud
+  short: "Rented infrastructure: pay for usage and quickly scale it up or down."
+  note: po-co-cloud
+
+- id: datacenter
+  term: data center
+  short: "A building, power, cooling, networking, and servers that together keep services running."
+  note: centrum-obliczeniowe
+
+- id: redundancy
+  term: redundancy
+  short: "An alternate path or component that keeps a single failure from interrupting service."
+  note: centrum-obliczeniowe
+
+- id: bgp
+  term: BGP
+  short: "The protocol devices use to exchange information about how networks can be reached."
+  note: bgp-podstawy
+
+- id: bonding
+  term: bonding
+  short: "Combining several interfaces into one logical link for redundancy or greater bandwidth."
+  note: centrum-obliczeniowe
+
+- id: gpu
+  term: GPU
+  short: "A processor specialized in parallel computation; model training can use thousands at once."
+  note: gpu-clusters
+
+- id: nic
+  term: NIC
+  short: "A network card or interface through which a server communicates with the network."
+  note: gpu-clusters
+
+- id: loopback
+  term: loopback
+  short: "A stable logical device address that does not identify a particular physical interface."
+  note: bgp-podstawy
+
+- id: underlay
+  term: underlay
+  short: "The physical or base network delivering packets between infrastructure devices."
+  note: fib-i-whiteboxy
+
+- id: fib
+  term: FIB
+  short: "The device table from which hardware takes its ready-made packet-forwarding decision."
+  note: fib-i-whiteboxy
+
+- id: whitebox
+  term: whitebox
+  short: "A switch with open or replaceable software, usually cheaper and more flexible than proprietary equipment."
+  note: fib-i-whiteboxy
+
+- id: overlay
+  term: overlay
+  short: "A logical network built above the underlay, with its own addressing and topology."
+  note: overlay
+
+- id: encapsulation
+  term: encapsulation
+  short: "Wrapping one packet in another so the intermediate network can deliver it using its own addresses."
+  note: overlay
+
+- id: route-server
+  term: route server
+  short: "An intermediary exchanging routes between participants so they do not need a full mesh of sessions."
+  note: route-server
+
+- id: full-mesh
+  term: full mesh
+  short: "Every participant connects to every other participant; connection count grows as n(n−1)/2."
+  note: route-server
+
+- id: ipv6
+  term: IPv6
+  short: "A newer IP protocol version with a very large address space."
+  note: ipv6
+
+- id: srv6
+  term: SRv6
+  short: "Routing that describes a path as a sequence of instructions encoded in IPv6 addresses."
+  note: srv6
+
+- id: sid
+  term: SID
+  short: "Segment ID: an address or instruction specifying the next step of an SRv6 path."
+  note: srv6

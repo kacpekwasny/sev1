@@ -71,6 +71,7 @@ func New(opts Options) (*Server, error) {
 		return nil, err
 	} else if len(translated.Lectures)+len(translated.Notes)+len(translated.Tasks) > 0 {
 		translated.Visibility = lib.Visibility
+		translated.Language = "en"
 		s.localized["en"] = translated
 	}
 	s.routes()
@@ -79,6 +80,9 @@ func New(opts Options) (*Server, error) {
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	language := requestLanguage(r)
+	if r.URL.Path != "/language" && supportedLanguage(r.URL.Query().Get("lang")) {
+		setLanguageCookie(w, r, language)
+	}
 	w.Header().Set("Content-Language", language)
 	w.Header().Add("Vary", "Cookie")
 	s.mux.ServeHTTP(w, r)
@@ -267,7 +271,7 @@ func (s *Server) handleNoteRaw(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleVault(w http.ResponseWriter, r *http.Request) {
 	zipped, err := s.libFor(r).Vault()
 	if err != nil {
-		http.Error(w, "nie udało się spakować notatek", http.StatusInternalServerError)
+		http.Error(w, s.translate(r, "nie udało się spakować notatek"), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/zip")
@@ -318,7 +322,7 @@ func (s *Server) handleTopologyView(w http.ResponseWriter, r *http.Request) {
 	}
 	view := r.PathValue("view")
 	if !knownTopologyView(view) {
-		http.Error(w, "nie ma takiego widoku", http.StatusNotFound)
+		http.Error(w, s.translate(r, "nie ma takiego widoku"), http.StatusNotFound)
 		return
 	}
 	s.renderFragment(w, r, "topology-figure", topologyView(topo, view))
@@ -354,7 +358,7 @@ func (s *Server) handleHint(w http.ResponseWriter, r *http.Request) {
 	}
 	n, err := strconv.Atoi(r.PathValue("n"))
 	if err != nil || n < 0 || n >= len(task.Hints) {
-		http.Error(w, "nie ma takiej podpowiedzi", http.StatusNotFound)
+		http.Error(w, s.translate(r, "nie ma takiej podpowiedzi"), http.StatusNotFound)
 		return
 	}
 	s.renderFragment(w, r, "hint-revealed", map[string]any{
@@ -508,7 +512,7 @@ func (s *Server) handleIntroLive(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "streaming nieobsługiwany", http.StatusInternalServerError)
+		http.Error(w, s.translate(r, "streaming nieobsługiwany"), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -596,7 +600,7 @@ func (s *Server) requirePanel(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if token := r.URL.Query().Get("token"); token != "" {
 			if token != s.opts.PanelToken {
-				http.Error(w, "zły token", http.StatusForbidden)
+				http.Error(w, s.translate(r, "zły token"), http.StatusForbidden)
 				return
 			}
 			http.SetCookie(w, &http.Cookie{
@@ -607,7 +611,7 @@ func (s *Server) requirePanel(next http.HandlerFunc) http.HandlerFunc {
 		}
 		c, err := r.Cookie("panel")
 		if err != nil || c.Value != s.opts.PanelToken {
-			http.Error(w, "panel prowadzącego: dopisz ?token=...", http.StatusForbidden)
+			http.Error(w, s.translate(r, "panel prowadzącego: dopisz ?token=..."), http.StatusForbidden)
 			return
 		}
 		next(w, r)

@@ -190,6 +190,7 @@ type AgendaTerm struct {
 
 // Library is the whole site content, loaded in one go.
 type Library struct {
+	Language       string
 	Visibility     Visibility
 	Lectures       []*Lecture
 	Notes          []*Note

@@ -2,23 +2,23 @@
      Formularz leży poza częścią odświeżaną przez SSE - stan jest osobisty. */}}
 {{define "whoami"}}
   <form class="whoami" hx-post="/live/ksywka" hx-target="#whoami" hx-swap="innerHTML">
-    <label for="nick">Podpisujesz się jako</label>
+    <label for="nick">{{tr "Podpisujesz się jako"}}</label>
     <input id="nick" name="nick" value="{{.Me.Nick}}" maxlength="24" required>
-    <button class="btn nick-edit" type="submit">zmień</button>
-    {{if .Error}}<span class="warn">{{.Error}}</span>{{end}}
-    {{if .Saved}}<span class="sent">zapisane</span>{{end}}
+    <button class="btn nick-edit" type="submit">{{tr "zmień"}}</button>
+    {{if .Error}}<span class="warn">{{tr .Error}}</span>{{end}}
+    {{if .Saved}}<span class="sent">{{tr "zapisane"}}</span>{{end}}
   </form>
 {{end}}
 
 {{define "ask-form"}}
   {{if .Problem}}
-    <p class="warn">{{.Problem}}</p>
+    <p class="warn">{{tr .Problem}}</p>
   {{else}}
-    {{if .Sent}}<p class="sent">Poszło. Pytanie jest niżej — inni mogą je podbić.</p>{{end}}
+    {{if .Sent}}<p class="sent">{{tr "Poszło. Pytanie jest niżej — inni mogą je podbić."}}</p>{{end}}
     <form hx-post="/live/pytanie" hx-target="#ask" hx-swap="innerHTML">
       <textarea name="text" rows="2" maxlength="400" required
-                placeholder="Pytanie do prowadzącego, podpisane ksywką {{.Me.Nick}}…"></textarea>
-      <button class="btn primary" type="submit">Wyślij</button>
+                placeholder="{{tr "Pytanie do prowadzącego, podpisane ksywką"}} {{.Me.Nick}}…"></textarea>
+      <button class="btn primary" type="submit">{{tr "Wyślij"}}</button>
     </form>
   {{end}}
 {{end}}
@@ -27,20 +27,20 @@
      bez wyrzucenia tego, co ktoś właśnie pisze. */}}
 {{define "answer-box"}}
   {{if .Sent}}
-    <p class="sent">Dzięki! Twoja odpowiedź jest pod pytaniem — sala może ją podbić.</p>
+    <p class="sent">{{tr "Dzięki! Twoja odpowiedź jest pod pytaniem — sala może ją podbić."}}</p>
   {{else if .Problem}}
-    <p class="warn">{{.Problem}}</p>
+    <p class="warn">{{tr .Problem}}</p>
   {{else if .Question}}
     <div class="answer-form">
-      <p class="kicker">odpowiadasz na</p>
+      <p class="kicker">{{tr "odpowiadasz na"}}</p>
       <blockquote>{{.Question.Text}}</blockquote>
       <form hx-post="/live/pytanie/{{.Question.ID}}/odpowiedz"
             hx-target="#answer-box" hx-swap="innerHTML">
         <textarea name="text" rows="2" maxlength="400" required autofocus
-                  placeholder="Wiesz, jak to działa? Napisz."></textarea>
-        <button class="btn primary" type="submit">Wyślij odpowiedź</button>
+                  placeholder="{{tr "Wiesz, jak to działa? Napisz."}}"></textarea>
+        <button class="btn primary" type="submit">{{tr "Wyślij odpowiedź"}}</button>
         <button class="btn" type="button" hx-get="/live/odpowiedz"
-                hx-target="#answer-box" hx-swap="innerHTML">Anuluj</button>
+                hx-target="#answer-box" hx-swap="innerHTML">{{tr "Anuluj"}}</button>
       </form>
     </div>
   {{end}}
@@ -53,18 +53,18 @@
       {{$q := .}}
       <li class="{{if .Answered}}answered{{end}}">
         <button class="upvote" hx-post="/live/pytanie/{{.ID}}/glos"
-                hx-target="#questions" hx-swap="innerHTML" title="podbij">▲ {{.Votes}}</button>
+                hx-target="#questions" hx-swap="innerHTML" title="{{tr "podbij"}}">▲ {{.Votes}}</button>
         <div class="qbody">
           <span class="qtext">{{.Text}}</span>
           <span class="nick">— {{.Nick}}</span>
-          {{if .Answered}}<span class="chip done">odpowiedziane</span>{{end}}
+          {{if .Answered}}<span class="chip done">{{tr "odpowiedziane"}}</span>{{end}}
           {{if .Comments}}
           <ul class="answers">
             {{range .Comments}}
             <li>
               <button class="upvote tiny" hx-post="/live/pytanie/{{$q.ID}}/odpowiedz/{{.ID}}/glos"
                       hx-target="#questions" hx-swap="innerHTML"
-                      title="ta odpowiedź jest dobra">▲ {{.Votes}}</button>
+                      title="{{tr "ta odpowiedź jest dobra"}}">▲ {{.Votes}}</button>
               <span>{{.Text}} <span class="nick">— {{.Nick}}</span></span>
             </li>
             {{end}}
@@ -72,17 +72,17 @@
           {{end}}
           {{if $.OnAir}}
           <button class="btn link" hx-get="/live/odpowiedz?pytanie={{.ID}}"
-                  hx-target="#answer-box" hx-swap="innerHTML">znam odpowiedź</button>
+                  hx-target="#answer-box" hx-swap="innerHTML">{{tr "znam odpowiedź"}}</button>
           {{end}}
           {{if eq $.ViewerID .Author}}
           <span class="owner-actions">
             <button class="btn link" hx-post="/live/pytanie/{{.ID}}/odpowiedziane"
                     hx-target="#questions" hx-swap="innerHTML">
-              {{if .Answered}}cofnij oznaczenie{{else}}oznacz jako odpowiedziane{{end}}
+              {{if .Answered}}{{tr "cofnij oznaczenie"}}{{else}}{{tr "oznacz jako odpowiedziane"}}{{end}}
             </button>
             <button class="btn link danger" hx-post="/live/pytanie/{{.ID}}/usun"
                     hx-target="#questions" hx-swap="innerHTML"
-                    hx-confirm="Usunąć swoje pytanie?">usuń moje pytanie</button>
+                    hx-confirm="{{tr "Usunąć swoje pytanie?"}}">{{tr "usuń moje pytanie"}}</button>
           </span>
           {{end}}
         </div>
@@ -90,7 +90,7 @@
       {{end}}
     </ul>
   {{else}}
-    <p class="muted">Nikt jeszcze o nic nie zapytał. Bądź pierwszy.</p>
+    <p class="muted">{{tr "Nikt jeszcze o nic nie zapytał. Bądź pierwszy."}}</p>
   {{end}}
 {{end}}
 
@@ -104,16 +104,16 @@
         <div class="qbody">
           <span class="qtext">{{.Text}}</span>
           <span class="nick">— {{.Nick}}</span>
-          {{if .Shadow}}<span class="chip shadow" title="w cieniu: widzi to tylko autor">cień</span>{{end}}
+          {{if .Shadow}}<span class="chip shadow" title="{{tr "w cieniu: widzi to tylko autor"}}">{{tr "cień"}}</span>{{end}}
           {{if .Comments}}
           <ul class="answers">
             {{range .Comments}}
             <li class="{{if .Shadow}}shadow{{end}}">
               <span class="upvote static tiny">▲ {{.Votes}}</span>
               <span>{{.Text}} <span class="nick">— {{.Nick}}</span>
-                {{if .Shadow}}<span class="chip shadow" title="w cieniu: widzi to tylko autor">cień</span>{{end}}</span>
+                {{if .Shadow}}<span class="chip shadow" title="{{tr "w cieniu: widzi to tylko autor"}}">{{tr "cień"}}</span>{{end}}</span>
               <button class="btn tiny danger" hx-post="/panel/pytanie/{{$q.ID}}/odpowiedz/{{.ID}}/usun"
-                      hx-target="#panel-questions" hx-swap="innerHTML">usuń</button>
+                      hx-target="#panel-questions" hx-swap="innerHTML">{{tr "usuń"}}</button>
             </li>
             {{end}}
           </ul>
@@ -122,15 +122,15 @@
         <span class="qactions">
           <button class="btn tiny" hx-post="/panel/pytanie/{{.ID}}/odpowiedziane"
                   hx-target="#panel-questions" hx-swap="innerHTML">
-            {{if .Answered}}cofnij{{else}}odpowiedziane{{end}}
+            {{if .Answered}}{{tr "cofnij"}}{{else}}{{tr "odpowiedziane"}}{{end}}
           </button>
           <button class="btn tiny danger" hx-post="/panel/pytanie/{{.ID}}/usun"
-                  hx-target="#panel-questions" hx-swap="innerHTML">usuń</button>
+                  hx-target="#panel-questions" hx-swap="innerHTML">{{tr "usuń"}}</button>
         </span>
       </li>
       {{end}}
     </ul>
   {{else}}
-    <p class="muted">Brak pytań.</p>
+    <p class="muted">{{tr "Brak pytań."}}</p>
   {{end}}
 {{end}}

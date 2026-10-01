@@ -500,7 +500,19 @@ func (b *browser) do(t *testing.T, req *http.Request) *httptest.ResponseRecorder
 	}
 	rec := httptest.NewRecorder()
 	b.srv.ServeHTTP(rec, req)
-	b.cookies = append(b.cookies, rec.Result().Cookies()...)
+	for _, cookie := range rec.Result().Cookies() {
+		found := false
+		for i, old := range b.cookies {
+			if old.Name == cookie.Name && old.Path == cookie.Path {
+				b.cookies[i] = cookie
+				found = true
+				break
+			}
+		}
+		if !found {
+			b.cookies = append(b.cookies, cookie)
+		}
+	}
 	return rec
 }
 

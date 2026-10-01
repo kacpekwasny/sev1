@@ -1,7 +1,7 @@
 {{define "content"}}
 <article class="page panel" hx-ext="sse" sse-connect="/live/stream?widok=panel">
-  <h1>Panel prowadzącego</h1>
-  <p class="lead">Sala widzi to, co tu wybierzesz. Trzymaj tę zakładkę na drugim ekranie.</p>
+  <h1>{{tr "Panel prowadzącego"}}</h1>
+  <p class="lead">{{tr "Sala widzi to, co tu wybierzesz. Trzymaj tę zakładkę na drugim ekranie."}}</p>
 
   <div id="panel-visibility">{{template "panel-visibility" .VisibilityPanel}}</div>
 
@@ -12,16 +12,16 @@
       <div id="panel-controls">{{template "panel-controls" .}}</div>
     </div>
     <div class="panel-col">
-      <h3>Wyniki na żywo</h3>
+      <h3>{{tr "Wyniki na żywo"}}</h3>
       <div id="results" sse-swap="results">{{template "poll-results" .Poll}}</div>
 
-      <h3 title="ostatnie 30 sekund - reakcje same gasną">Nastrój sali</h3>
+      <h3 title="{{tr "ostatnie 30 sekund - reakcje same gasną"}}">{{tr "Nastrój sali"}}</h3>
       <div id="panel-mood" sse-swap="mood">{{template "panel-mood" .Mood}}</div>
 
-      <h3>Pytania z sali</h3>
+      <h3>{{tr "Pytania z sali"}}</h3>
       <div id="panel-questions" sse-swap="questions">{{template "panel-questions" .Snap}}</div>
 
-      <h3>Sala</h3>
+      <h3>{{tr "Sala"}}</h3>
       <div id="panel-moderation" sse-swap="moderation">{{template "panel-moderation" .Snap}}</div>
     </div>
   </section>

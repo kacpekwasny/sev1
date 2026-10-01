@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{.Title}} · Sev1 @ WIET</title>
+  <title>{{.Title}} {{tr "· Sev1 @ WIET"}}</title>
   <meta name="description" content="{{.Description}}">
   {{/* Podgląd linku wklejonego na fejsa albo na grupę - plakat rozchodzi się
        linkiem, więc to jest część promocji, nie ozdoba. Obrazek podmień na
@@ -14,7 +14,7 @@
   <meta property="og:url" content="{{.BaseURL}}{{.Path}}">
   <meta property="og:image" content="{{.BaseURL}}/static/og.png">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="stylesheet" href="/static/app.css?v=poster-layout-20261001">
+  <link rel="stylesheet" href="/static/app.css?v=languages-20261001">
   {{if .DCTopology}}
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%2392efcb' d='M16 2 30 16 16 30 2 16Z'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/dc-topology/app.css">
@@ -27,19 +27,19 @@
 {{/* Wejściówka dostaje ten sam pasek, tylko bez tła i bez kreski - ma leżeć
      na plakacie, a nie dzielić go na dwie części. */}}
 <header class="topbar{{if .Bare}} clean{{end}}">
-  <a class="brand" href="/"><span class="sev">SEV1</span> <span class="brand-sub">wykłady @ WIET AGH</span></a>
+  <a class="brand" href="/"><span class="sev">{{tr "SEV1"}}</span> <span class="brand-sub">{{tr "wykłady @ WIET AGH"}}</span></a>
   <nav>
-    {{if .Visibility.Lectures}}<a href="/wyklady/" {{if eq .Path "/wyklady/"}}class="on"{{end}}>Wykłady</a>{{end}}
-    {{if .Visibility.Notes}}<a href="/notatki/" {{if eq .Path "/notatki/"}}class="on"{{end}}>Notatki</a>{{end}}
-    {{if .Visibility.Topologies}}<a href="/topologie/" {{if or (eq .Path "/topologie/") .DCTopology}}class="on"{{end}}>Topologie</a>{{end}}
-    {{if .Visibility.Tasks}}<a href="/zadania/" {{if eq .Path "/zadania/"}}class="on"{{end}}>Zadania</a>{{end}}
+    {{if .Visibility.Lectures}}<a href="/wyklady/" {{if eq .Path "/wyklady/"}}class="on"{{end}}>{{tr "Wykłady"}}</a>{{end}}
+    {{if .Visibility.Notes}}<a href="/notatki/" {{if eq .Path "/notatki/"}}class="on"{{end}}>{{tr "Notatki"}}</a>{{end}}
+    {{if .Visibility.Topologies}}<a href="/topologie/" {{if or (eq .Path "/topologie/") .DCTopology}}class="on"{{end}}>{{tr "Topologie"}}</a>{{end}}
+    {{if .Visibility.Tasks}}<a href="/zadania/" {{if eq .Path "/zadania/"}}class="on"{{end}}>{{tr "Zadania"}}</a>{{end}}
     {{template "live-nav" .OnAir}}
     <form class="language-switch" action="/language" method="get">
       <input type="hidden" name="return" value="{{.ReturnURL}}">
       <label for="site-language">{{tr "Język"}}</label>
       <select id="site-language" name="lang" aria-label="{{tr "Język strony"}}">
-        <option value="pl"{{if eq .Language "pl"}} selected{{end}}>Polski</option>
-        <option value="en"{{if eq .Language "en"}} selected{{end}}>English</option>
+        <option value="pl"{{if eq .Language "pl"}} selected{{end}}>{{tr "Polski"}}</option>
+        <option value="en"{{if eq .Language "en"}} selected{{end}}>{{tr "English"}}</option>
       </select>
       <button type="submit">{{tr "Zmień"}}</button>
     </form>
@@ -52,8 +52,8 @@
 
 {{if not .Bare}}
 <footer>
-  <span>Routing Services · Akamai</span>
-  {{if .Visibility.Notes}}<span>Materiały: <a href="/notatki/vault.zip">vault .zip</a> dla Obsidiana</span>{{end}}
+  <span>{{tr "Routing Services · Akamai"}}</span>
+  {{if .Visibility.Notes}}<span>{{tr "Materiały:"}} <a href="/notatki/vault.zip">{{tr "vault .zip"}}</a> {{tr "dla Obsidiana"}}</span>{{end}}
 </footer>
 {{end}}
 </body>

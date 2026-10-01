@@ -2,13 +2,13 @@
 {{$lib := .Lib}}
 {{with .Lecture}}
 <article class="page">
-  <p class="kicker">Wykład #{{.Number}} · {{.Date}} · {{.Place}} · {{.Duration}} min</p>
+  <p class="kicker">{{tr "Wykład #"}}{{.Number}} · {{.Date}} · {{.Place}} · {{.Duration}} {{tr "min"}}</p>
   <h1>{{.Title}}</h1>
   <p class="lead">{{.Summary}}</p>
 
   <div class="prose">{{.Body}}</div>
 
-  <h2>Agenda</h2>
+  <h2>{{tr "Agenda"}}</h2>
   <ol class="agenda">
     {{range .Agenda}}
     <li>
@@ -18,7 +18,7 @@
         {{if .Desc}}<p class="muted">{{.Desc}}</p>{{end}}
         <p class="agenda-links">
           {{if .Poll}}
-          <span class="chip poll" title="{{pollQuestion $lib .Poll}}">pytanie do sali</span>
+          <span class="chip poll" title="{{pollQuestion $lib .Poll}}">{{tr "pytanie do sali"}}</span>
           {{end}}
           {{if $.Visibility.Notes}}{{range .Notes}}<a class="chip" href="/notatki/{{.}}">{{noteTitle $lib .}}</a>{{end}}{{end}}
           {{if $.Visibility.Topologies}}{{range .Topologies}}<a class="chip topo" href="/topologie/{{.}}">{{topologyTitle $lib .}}</a>{{end}}{{end}}
@@ -30,8 +30,7 @@
   </ol>
 
   <p class="callout">
-    W trakcie wykładu otwórz <a href="/live/">stronę na żywo</a> — tam pojawiają się pytania
-    do sali i można anonimowo dopytać o cokolwiek.
+    {{tr "W trakcie wykładu otwórz"}} <a href="/live/">{{tr "stronę na żywo"}}</a> {{tr "— tam pojawiają się pytania\n    do sali i można anonimowo dopytać o cokolwiek."}}
   </p>
 </article>
 {{end}}

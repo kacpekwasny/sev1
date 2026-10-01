@@ -1,17 +1,17 @@
 {{define "panel-visibility"}}
 <section class="panel-visibility">
-  <h2>Widoczność materiałów</h2>
-  <p class="muted small">Zmiany zapisują się w <code>content/visibility.yaml</code>; serwer musi mieć prawo zapisu do katalogu <code>content/</code>.</p>
+  <h2>{{tr "Widoczność materiałów"}}</h2>
+  <p class="muted small">{{tr "Zmiany zapisują się w"}} <code>{{tr "content/visibility.yaml"}}</code>{{tr "; serwer musi mieć prawo zapisu do katalogu"}} <code>{{tr "content/"}}</code>.</p>
   <form hx-post="/panel/widocznosc" hx-target="#panel-visibility" hx-swap="innerHTML">
     <div class="visibility-options">
-      <label><input type="checkbox" name="lectures" value="on" {{if .Visibility.Lectures}}checked{{end}}> Wykłady</label>
-      <label><input type="checkbox" name="notes" value="on" {{if .Visibility.Notes}}checked{{end}}> Notatki</label>
-      <label><input type="checkbox" name="topologies" value="on" {{if .Visibility.Topologies}}checked{{end}}> Topologie</label>
-      <label><input type="checkbox" name="tasks" value="on" {{if .Visibility.Tasks}}checked{{end}}> Zadania</label>
+      <label><input type="checkbox" name="lectures" value="on" {{if .Visibility.Lectures}}checked{{end}}> {{tr "Wykłady"}}</label>
+      <label><input type="checkbox" name="notes" value="on" {{if .Visibility.Notes}}checked{{end}}> {{tr "Notatki"}}</label>
+      <label><input type="checkbox" name="topologies" value="on" {{if .Visibility.Topologies}}checked{{end}}> {{tr "Topologie"}}</label>
+      <label><input type="checkbox" name="tasks" value="on" {{if .Visibility.Tasks}}checked{{end}}> {{tr "Zadania"}}</label>
     </div>
-    <button class="btn small primary" type="submit">Zapisz widoczność</button>
-    {{if .Saved}}<span class="muted small">Zapisano. Osoby z otwartą stroną zobaczą zmianę po odświeżeniu.</span>{{end}}
-    {{if .Error}}<p class="warn small">{{.Error}}</p>{{end}}
+    <button class="btn small primary" type="submit">{{tr "Zapisz widoczność"}}</button>
+    {{if .Saved}}<span class="muted small">{{tr "Zapisano. Osoby z otwartą stroną zobaczą zmianę po odświeżeniu."}}</span>{{end}}
+    {{if .Error}}<p class="warn small">{{tr .Error}}</p>{{end}}
   </form>
 </section>
 {{end}}

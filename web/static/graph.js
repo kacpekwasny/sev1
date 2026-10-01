@@ -1,3 +1,4 @@
+import { t } from "./i18n.js";
 // Small force-directed graph of the notes. No library on purpose: it is
 // ~100 lines of physics and stays readable.
 (function () {
@@ -25,10 +26,10 @@
       edges = data.edges
         .map((e) => ({ a: byId[e.from], b: byId[e.to] }))
         .filter((e) => e.a && e.b);
-      hint.textContent = nodes.length + " notatek, " + edges.length + " połączeń";
+      hint.textContent = t`${nodes.length} notatek, ${edges.length} połączeń`;
       requestAnimationFrame(tick);
     })
-    .catch(() => (hint.textContent = "nie udało się wczytać grafu"));
+    .catch(() => (hint.textContent = t("nie udało się wczytać grafu")));
 
   function step() {
     const cx = canvas.width / 2, cy = canvas.height / 2;

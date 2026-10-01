@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 // Browser ES modules loaded without installing a frontend build stack.
-const bits=await import(`data:text/javascript;base64,${(await readFile('web/static/dc-topology/packet-bits.js')).toString('base64')}`);
+const bits=await import(new URL("../../web/static/dc-topology/packet-bits.js", import.meta.url));
 const paths=await import(`data:text/javascript;base64,${(await readFile('web/static/dc-topology/route-paths.js')).toString('base64')}`);
 const flatten=(layers)=>Uint8Array.from(layers.flatMap(l=>[...l.bytes]));
 const word=(bytes,i)=>(bytes[i]<<8)|bytes[i+1];

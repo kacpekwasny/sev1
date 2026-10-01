@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
-const {routingEntries,zebraRouteLine,kernelRouteLine}=await import(`data:text/javascript;base64,${(await readFile('web/static/dc-topology/tables.js')).toString('base64')}`);
+const {routingEntries,zebraRouteLine,kernelRouteLine}=await import(new URL("../../web/static/dc-topology/tables.js", import.meta.url));
 const host='host-b1-h1',remote='host-b2-h1';
 const primary={id:'vm/customer-3/ipv4/10.64.0.3',prefix:'10.64.0.3/32',safi:'evpn'};
 const extra={id:'customer/customer-3/ipv4/10.96.0.3/32',prefix:'10.96.0.3/32',safi:'unicast'};

@@ -3,34 +3,34 @@
   {{if .Poll.Active}}{{$active = .Poll.Poll.ID}}{{end}}
   <div class="panel-now">
     {{if .Poll.Active}}
-      <p class="kicker">na ekranie {{if .Poll.Open}}· otwarte{{else}}· zamknięte{{end}}</p>
+      <p class="kicker">{{tr "na ekranie"}} {{if .Poll.Open}}{{tr "· otwarte"}}{{else}}{{tr "· zamknięte"}}{{end}}</p>
       <h2 class="question">{{.Poll.Poll.Question}}</h2>
       <div class="panel-buttons">
         {{if .Poll.Open}}
         <button class="btn" hx-post="/panel/ankieta" hx-vals='{"action":"close","poll":"{{$active}}"}'
-                hx-target="#panel-controls" hx-swap="innerHTML">Zamknij głosowanie</button>
+                hx-target="#panel-controls" hx-swap="innerHTML">{{tr "Zamknij głosowanie"}}</button>
         {{else}}
         <button class="btn" hx-post="/panel/ankieta" hx-vals='{"action":"show","poll":"{{$active}}"}'
-                hx-target="#panel-controls" hx-swap="innerHTML">Otwórz ponownie</button>
+                hx-target="#panel-controls" hx-swap="innerHTML">{{tr "Otwórz ponownie"}}</button>
         {{end}}
         <button class="btn" hx-post="/panel/ankieta" hx-vals='{"action":"reset"}'
-                hx-target="#panel-controls" hx-swap="innerHTML">Wyzeruj głosy</button>
+                hx-target="#panel-controls" hx-swap="innerHTML">{{tr "Wyzeruj głosy"}}</button>
         <button class="btn danger" hx-post="/panel/ankieta" hx-vals='{"action":"hide"}'
-                hx-target="#panel-controls" hx-swap="innerHTML">Zdejmij z ekranu</button>
+                hx-target="#panel-controls" hx-swap="innerHTML">{{tr "Zdejmij z ekranu"}}</button>
       </div>
-      {{if .Poll.Poll.Reveal}}<p class="reveal">pointa: {{.Poll.Poll.Reveal}}</p>{{end}}
+      {{if .Poll.Poll.Reveal}}<p class="reveal">{{tr "pointa:"}} {{.Poll.Poll.Reveal}}</p>{{end}}
     {{else}}
-      <p class="muted">Nic nie jest na ekranie. Wybierz pytanie z listy niżej.</p>
+      <p class="muted">{{tr "Nic nie jest na ekranie. Wybierz pytanie z listy niżej."}}</p>
     {{end}}
   </div>
 
-  <h3>Pytania do sali</h3>
+  <h3>{{tr "Pytania do sali"}}</h3>
   <ul class="polllist">
     {{range .Lib.Polls}}
     <li class="{{if eq .ID $active}}on{{end}}">
       <span class="polllist-q"><span class="chip">{{.Lecture}}</span> {{.Question}}</span>
       <button class="btn tiny" hx-post="/panel/ankieta" hx-vals='{"action":"show","poll":"{{.ID}}"}'
-              hx-target="#panel-controls" hx-swap="innerHTML">pokaż</button>
+              hx-target="#panel-controls" hx-swap="innerHTML">{{tr "pokaż"}}</button>
     </li>
     {{end}}
   </ul>

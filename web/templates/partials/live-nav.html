@@ -9,7 +9,7 @@
 {{define "live-nav"}}
 <a class="livelink{{if .}} onair{{end}}" href="/live/"
    hx-get="/live/stan" hx-trigger="every 20s" hx-swap="outerHTML"
-   title="{{if .}}Wykład trwa teraz{{else}}Część na żywo dla sali{{end}}">
-  <span class="dot" aria-hidden="true"></span><span class="label">{{if .}}live{{else}}Na żywo{{end}}</span>
+   title="{{if .}}{{tr "Wykład trwa teraz"}}{{else}}{{tr "Część na żywo dla sali"}}{{end}}">
+  <span class="dot" aria-hidden="true"></span><span class="label">{{if .}}{{tr "live"}}{{else}}{{tr "Na żywo"}}{{end}}</span>
 </a>
 {{end}}

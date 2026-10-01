@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
-const {addressInventory,explainAddress}=await import(`data:text/javascript;base64,${(await readFile('web/static/dc-topology/addresses.js')).toString('base64')}`);
+const {addressInventory,explainAddress}=await import(new URL("../../web/static/dc-topology/addresses.js", import.meta.url));
 const model={config:{route_origins:[{prefix:'198.51.100.0/24',border_id:1,vpc_id:0}]},
  nodes:[{id:'host-1',label:'h1001',kind:'host',ipv4:'10.16.0.1',ipv6:'fd42:1234:2:1:0:1:0:2a'},
   {id:'tor-1',label:'ToR 1',kind:'tor',ipv4:'10.0.0.33',ipv6:'2001:db8:1::21:0:1'},

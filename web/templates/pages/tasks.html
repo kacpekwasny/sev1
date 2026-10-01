@@ -1,15 +1,14 @@
 {{define "content"}}
 <article class="page">
-  <h1>Zadania</h1>
+  <h1>{{tr "Zadania"}}</h1>
   <p class="lead">
-    Każde zadanie wyrosło z prawdziwego problemu z pracy. Nie ma tu punktów ani terminów —
-    są podpowiedzi, które odkrywasz dopiero, gdy naprawdę utkniesz.
+    {{tr "Każde zadanie wyrosło z prawdziwego problemu z pracy. Nie ma tu punktów ani terminów —\n    są podpowiedzi, które odkrywasz dopiero, gdy naprawdę utkniesz."}}
   </p>
   <div class="cards">
     {{range .Tasks}}
     <a class="card" href="/zadania/{{.Slug}}">
       <div class="card-head">
-        <span class="tag {{.Difficulty}}">{{.Difficulty}}</span>
+        <span class="tag {{.Difficulty}}">{{tr .Difficulty}}</span>
         {{if .Time}}<span class="meta">~{{.Time}}</span>{{end}}
       </div>
       <h3>{{.Title}}</h3>

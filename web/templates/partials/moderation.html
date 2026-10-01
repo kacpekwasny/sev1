@@ -5,18 +5,18 @@
   <form class="lockswitch" hx-post="/panel/pytania"
         hx-target="#panel-moderation" hx-swap="innerHTML">
     {{if .QuestionsLocked}}
-      <span class="warn">Pisanie zamknięte — sala może tylko głosować i podbijać.</span>
-      <button class="btn tiny" name="locked" value="nie" type="submit">otwórz pytania</button>
+      <span class="warn">{{tr "Pisanie zamknięte — sala może tylko głosować i podbijać."}}</span>
+      <button class="btn tiny" name="locked" value="nie" type="submit">{{tr "otwórz pytania"}}</button>
     {{else}}
-      <span class="muted">Pisanie otwarte.</span>
-      <button class="btn tiny danger" name="locked" value="tak" type="submit">zamknij pytania</button>
+      <span class="muted">{{tr "Pisanie otwarte."}}</span>
+      <button class="btn tiny danger" name="locked" value="tak" type="submit">{{tr "zamknij pytania"}}</button>
     {{end}}
   </form>
 
   {{if .Participants}}
     <table class="people">
       <thead>
-        <tr><th>ksywka</th><th>adres</th><th title="pytania / odpowiedzi">pyt./odp.</th><th></th></tr>
+        <tr><th>{{tr "ksywka"}}</th><th>{{tr "adres"}}</th><th title="{{tr "pytania / odpowiedzi"}}">{{tr "pyt./odp."}}</th><th></th></tr>
       </thead>
       <tbody>
         {{range .Participants}}
@@ -27,20 +27,20 @@
           <td>{{.Questions}} / {{.Answers}}</td>
           <td class="qactions">
             {{if .Shadow}}
-              <button class="btn tiny" title="niech sala znowu go widzi"
+              <button class="btn tiny" title="{{tr "niech sala znowu go widzi"}}"
                       hx-post="/panel/uczestnik/{{.ID}}/pokaz"
-                      hx-target="#panel-moderation" hx-swap="innerHTML">zdejmij cień</button>
+                      hx-target="#panel-moderation" hx-swap="innerHTML">{{tr "zdejmij cień"}}</button>
             {{else}}
-              <button class="btn tiny danger" title="pisze dalej i widzi swoje pytania, ale nikt inny ich nie widzi"
+              <button class="btn tiny danger" title="{{tr "pisze dalej i widzi swoje pytania, ale nikt inny ich nie widzi"}}"
                       hx-post="/panel/uczestnik/{{.ID}}/cien"
-                      hx-target="#panel-moderation" hx-swap="innerHTML">cień</button>
+                      hx-target="#panel-moderation" hx-swap="innerHTML">{{tr "cień"}}</button>
             {{end}}
             {{if .IPBanned}}
               <button class="btn tiny" hx-post="/panel/uczestnik/{{.ID}}/odbanuj-ip"
-                      hx-target="#panel-moderation" hx-swap="innerHTML">odbanuj adres</button>
+                      hx-target="#panel-moderation" hx-swap="innerHTML">{{tr "odbanuj adres"}}</button>
             {{else}}
               <button class="btn tiny danger" hx-post="/panel/uczestnik/{{.ID}}/ban-ip"
-                      hx-target="#panel-moderation" hx-swap="innerHTML">ban adresu</button>
+                      hx-target="#panel-moderation" hx-swap="innerHTML">{{tr "ban adresu"}}</button>
             {{end}}
           </td>
         </tr>
@@ -48,12 +48,9 @@
       </tbody>
     </table>
     <p class="muted small">
-      <strong>Cień</strong> jest cichy: ta osoba pisze dalej i widzi swoje pytania tak,
-      jakby nic się nie stało — tylko sala ich nie dostaje. Nie ma się z kim kłócić,
-      a przy okazji widać, czy dalej spamuje. Idzie po ciasteczku, więc wyczyszczenie go
-      omija cień; wtedy zostaje <strong>ban adresu</strong>, który odmawia pisania wprost.
+      <strong>{{tr "Cień"}}</strong> {{tr "jest cichy: ta osoba pisze dalej i widzi swoje pytania tak,\n      jakby nic się nie stało — tylko sala ich nie dostaje. Nie ma się z kim kłócić,\n      a przy okazji widać, czy dalej spamuje. Idzie po ciasteczku, więc wyczyszczenie go\n      omija cień; wtedy zostaje"}} <strong>{{tr "ban adresu"}}</strong>{{tr ", który odmawia pisania wprost."}}
     </p>
   {{else}}
-    <p class="muted">Nikt jeszcze nie otworzył strony na żywo.</p>
+    <p class="muted">{{tr "Nikt jeszcze nie otworzył strony na żywo."}}</p>
   {{end}}
 {{end}}

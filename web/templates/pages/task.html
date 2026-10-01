@@ -2,10 +2,10 @@
 {{$lib := .Lib}}
 {{with .Task}}
 <article class="page">
-  <p class="kicker">zadanie · <a href="/zadania/">wszystkie</a></p>
+  <p class="kicker">{{tr "zadanie ·"}} <a href="/zadania/">{{tr "wszystkie"}}</a></p>
   <h1>{{.Title}}</h1>
   <p class="meta">
-    <span class="tag {{.Difficulty}}">{{.Difficulty}}</span>
+    <span class="tag {{.Difficulty}}">{{tr .Difficulty}}</span>
     {{if .Time}}<span class="chip">~{{.Time}}</span>{{end}}
     {{range .Tags}}<span class="chip">{{.}}</span>{{end}}
   </p>
@@ -14,25 +14,25 @@
   <div class="prose">{{.Body}}</div>
 
   {{if .Links}}
-  <h2>Materiały</h2>
+  <h2>{{tr "Materiały"}}</h2>
   <ul class="list compact">
     {{range .Links}}<li><a href="{{.URL}}" rel="noreferrer">{{.Title}}</a></li>{{end}}
   </ul>
   {{end}}
 
   {{if and $.Visibility.Notes .Notes}}
-  <h2>Powiązane notatki</h2>
+  <h2>{{tr "Powiązane notatki"}}</h2>
   <p>{{range .Notes}}<a class="chip" href="/notatki/{{.}}">{{noteTitle $lib .}}</a>{{end}}</p>
   {{end}}
 
   {{if .Hints}}
-  <h2>Podpowiedzi</h2>
-  <p class="muted">Najpierw powalcz sam. Serio.</p>
+  <h2>{{tr "Podpowiedzi"}}</h2>
+  <p class="muted">{{tr "Najpierw powalcz sam. Serio."}}</p>
   <div class="hints">
     <div id="hint-slot">
       <button class="btn" hx-post="/zadania/{{.Slug}}/podpowiedz/0"
               hx-target="#hint-slot" hx-swap="outerHTML">
-        Pokaż podpowiedź 1/{{len .Hints}}
+        {{tr "Pokaż podpowiedź 1/"}}{{len .Hints}}
       </button>
     </div>
   </div>

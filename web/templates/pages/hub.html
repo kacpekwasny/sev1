@@ -4,35 +4,32 @@
      i gdzie, a reszta miejsca należy do materiałów. */}}
 {{define "content"}}
 <section class="hero promo">
-  <p class="kicker">Otwarte wykłady · WIET AGH · budynek D6 (chyba) · wstęp wolny, bez zapisów</p>
-  <h1>Jak rozpętałem drugą Sev1</h1>
+  <p class="kicker">{{tr "Otwarte wykłady · WIET AGH · budynek D6 (chyba) · wstęp wolny, bez zapisów"}}</p>
+  <h1>{{tr "Jak rozpętałem drugą Sev1"}}</h1>
   <p class="lead">
-    Dwa wieczory o tym, jak naprawdę wygląda praca w Cloud Networkingu — opowiedziane
-    przez incydenty, przykłady i historyjki. Centra obliczeniowe, BGP, overlay, SRv6
-    i klastry GPU, a obok tego codzienność inżyniera: menadżer, projekty i rekrutacja.
+    {{tr "Dwa wieczory o tym, jak naprawdę wygląda praca w Cloud Networkingu — opowiedziane\n    przez incydenty, przykłady i historyjki. Centra obliczeniowe, BGP, overlay, SRv6\n    i klastry GPU, a obok tego codzienność inżyniera: menadżer, projekty i rekrutacja."}}
   </p>
 
   {{if .Visibility.Lectures}}
-  <h2>Wykłady</h2>
+  <h2>{{tr "Wykłady"}}</h2>
   <div class="cards">
     {{range .Lectures}}
     <a class="card lecture" href="/wyklady/{{.Slug}}">
       <div class="card-head">
         <span class="badge">#{{.Number}}</span>
-        <span class="status {{.Status}}">{{.Status}}</span>
+        <span class="status {{.Status}}">{{tr .Status}}</span>
       </div>
       <h3>{{.Title}}</h3>
       <p class="muted">{{.Summary}}</p>
-      <p class="meta">{{.Date}} · {{.Place}} · {{.Duration}} min</p>
+      <p class="meta">{{.Date}} · {{.Place}} · {{.Duration}} {{tr "min"}}</p>
     </a>
     {{else}}
-    <p class="muted">Jeszcze nic tu nie ma.</p>
+    <p class="muted">{{tr "Jeszcze nic tu nie ma."}}</p>
     {{end}}
   </div>
 
   <p class="muted small">
-    Otwarte dla wszystkich, wstęp wolny, bez zapisów. Nie trzeba nic umieć wcześniej.
-	Możesz sobie przejrzeć plany wykładów, żeby zobaczyć, czy Cię to intersuje.
+    {{tr "Otwarte dla wszystkich, wstęp wolny, bez zapisów. Nie trzeba nic umieć wcześniej.\n\tMożesz sobie przejrzeć plany wykładów, żeby zobaczyć, czy Cię to intersuje."}}
   </p>
   {{end}}
 </section>
@@ -40,24 +37,24 @@
 {{if .Visibility.Lectures}}
 <section class="two-col">
   <div>
-    <h2>Kto to opowiada</h2>
+    <h2>{{tr "Kto to opowiada"}}</h2>
     <p>
-	  <strong>Mateusz Warzecha</strong> - absolwent Teleinformatyki i Cyberbezpieczeństwa, <br>
-	  <strong>Piotr Suchy</strong> - absolwent WEAIB, <br>
-	<strong>Kacper Kwaśny</strong> — absolwent Teleinformatyki. <br>
-	  Wszyscy dziś są Network Software Engineer w <strong>Akamai</strong>, w dziale Cloud Networking.</p>
+	  <strong>{{tr "Mateusz Warzecha"}}</strong> {{tr "- absolwent Teleinformatyki i Cyberbezpieczeństwa,"}} <br>
+	  <strong>{{tr "Piotr Suchy"}}</strong> {{tr "- absolwent WEAIB,"}} <br>
+	<strong>{{tr "Kacper Kwaśny"}}</strong> {{tr "— absolwent Teleinformatyki."}} <br>
+	  {{tr "Wszyscy dziś są Network Software Engineer w"}} <strong>{{tr "Akamai"}}</strong>{{tr ", w dziale Cloud Networking."}}</p>
   </div>
   <div>
-    <h2>Gdzie i kiedy</h2>
+    <h2>{{tr "Gdzie i kiedy"}}</h2>
     <ul class="list compact terms">
       {{range .Lectures}}
       <li>
-        <span class="status {{.Status}}">{{.Status}}</span>
+        <span class="status {{.Status}}">{{tr .Status}}</span>
         <a href="/wyklady/{{.Slug}}">#{{.Number}} {{.Title}}</a>
         <p class="meta">{{.Date}} · {{.Place}}</p>
       </li>
       {{else}}
-      <li class="muted">Terminy wkrótce.</li>
+      <li class="muted">{{tr "Terminy wkrótce."}}</li>
       {{end}}
     </ul>
   </div>
@@ -68,12 +65,12 @@
 <section class="two-col{{if not (and .Visibility.Tasks .Visibility.Notes)}} single-col{{end}}">
   {{if .Visibility.Tasks}}
   <div>
-    <h2>Zadania z prawdziwej pracy</h2>
+    <h2>{{tr "Zadania z prawdziwej pracy"}}</h2>
     <ul class="list">
       {{range .Tasks}}
       <li>
         <a href="/zadania/{{.Slug}}">{{.Title}}</a>
-        <span class="tag {{.Difficulty}}">{{.Difficulty}}</span>
+        <span class="tag {{.Difficulty}}">{{tr .Difficulty}}</span>
         <p class="muted">{{.Summary}}</p>
       </li>
       {{end}}
@@ -82,10 +79,9 @@
   {{end}}
   {{if .Visibility.Notes}}
   <div>
-    <h2>Notatki</h2>
+    <h2>{{tr "Notatki"}}</h2>
     <p class="muted">
-      Zwykłe pliki <code>.md</code> z linkami <code>[[tak]]</code>. Rozpakuj jako vault
-      w Obsidianie albo czytaj tutaj.
+      {{tr "Zwykłe pliki"}} <code>.md</code> {{tr "z linkami"}} <code>{{tr "[[tak]]"}}</code>{{tr ". Rozpakuj jako vault\n      w Obsidianie albo czytaj tutaj."}}
     </p>
     <ul class="list compact">
       {{range .Notes}}
@@ -93,8 +89,8 @@
       {{end}}
     </ul>
     <p>
-      <a class="btn small" href="/notatki/graf">Zobacz graf notatek</a>
-      <a class="btn small" href="/notatki/vault.zip">Pobierz vault (.zip)</a>
+      <a class="btn small" href="/notatki/graf">{{tr "Zobacz graf notatek"}}</a>
+      <a class="btn small" href="/notatki/vault.zip">{{tr "Pobierz vault (.zip)"}}</a>
     </p>
   </div>
   {{end}}

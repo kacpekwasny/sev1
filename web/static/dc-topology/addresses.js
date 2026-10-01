@@ -1,3 +1,4 @@
+import { t } from "../i18n.js";
 // Address ownership is derived from the current model, including interface and
 // VRF scope. No network lookup or production address inventory is used.
 function parseAddress(raw) {
@@ -40,21 +41,21 @@ export function addressInventory(model) {
     entries.get(address.key).push({...entry,raw});
   };
   for(const node of model.nodes) {
-    add(node.ipv4,{ownerID:node.id,label:node.label,purpose:node.kind==='host'?'Loopback IPv4 / VTEP VXLAN':'Loopback IPv4 urządzenia',description:'Adres urządzenia w underlay; nie adres łącza fizycznego.'});
-    add(node.ipv6,{ownerID:node.id,label:node.label,purpose:'Loopback IPv6 / transport BGP',description:'Tożsamość urządzenia w underlay; łącza fizyczne używają wyłącznie link-local.'});
+    add(node.ipv4,{ownerID:node.id,label:node.label,purpose:node.kind==='host'?t('Loopback IPv4 / VTEP VXLAN'):t('Loopback IPv4 urządzenia'),description:t('Adres urządzenia w underlay; nie adres łącza fizycznego.')});
+    add(node.ipv6,{ownerID:node.id,label:node.label,purpose:t('Loopback IPv6 / transport BGP'),description:t('Tożsamość urządzenia w underlay; łącza fizyczne używają wyłącznie link-local.')});
   }
   for(const vm of model.vms)for(const raw of [...new Set(vm.addresses??[vm.ipv4,vm.ipv6])]) {
     const customer=vm.role==='customer';
     const vni=vm.vpc_id?10000+vm.vpc_id:3;
     add(raw,{ownerID:vm.id,label:vm.label,vpcID:customer?vm.vpc_id:undefined,hostID:vm.host_id,
-      purpose:customer?'Adres VM klienta':'Adres VM infrastruktury / RS',
-      description:`Host ${nodes.get(vm.host_id)?.label??vm.host_id} · ${customer?(vm.vpc_id?`VPC ${vm.vpc_id} · VNI ${vni}`:`default/public VRF · VNI ${vni}`):raw.includes(':')?'usługa IPv6 ogłaszana w underlay przez host':'adres IPv4 infrastruktury; brak ogłoszenia w underlay'}`});
+      purpose:customer?t('Adres VM klienta'):t('Adres VM infrastruktury / RS'),
+      description:t`Host ${nodes.get(vm.host_id)?.label??vm.host_id} · ${customer?(vm.vpc_id?t`VPC ${vm.vpc_id} · VNI ${vni}`:t`default/public VRF · VNI ${vni}`):raw.includes(':')?t('usługa IPv6 ogłaszana w underlay przez host'):t('adres IPv4 infrastruktury; brak ogłoszenia w underlay')}`});
   }
   for(const iface of model.interfaces)if(iface.link_local_ipv6)add(iface.link_local_ipv6,{ownerID:iface.node_id,label:nodes.get(iface.node_id)?.label??iface.node_id,interfaceID:iface.id,
-    purpose:'IPv6 link-local / BGP unnumbered',description:`Interfejs ${iface.name} · sąsiad ${nodes.get(iface.peer_node_id)?.label??iface.peer_node_id}. Adres jest ważny tylko na tym łączu i wymaga zakresu interfejsu.`});
+    purpose:t('IPv6 link-local / BGP unnumbered'),description:t`Interfejs ${iface.name} · sąsiad ${nodes.get(iface.peer_node_id)?.label??iface.peer_node_id}. Adres jest ważny tylko na tym łączu i wymaga zakresu interfejsu.`});
   const extra=(raw,vm,owner=vm)=>{
-    const entry={ownerID:owner.id,label:owner.label,vpcID:vm.vpc_id,purpose:'Dodatkowy / Shared IP · prefiks unicast',
-      description:`Skonfigurowany prefiks ${raw} via podstawowy IP ${raw.includes(':')?vm.ipv6:vm.ipv4} VM ${vm.label}. Publikacja przez RS User wymaga publicznej łączności TAP/EVPN; ten prefiks nie jest kolejną trasą EVPN.${vm.vpc_id?' VM jest w prywatnym VRF; publikacja jest zablokowana.':''}`};
+    const entry={ownerID:owner.id,label:owner.label,vpcID:vm.vpc_id,purpose:t('Dodatkowy / Shared IP · prefiks unicast'),
+      description:t`Skonfigurowany prefiks ${raw} via podstawowy IP ${raw.includes(':')?vm.ipv6:vm.ipv4} VM ${vm.label}. Publikacja przez RS User wymaga publicznej łączności TAP/EVPN; ten prefiks nie jest kolejną trasą EVPN.${vm.vpc_id?t(' VM jest w prywatnym VRF; publikacja jest zablokowana.'):''}`};
     prefixes.push({...entry,raw});add(raw,entry);
   };
   for(const vm of model.vms)for(const prefix of vm.advertised_prefixes??[])extra(prefix,vm);
@@ -68,7 +69,7 @@ export function addressInventory(model) {
 export function explainAddress(inventory, raw, context={}) {
   const address=parseAddress(raw);if(!address)return null;
   const bits=raw.includes('/')?Number(raw.split('/')[1]):null;
-  if(bits===0)return {title:raw,description:'Prefiks trasy domyślnej: wszystkie adresy tej rodziny. Nie jest adresem konkretnego urządzenia.',ownerIDs:[]};
+  if(bits===0)return {title:raw,description:t('Prefiks trasy domyślnej: wszystkie adresy tej rodziny. Nie jest adresem konkretnego urządzenia.'),ownerIDs:[]};
   const mapped=address.family===6&&address.bytes.slice(0,10).every(byte=>byte===0)&&address.bytes[10]===255&&address.bytes[11]===255;
   const key=mapped?address.bytes.slice(12).join('.'):address.key;
   let entries=inventory.entries.get(key)??[];
@@ -91,14 +92,14 @@ export function explainAddress(inventory, raw, context={}) {
   } else if(context.vpcID!==undefined)entries=entries.filter(entry=>entry.vpcID===undefined||entry.vpcID===context.vpcID);
   if(entries.length) {
     const unique=[...new Map(entries.map(entry=>[`${entry.ownerID}/${entry.interfaceID??''}`,entry])).values()];
-    const title=mapped?'Sąsiad IPv6 mapowany na VTEP IPv4':bits!==null?`Prefiks /${bits}`:unique[0].purpose;
+    const title=mapped?t('Sąsiad IPv6 mapowany na VTEP IPv4'):bits!==null?t`Prefiks /${bits}`:unique[0].purpose;
     const description=unique.length<=4?unique.map(entry=>`${entry.label} · ${entry.purpose}. ${entry.description}`).join('\n')
-      :`Adres współdzielony przez ${unique.length} interfejsów. Link-local wymaga zakresu interfejsu; sam adres nie identyfikuje właściciela.`;
+      :t`Adres współdzielony przez ${unique.length} interfejsów. Link-local wymaga zakresu interfejsu; sam adres nie identyfikuje właściciela.`;
     return {title:`${raw} · ${title}`,description,ownerIDs:unique.length<=4?[...new Set(unique.map(entry=>entry.ownerID))]:[]};
   }
   const targets=inventory.model.config.route_origins?.filter(target=>(context.vpcID===undefined||context.vpcID===target.vpc_id)&&inPrefix(address,target.prefix))??[];
-  if(targets.length)return {title:`${raw} · cel poza fabric`,description:targets.map(target=>`Prefiks scenariusza ${target.prefix} przy ${inventory.nodes.get(`border-${target.border_id}`)?.label??`border-${target.border_id}`}. Ruch publiczny korzysta z wybranej trasy domyślnej; nie jest to loopback border.`).join('\n'),ownerIDs:[]};
-  return {title:raw,description:linkLocal?'Adres IPv6 link-local. Wymaga zakresu interfejsu; brak jednoznacznego właściciela w tym kontekście.':'Adres lub prefiks bez właściciela w bieżącym modelu. Może oznaczać zewnętrzny cel ruchu; nie przypisano go do urządzenia.',ownerIDs:[]};
+  if(targets.length)return {title:t`${raw} · cel poza fabric`,description:targets.map(target=>t`Prefiks scenariusza ${target.prefix} przy ${inventory.nodes.get(`border-${target.border_id}`)?.label??`border-${target.border_id}`}. Ruch publiczny korzysta z wybranej trasy domyślnej; nie jest to loopback border.`).join('\n'),ownerIDs:[]};
+  return {title:raw,description:linkLocal?t('Adres IPv6 link-local. Wymaga zakresu interfejsu; brak jednoznacznego właściciela w tym kontekście.'):t('Adres lub prefiks bez właściciela w bieżącym modelu. Może oznaczać zewnętrzny cel ruchu; nie przypisano go do urządzenia.'),ownerIDs:[]};
 }
 
 // Include IPv4-mapped IPv6, scope and CIDR without matching ASNs, RD/RT or MACs.

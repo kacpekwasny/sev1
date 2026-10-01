@@ -1,3 +1,4 @@
+import { t } from "../i18n.js";
 const NS = "http://www.w3.org/2000/svg";
 import { appendRIB, appendFIB, identifyRoute, appendRoutingRIB, appendOriginatedRoutes } from "./tables.js";
 import { routeFlowStreams, originatedRouteFlow, automaticRouteFlowStreams } from "./route-flow.js";
@@ -14,97 +15,97 @@ const kindLabels = {
 };
 
 export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
-  if (!root) throw new Error("Nie znaleziono korzenia aplikacji.");
+  if (!root) throw new Error(t("Nie znaleziono korzenia aplikacji."));
 
   root.innerHTML = `
     <header class="dc-head">
       <div class="dc-brand-mark" aria-hidden="true">◈</div>
-      <div><p class="dc-kicker">AGH WIET / ATLAS SIECI</p><h1>Wewnątrz sieci<span>.</span></h1>
-        <p>Centrum danych — od fizycznych połączeń do oczekiwanych tras.</p></div>
-      <div class="dc-head-actions"><span class="dc-tag">MODEL SYNTETYCZNY</span>
-        <button class="dc-button" id="dc-config-open" type="button">Konfiguracja <span aria-hidden="true">↗</span></button></div>
+      <div><p class="dc-kicker">${t("AGH WIET / ATLAS SIECI")}</p><h1>${t("Wewnątrz sieci")}<span>.</span></h1>
+        <p>${t("Centrum danych — od fizycznych połączeń do oczekiwanych tras.")}</p></div>
+      <div class="dc-head-actions"><span class="dc-tag">${t("MODEL SYNTETYCZNY")}</span>
+        <button class="dc-button" id="dc-config-open" type="button">${t("Konfiguracja")} <span aria-hidden="true">↗</span></button></div>
     </header>
-    <div class="dc-overview"><div><p class="dc-kicker">TOPOLOGIA DC</p><p id="dc-config-label">Wczytuję konfigurację…</p></div>
-      <div id="dc-summary" class="dc-summary" aria-label="Podsumowanie modelu"></div></div>
+    <div class="dc-overview"><div><p class="dc-kicker">${t("TOPOLOGIA DC")}</p><p id="dc-config-label">${t("Wczytuję konfigurację…")}</p></div>
+      <div id="dc-summary" class="dc-summary" aria-label="${t("Podsumowanie modelu")}"></div></div>
     <section class="dc-graph-card" aria-labelledby="dc-graph-title">
-      <div class="dc-toolbar"><div class="dc-layer-title"><span class="dc-status-dot" aria-hidden="true"></span><h2 id="dc-graph-title">Eksplorator</h2></div>
-        <label><input id="dc-show-links" type="checkbox" checked> Łącza</label>
+      <div class="dc-toolbar"><div class="dc-layer-title"><span class="dc-status-dot" aria-hidden="true"></span><h2 id="dc-graph-title">${t("Eksplorator")}</h2></div>
+        <label><input id="dc-show-links" type="checkbox" checked> ${t("Łącza")}</label>
         <div class="dc-session-options">
-          <label><input id="dc-show-sessions" type="checkbox" checked> Sesje BGP</label>
+          <label><input id="dc-show-sessions" type="checkbox" checked> ${t("Sesje BGP")}</label>
           <div id="dc-session-types" class="dc-session-types">
-            <label><input id="dc-show-underlay-bgp" type="checkbox" checked> BGP underlay</label>
-            <label><input id="dc-show-overlay-bgp" type="checkbox" checked> BGP overlay</label>
+            <label><input id="dc-show-underlay-bgp" type="checkbox" checked> ${t("BGP underlay")}</label>
+            <label><input id="dc-show-overlay-bgp" type="checkbox" checked> ${t("BGP overlay")}</label>
           </div>
         </div>
-        <label><input id="dc-show-infra-hosts" type="checkbox" checked> RS na hostach</label>
-        <label><input id="dc-collapse-rs" type="checkbox"> Grupuj RS</label>
+        <label><input id="dc-show-infra-hosts" type="checkbox" checked> ${t("RS na hostach")}</label>
+        <label><input id="dc-collapse-rs" type="checkbox"> ${t("Grupuj RS")}</label>
         <div class="dc-underlay-options">
-          <label><input id="dc-show-underlay" type="checkbox" checked> Urządzenia underlay</label>
-          <label id="dc-border-option" class="dc-underlay-suboption" hidden><input id="dc-keep-borders" type="checkbox" checked> Zachowaj routery border</label>
+          <label><input id="dc-show-underlay" type="checkbox" checked> ${t("Urządzenia underlay")}</label>
+          <label id="dc-border-option" class="dc-underlay-suboption" hidden><input id="dc-keep-borders" type="checkbox" checked> ${t("Zachowaj routery border")}</label>
         </div>
-        <label title="Ilustracja po sesjach BGP; tablice tras pozostają bez zmian."><input id="dc-show-route-flow" type="checkbox" checked> Przepływ tras</label>
-        <button id="dc-layout-reset" class="dc-tool-button" type="button">Reset układu</button>
-        <button id="dc-fit" class="dc-tool-button" type="button">Dopasuj</button>
-        <div class="dc-view-presets" role="group" aria-label="Gotowe widoki">
-          <button id="dc-preset-underlay" class="dc-tool-button" type="button" aria-pressed="false">Pokaż underlay</button>
-          <button id="dc-preset-overlay" class="dc-tool-button" type="button" aria-pressed="false">Pokaż overlay BGP</button>
+        <label title="${t("Ilustracja po sesjach BGP; tablice tras pozostają bez zmian.")}"><input id="dc-show-route-flow" type="checkbox" checked> ${t("Przepływ tras")}</label>
+        <button id="dc-layout-reset" class="dc-tool-button" type="button">${t("Reset układu")}</button>
+        <button id="dc-fit" class="dc-tool-button" type="button">${t("Dopasuj")}</button>
+        <div class="dc-view-presets" role="group" aria-label="${t("Gotowe widoki")}">
+          <button id="dc-preset-underlay" class="dc-tool-button" type="button" aria-pressed="false">${t("Pokaż underlay")}</button>
+          <button id="dc-preset-overlay" class="dc-tool-button" type="button" aria-pressed="false">${t("Pokaż overlay BGP")}</button>
         </div>
-        <label class="dc-zoom"><span class="dc-sr-only">Powiększenie</span><input id="dc-zoom" type="range" min="50" max="150" value="85" step="5"><output id="dc-zoom-value">85%</output></label>
+        <label class="dc-zoom"><span class="dc-sr-only">${t("Powiększenie")}</span><input id="dc-zoom" type="range" min="50" max="150" value="85" step="5"><output id="dc-zoom-value">85%</output></label>
       </div>
       <div id="dc-flow-examples" class="dc-flow-examples">
-        <label>Ogłoszenie <select id="dc-flow-example"><option value="">Kolejne ścieżki ogłoszeń</option></select></label>
+        <label>${t("Ogłoszenie")} <select id="dc-flow-example"><option value="">${t("Kolejne ścieżki ogłoszeń")}</option></select></label>
         <span id="dc-current-advertisement"></span>
       </div>
       <div class="dc-workspace">
-        <div id="dc-graph" class="dc-graph-scroll"><p class="dc-empty">Buduję widok topologii…</p></div>
-        <div id="dc-device-actions" class="dc-device-actions" role="group" aria-label="Akcje urządzenia" hidden>
-          <div class="dc-device-actions-heading"><strong></strong><button type="button" id="dc-device-actions-close" aria-label="Zamknij akcje urządzenia">×</button></div>
-          <label id="dc-action-member-label" hidden>Członek <select id="dc-action-member"></select></label>
-          <div class="dc-device-send-row"><button id="dc-send-to" type="button">Wyślij ruch do…</button><select id="dc-action-family" aria-label="Rodzina pakietu"><option value="ipv4">IPv4</option><option value="ipv6">IPv6</option></select></div>
+        <div id="dc-graph" class="dc-graph-scroll"><p class="dc-empty">${t("Buduję widok topologii…")}</p></div>
+        <div id="dc-device-actions" class="dc-device-actions" role="group" aria-label="${t("Akcje urządzenia")}" hidden>
+          <div class="dc-device-actions-heading"><strong></strong><button type="button" id="dc-device-actions-close" aria-label="${t("Zamknij akcje urządzenia")}">×</button></div>
+          <label id="dc-action-member-label" hidden>${t("Członek")} <select id="dc-action-member"></select></label>
+          <div class="dc-device-send-row"><button id="dc-send-to" type="button">${t("Wyślij ruch do…")}</button><select id="dc-action-family" aria-label="${t("Rodzina pakietu")}"><option value="ipv4">${t("IPv4")}</option><option value="ipv6">${t("IPv6")}</option></select></div>
         </div>
-        <div id="dc-pick-banner" class="dc-pick-banner" hidden><span role="status"></span><button type="button" class="dc-tool-button">Anuluj wybór</button></div>
+        <div id="dc-pick-banner" class="dc-pick-banner" hidden><span role="status"></span><button type="button" class="dc-tool-button">${t("Anuluj wybór")}</button></div>
         <aside id="dc-inspector" class="dc-inspector" role="dialog" aria-labelledby="dc-inspector-heading" tabindex="-1" hidden>
-          <div class="dc-inspector-bar"><button id="dc-inspector-back" type="button" class="dc-icon-button" aria-label="Wróć do poprzedniego widoku" disabled>←</button><button id="dc-inspector-grip" type="button" class="dc-popup-grip" aria-label="Przesuń inspektor; strzałki przesuwają, Home przywraca">⠿ <span>INSPEKTOR</span></button>
-            <label class="dc-rib-control">Tablice <select id="dc-rib-view"><option value="gui">GUI</option><option value="linux">Linux / FRR</option></select></label>
-            <button id="dc-inspector-close" class="dc-icon-button" type="button" aria-label="Zamknij inspektor">×</button></div>
+          <div class="dc-inspector-bar"><button id="dc-inspector-back" type="button" class="dc-icon-button" aria-label="${t("Wróć do poprzedniego widoku")}" disabled>←</button><button id="dc-inspector-grip" type="button" class="dc-popup-grip" aria-label="${t("Przesuń inspektor; strzałki przesuwają, Home przywraca")}">⠿ <span>${t("INSPEKTOR")}</span></button>
+            <label class="dc-rib-control">${t("Tablice")} <select id="dc-rib-view"><option value="gui">${t("GUI")}</option><option value="linux">${t("Linux / FRR")}</option></select></label>
+            <button id="dc-inspector-close" class="dc-icon-button" type="button" aria-label="${t("Zamknij inspektor")}">×</button></div>
           <div id="dc-details" class="dc-details"></div>
           ${["n","e","s","w","ne","se","sw","nw"].map(edge=>`<div class="dc-popup-edge" data-resize="${edge}" aria-hidden="true"></div>`).join("")}
-          <button id="dc-inspector-resize" class="dc-popup-resize" type="button" aria-label="Zmień rozmiar inspektora; strzałki zmieniają wymiary, Home przywraca">◢</button>
+          <button id="dc-inspector-resize" class="dc-popup-resize" type="button" aria-label="${t("Zmień rozmiar inspektora; strzałki zmieniają wymiary, Home przywraca")}">◢</button>
         </aside>
-        <div id="dc-route-legend" class="dc-route-legend" hidden><span class="learned">● Fioletowy: droga ogłoszenia do tego RIB</span><span class="points-to">● Żółty: droga do następnego skoku / celu</span></div>
+        <div id="dc-route-legend" class="dc-route-legend" hidden><span class="learned">${t("● Fioletowy: droga ogłoszenia do tego RIB")}</span><span class="points-to">${t("● Żółty: droga do następnego skoku / celu")}</span></div>
       </div>
-      <div class="dc-graph-footer"><span class="dc-legend"><i class="legend-switch"></i> fabric <i class="legend-host"></i> host <i class="legend-vm"></i> route server <i class="legend-customer"></i> VM klienta</span>
-        <span class="dc-canvas-note"><span aria-hidden="true">◎</span> Kliknij: szczegóły · przeciągnij: ustawienie</span>
-        <span id="dc-flow-note">Adresy i tablice przedstawiają obliczony model sieci.</span></div>
-      <div id="dc-traffic-list" class="dc-traffic-list" aria-label="Scenariusze ruchu"></div>
-      <div class="dc-playback" role="group" aria-label="Sterowanie ilustracją pakietu">
-        <button id="dc-play" class="dc-button" type="button" disabled>Odtwórz pakiet</button>
-        <button id="dc-rewind" class="dc-button secondary" type="button" disabled>Od początku</button>
-        <button id="dc-inspect-packet" class="dc-button secondary" type="button" disabled>Inspektuj pakiet</button>
-        <label>Tempo <select id="dc-speed"><option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
-        <span id="dc-play-status" aria-live="polite">Wybierz przepływ lub sesję BGP.</span>
+      <div class="dc-graph-footer"><span class="dc-legend"><i class="legend-switch"></i> ${t("fabric")} <i class="legend-host"></i> ${t("host")} <i class="legend-vm"></i> ${t("route server")} <i class="legend-customer"></i> ${t("VM klienta")}</span>
+        <span class="dc-canvas-note"><span aria-hidden="true">◎</span> ${t("Kliknij: szczegóły · przeciągnij: ustawienie")}</span>
+        <span id="dc-flow-note">${t("Adresy i tablice przedstawiają obliczony model sieci.")}</span></div>
+      <div id="dc-traffic-list" class="dc-traffic-list" aria-label="${t("Scenariusze ruchu")}"></div>
+      <div class="dc-playback" role="group" aria-label="${t("Sterowanie ilustracją pakietu")}">
+        <button id="dc-play" class="dc-button" type="button" disabled>${t("Odtwórz pakiet")}</button>
+        <button id="dc-rewind" class="dc-button secondary" type="button" disabled>${t("Od początku")}</button>
+        <button id="dc-inspect-packet" class="dc-button secondary" type="button" disabled>${t("Inspektuj pakiet")}</button>
+        <label>${t("Tempo")} <select id="dc-speed"><option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
+        <span id="dc-play-status" aria-live="polite">${t("Wybierz przepływ lub sesję BGP.")}</span>
       </div>
       ${explorerMarkup}
     </section>
-    <p id="dc-message" class="dc-message" role="status" aria-live="polite">Wczytywanie przykładu…</p>
+    <p id="dc-message" class="dc-message" role="status" aria-live="polite">${t("Wczytywanie przykładu…")}</p>
     <dialog id="dc-config-dialog" class="dc-config-dialog" aria-labelledby="dc-config-title">
-      <div class="dc-inspector-bar"><div><p class="dc-kicker">SCENARIUSZ</p><h2 id="dc-config-title">Konfiguracja sieci</h2></div>
-        <button id="dc-config-close" class="dc-icon-button" type="button" aria-label="Zamknij konfigurację">×</button></div>
-      <p class="dc-config-help">Zmień rozmiar lub wczytaj YAML. Oczekiwane tablice tras zostaną przeliczone po przebudowie. Prefiksy /48 dla ról i sufiks IPv6 ustawisz w <code>addressing.ipv6</code>; łącza fizyczne pozostają link-local.</p>
-      <form id="dc-count-form" class="dc-count-controls"><h3>Rozmiar topologii</h3>
+      <div class="dc-inspector-bar"><div><p class="dc-kicker">${t("SCENARIUSZ")}</p><h2 id="dc-config-title">${t("Konfiguracja sieci")}</h2></div>
+        <button id="dc-config-close" class="dc-icon-button" type="button" aria-label="${t("Zamknij konfigurację")}">×</button></div>
+      <p class="dc-config-help">${t("Zmień rozmiar lub wczytaj YAML. Oczekiwane tablice tras zostaną przeliczone po przebudowie. Prefiksy /48 dla ról i sufiks IPv6 ustawisz w")} <code>${t("addressing.ipv6")}</code>${t("; łącza fizyczne pozostają link-local.")}</p>
+      <form id="dc-count-form" class="dc-count-controls"><h3>${t("Rozmiar topologii")}</h3>
         <div class="dc-count-grid">
-          <label>Spines <input name="spines" type="number" min="1" max="8" required></label>
-          <label>Bolts <input name="bolts" type="number" min="1" max="4" required></label>
-          <label>Szafy / bolt <input name="racks_per_bolt" type="number" min="1" max="4" required></label>
-          <label>Hosty / szafę <input name="hosts_per_rack" type="number" min="1" max="4" required></label>
-          <label>VM klienta <input name="customer_vms" type="number" min="0" max="64" required></label>
-        </div><button class="dc-button" type="submit">Przebuduj topologię</button>
+          <label>${t("Spines")} <input name="spines" type="number" min="1" max="8" required></label>
+          <label>${t("Bolts")} <input name="bolts" type="number" min="1" max="4" required></label>
+          <label>${t("Szafy / bolt")} <input name="racks_per_bolt" type="number" min="1" max="4" required></label>
+          <label>${t("Hosty / szafę")} <input name="hosts_per_rack" type="number" min="1" max="4" required></label>
+          <label>${t("VM klienta")} <input name="customer_vms" type="number" min="0" max="64" required></label>
+        </div><button class="dc-button" type="submit">${t("Przebuduj topologię")}</button>
       </form>
-      <form id="dc-config-form"><label class="dc-editor-label" for="dc-editor">Konfiguracja YAML</label>
+      <form id="dc-config-form"><label class="dc-editor-label" for="dc-editor">${t("Konfiguracja YAML")}</label>
         <textarea id="dc-editor" class="dc-editor" spellcheck="false" autocomplete="off"></textarea>
-        <div class="dc-actions"><button class="dc-button" type="submit">Wczytaj YAML</button>
-          <button class="dc-button secondary" id="dc-reset" type="button">Przywróć przykład</button>
-          <a class="dc-button secondary" id="dc-export" href="/api/config.yaml" download="dc-topology.yaml">Eksportuj YAML</a></div>
+        <div class="dc-actions"><button class="dc-button" type="submit">${t("Wczytaj YAML")}</button>
+          <button class="dc-button secondary" id="dc-reset" type="button">${t("Przywróć przykład")}</button>
+          <a class="dc-button secondary" id="dc-export" href="/api/config.yaml" download="dc-topology.yaml">${t("Eksportuj YAML")}</a></div>
       </form><p id="dc-config-message" class="dc-message" role="status" aria-live="polite"></p>
     </dialog>`;
 
@@ -339,7 +340,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const banner=root.querySelector("#dc-pick-banner");banner.hidden=!endpointPick;
     root.classList.toggle("is-picking-endpoint",Boolean(endpointPick));
     for(const button of root.querySelectorAll("[data-pick-endpoint]"))button.setAttribute("aria-pressed",String(endpointPick?.name===button.dataset.pickEndpoint || (endpointPick?.pair&&button.dataset.pickEndpoint==="pair")));
-    if(endpointPick)banner.querySelector("span").textContent=endpointPick.name==="from"?"Kliknij urządzenie źródłowe lub pojedynczą VM.":"Kliknij urządzenie docelowe lub pojedynczą VM.";
+    if(endpointPick)banner.querySelector("span").textContent=endpointPick.name==="from"?t("Kliknij urządzenie źródłowe lub pojedynczą VM."):t("Kliknij urządzenie docelowe lub pojedynczą VM.");
   }
   function endpointClass(id) {
     if(!endpointPick&&selected?.type!=="packet")return "";
@@ -349,7 +350,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   function pickEndpoint(entity) {
     if(entity.dataset.entityType==="cluster") {
       collapseRouteServers.checked=false;renderGraph();updatePickBanner();
-      root.querySelector("#dc-pick-banner span").textContent="Klaster rozwinięty; kliknij konkretną VM.";return;
+      root.querySelector("#dc-pick-banner span").textContent=t("Klaster rozwinięty; kliknij konkretną VM.");return;
     }
     if(!["node","vm"].includes(entity.dataset.entityType))return;
     const form=root.querySelector("#dc-packet-form"),pick=endpointPick;
@@ -687,7 +688,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       exploration[kind] = null;
       exploreErrors[kind] = "";
       form.querySelector("button[type=submit]").disabled = false;
-      root.querySelector(`#dc-${kind}-status`).textContent = "Pokaż przepływ, aby zatwierdzić wybrane końce.";
+      root.querySelector(`#dc-${kind}-status`).textContent = t("Pokaż przepływ, aby zatwierdzić wybrane końce.");
       if (kind === "update") {
         if (form.elements.from.value !== form.dataset.from || form.elements.to.value !== form.dataset.to) setRouteOptions(null);
         renderGraph();
@@ -759,8 +760,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   function appendInspectorLoading(container, kind, id) {
     const note = document.createElement("p");
     note.textContent = inspectorErrors.get(`${modelRevision}/${kind}/${id}`) || (inspectorPending.has(`${modelRevision}/${kind}/${id}`)
-      ? "Wczytuję szczegóły…"
-      : "Wybierz element ponownie, aby wczytać szczegóły.");
+      ? t("Wczytuję szczegóły…")
+      : t("Wybierz element ponownie, aby wczytać szczegóły."));
     container.append(note);
   }
 
@@ -776,8 +777,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
 
   function setRouteOptions(flow) {
     const form = root.querySelector("#dc-update-form"), select = form.elements.route;
-    select.replaceChildren(new Option("Dobierz zgodną trasę", ""));
-    for (const route of flow?.routes ?? []) select.add(new Option(`${route.route_type ? "EVPN Type 5" : route.afi} · ${route.prefix}${route.vpc_id ? ` · VPC ${route.vpc_id}` : ""} · ${route.origin_label}`, route.id));
+    select.replaceChildren(new Option(t("Dobierz zgodną trasę"), ""));
+    for (const route of flow?.routes ?? []) select.add(new Option(`${route.route_type ? t("EVPN Type 5") : route.afi} · ${route.prefix}${route.vpc_id ? t` · VPC ${route.vpc_id}` : ""} · ${route.origin_label}`, route.id));
     if (flow?.route) select.value = flow.route.id;
     form.dataset.from = form.elements.from.value; form.dataset.to = form.elements.to.value;
   }
@@ -791,7 +792,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       form.elements.from.value = endpoints.some((item) => item.id === defaults[0]) ? defaults[0] : endpoints[0].id;
       form.elements.to.value = endpoints.some((item) => item.id === defaults[1]) ? defaults[1] : endpoints.find((item) => item.id !== form.elements.from.value).id;
       form.querySelector("button[type=submit]").disabled = false;
-      root.querySelector(`#dc-${kind}-status`).textContent = "Wybierz końce i pokaż przepływ. Inspekcja nie zmienia tablic ani YAML.";
+      root.querySelector(`#dc-${kind}-status`).textContent = t("Wybierz końce i pokaż przepływ. Inspekcja nie zmienia tablic ani YAML.");
     }
     setRouteOptions(null);
   }
@@ -807,7 +808,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if(kind==="packet")pendingPacketPlayback=autoplay?requestID:null;
     resetAnimation();
     form.querySelector("button[type=submit]").disabled = true;
-    root.querySelector(`#dc-${kind}-status`).textContent = "Sprawdzam wybrane końce…";
+    root.querySelector(`#dc-${kind}-status`).textContent = t("Sprawdzam wybrane końce…");
     if (kind === "update") { showSessions.checked = true; showUnderlayBGP.checked = true; showOverlayBGP.checked = true; showRouteFlow.checked = true; flowExampleSelect.value=""; }
     else showLinks.checked = true;
     renderGraph(); renderInspector(); openInspector();
@@ -832,8 +833,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
 
   function exampleLabel(route) {
     const family=route.ip_family==="ipv6"?"IPv6":"IPv4";
-    const type=route.safi==="evpn"?`EVPN typ ${route.route_type}`:route.origin_kind==="customer"?"Dodatkowy prefiks: VM → RS User":route.origin_kind==="user-injected"?"Shared IP: ogłoszenie RS User":route.origin_kind==="border-default"?"Trasa domyślna z border":"Underlay";
-    return displayNames(`${type} · ${family} · ${route.prefix} · ${route.origin_id}${route.vpc_id?` · VPC ${route.vpc_id}`:(route.origin_kind==="customer"||route.origin_kind==="user-injected"||route.vni===3?" · default/public VRF":"")}`);
+    const type=route.safi==="evpn"?t`EVPN typ ${route.route_type}`:route.origin_kind==="customer"?t("Dodatkowy prefiks: VM → RS User"):route.origin_kind==="user-injected"?t("Shared IP: ogłoszenie RS User"):route.origin_kind==="border-default"?t("Trasa domyślna z border"):"Underlay";
+    return displayNames(`${type} · ${family} · ${route.prefix} · ${route.origin_id}${route.vpc_id?t` · VPC ${route.vpc_id}`:(route.origin_kind==="customer"||route.origin_kind==="user-injected"||route.vni===3?t(" · default/public VRF"):"")}`);
   }
 
   function renderFlowExamples() {
@@ -841,7 +842,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const key=examples.map(e=>e.route.id).join("|");
     if(flowExampleSelect.dataset.key===key)return;
     const previous=flowExampleSelect.value;
-    flowExampleSelect.replaceChildren(new Option("Kolejne ścieżki ogłoszeń",""),...examples.map(e=>new Option(exampleLabel(e.route),e.route.id)));
+    flowExampleSelect.replaceChildren(new Option(t("Kolejne ścieżki ogłoszeń"),""),...examples.map(e=>new Option(exampleLabel(e.route),e.route.id)));
     flowExampleSelect.value=examples.some(e=>e.route.id===previous)?previous:"";
     flowExampleSelect.dataset.key=key;
   }
@@ -861,19 +862,19 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         for(const line of group.querySelectorAll("line"))for(const [name,value] of Object.entries({x1:from.x,y1:from.y,x2:to.x,y2:to.y}))line.setAttribute(name,String(value));
       }
     }
-    const label=`${exampleLabel(stream.route)} · fala ${waveIndex+1}/${stream.waves.length}${reducedMotion.matches?" · widok bez animacji":""}`;
+    const label=t`${exampleLabel(stream.route)} · fala ${waveIndex+1}/${stream.waves.length}${reducedMotion.matches?t(" · widok bez animacji"):""}`;
     if(currentAdvertisement.textContent!==label)currentAdvertisement.textContent=label;
   }
 
   function syncIllustration() {
     const preview = originatedRouteFlow(state.model, routeHover??selected);
     const active = (preview || (!routeHover && selected?.type !== "route" && showRouteFlow.checked)) && (sessionsEnabled() || preview) && illustration.sequence.length > 0;
-    flowNote.textContent = !showRouteFlow.checked ? "Adresy i tablice przedstawiają obliczony model sieci."
-      : !sessionsEnabled() ? "Przepływ poglądowy — włącz Sesje BGP i przynajmniej jedną warstwę BGP."
-      : !illustration.sequence.length ? "Brak zgodnego przykładu przepływu tras w tej konfiguracji."
-      : exploration.update ? `UPDATE: ${exploration.update.from_id} → ${exploration.update.to_id} · ${exploration.update.route.prefix}. Rozgałęzienia pokazują dostarczenie tego prefiksu do urządzeń końcowych.`
-      : `Poglądowo: ${illustration.streams.length} przykładów, jeden prefiks naraz, z rozgałęzieniami na RS. Tryb automatyczny pomija tę samą drogę w drugiej rodzinie IP; wybierz ogłoszenie, aby obejrzeć je osobno. Tablice pozostają stałe.`;
-    if(routeHover||selected?.type==="route")flowNote.textContent=preview?"Redystrybucja lokalnego prefiksu: ogłoszenie i rozgałęzienia do urządzeń końcowych.":"Fioletowa strzałka wskazuje kierunek propagacji oglądanej trasy do tego RIB.";
+    flowNote.textContent = !showRouteFlow.checked ? t("Adresy i tablice przedstawiają obliczony model sieci.")
+      : !sessionsEnabled() ? t("Przepływ poglądowy — włącz Sesje BGP i przynajmniej jedną warstwę BGP.")
+      : !illustration.sequence.length ? t("Brak zgodnego przykładu przepływu tras w tej konfiguracji.")
+      : exploration.update ? t`UPDATE: ${exploration.update.from_id} → ${exploration.update.to_id} · ${exploration.update.route.prefix}. Rozgałęzienia pokazują dostarczenie tego prefiksu do urządzeń końcowych.`
+      : t`Poglądowo: ${illustration.streams.length} przykładów, jeden prefiks naraz, z rozgałęzieniami na RS. Tryb automatyczny pomija tę samą drogę w drugiej rodzinie IP; wybierz ogłoszenie, aby obejrzeć je osobno. Tablice pozostają stałe.`;
+    if(routeHover||selected?.type==="route")flowNote.textContent=preview?t("Redystrybucja lokalnego prefiksu: ogłoszenie i rozgałęzienia do urządzeń końcowych."):t("Fioletowa strzałka wskazuje kierunek propagacji oglądanej trasy do tego RIB.");
     flowNote.textContent=displayNames(flowNote.textContent);
     if (!active || reducedMotion.matches) {
       if (illustration.frame) cancelAnimationFrame(illustration.frame);
@@ -956,14 +957,14 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     playButton.disabled = !canPlay;
     rewindButton.disabled = !canPlay;
     root.querySelector("#dc-inspect-packet").disabled = !exploration.packet && (!selected || !["traffic", "session", "packet"].includes(selected.type));
-    playButton.textContent = animation.playing ? "Wstrzymaj pakiet" : "Odtwórz pakiet";
+    playButton.textContent = animation.playing ? t("Wstrzymaj pakiet") : t("Odtwórz pakiet");
     if (animation.playing) return;
-    if (!selected || !["traffic", "session", "packet"].includes(selected.type)) playStatus.textContent = "Wybierz przepływ lub sesję BGP, aby prześledzić pakiet.";
-    else if (hiddenPath) playStatus.textContent = "Pokaż urządzenia underlay, aby odtworzyć pełną drogę pakietu.";
-    else if (!showLinks.checked) playStatus.textContent = "Włącz łącza fizyczne, aby zobaczyć drogę pakietu.";
-    else if (path.length === 1) playStatus.textContent = "Dostarczenie lokalne — bez przejścia przez fabric.";
-    else if (!path.length) playStatus.textContent = "Brak osiągalnej ścieżki w tej konfiguracji.";
-    else playStatus.textContent = `${path.length - 1} hopów · poglądowa droga pakietu.`;
+    if (!selected || !["traffic", "session", "packet"].includes(selected.type)) playStatus.textContent = t("Wybierz przepływ lub sesję BGP, aby prześledzić pakiet.");
+    else if (hiddenPath) playStatus.textContent = t("Pokaż urządzenia underlay, aby odtworzyć pełną drogę pakietu.");
+    else if (!showLinks.checked) playStatus.textContent = t("Włącz łącza fizyczne, aby zobaczyć drogę pakietu.");
+    else if (path.length === 1) playStatus.textContent = t("Dostarczenie lokalne — bez przejścia przez fabric.");
+    else if (!path.length) playStatus.textContent = t("Brak osiągalnej ścieżki w tej konfiguracji.");
+    else playStatus.textContent = t`${path.length - 1} hopów · poglądowa droga pakietu.`;
   }
 
   function startAnimation() {
@@ -977,7 +978,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     animation.reducedAtStart = reducedMotion.matches;
     animation.startedAt = performance.now();
     animation.speed = Number(speedSelect.value);
-    playStatus.textContent = "Poglądowy pakiet przemieszcza się po wybranej ścieżce…";
+    playStatus.textContent = t("Poglądowy pakiet przemieszcza się po wybranej ścieżce…");
     updatePlaybackControls();
     const tick = (now) => {
       if (!animation.playing || destroyed) return;
@@ -987,7 +988,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         animation.playing = false;
         animation.frame = 0;
         updateAnimationMarker(now);
-        playStatus.textContent = "Ilustracja pakietu zakończona.";
+        playStatus.textContent = t("Ilustracja pakietu zakończona.");
         updatePlaybackControls();
         return;
       }
@@ -1003,7 +1004,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     animation.playing = false;
     if (animation.frame) cancelAnimationFrame(animation.frame);
     animation.frame = 0;
-    playStatus.textContent = "Animacja wstrzymana.";
+    playStatus.textContent = t("Animacja wstrzymana.");
     updateAnimationMarker(now);
     updatePlaybackControls();
   }
@@ -1052,7 +1053,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         root.querySelector(`#dc-${kind}-form button[type=submit]`).disabled = false;
         const result = exploration[kind];
         root.querySelector(`#dc-${kind}-status`).textContent = !payload.ok ? payload.message : result.reachable
-          ? kind === "update" ? `${result.steps.length} eksportów · ${result.route.prefix}` : `${result.physical_link_ids.length} łączy · ${result.vxlan ? `VXLAN ${result.vni}` : "bez VXLAN"}`
+          ? kind === "update" ? t`${result.steps.length} eksportów · ${result.route.prefix}` : t`${result.physical_link_ids.length} łączy · ${result.vxlan ? t`VXLAN ${result.vni}` : t("bez VXLAN")}`
           : trafficReasonText(result.reason);
         if (kind === "update" && payload.ok) setRouteOptions(result);
       }
@@ -1061,7 +1062,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const payload = next.inspectorData;
       const key = `${payload.revision}/${payload.kind}/${payload.id}`;
       inspectorPending.delete(key);
-      if (payload.revision === modelRevision && !payload.ok) inspectorErrors.set(key, payload.message || "Nie udało się wczytać szczegółów. Wybierz element ponownie, aby spróbować jeszcze raz.");
+      if (payload.revision === modelRevision && !payload.ok) inspectorErrors.set(key, payload.message || t("Nie udało się wczytać szczegółów. Wybierz element ponownie, aby spróbować jeszcze raz."));
       if (payload.revision === modelRevision && state.model && payload.ok) {
         inspectorLoaded.add(key);
         const routeState = { ...state.model.route_state };
@@ -1100,15 +1101,15 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const s = state.summary;
     const label = root.querySelector("#dc-config-label");
     if (!s) {
-      label.textContent = "Brak aktywnej konfiguracji";
-      summaryEl.innerHTML = '<p class="dc-empty">Brak podsumowania.</p>';
+      label.textContent = t("Brak aktywnej konfiguracji");
+      summaryEl.innerHTML = t('<p class="dc-empty">Brak podsumowania.</p>');
       return;
     }
     const cards = [
-      [s.physical_devices, "urządzeń"], [s.physical_links, "łączy"],
-      [s.bgp_sessions, "sesji BGP"], [s.customer_vms + s.route_server_vms, "maszyn VM"],
+      [s.physical_devices, t("urządzeń")], [s.physical_links, t("łączy")],
+      [s.bgp_sessions, t("sesji BGP")], [s.customer_vms + s.route_server_vms, t("maszyn VM")],
     ];
-    label.textContent = `Schemat ${s.schema_version} · ${s.topology.borders} border · ${s.topology.stems} stem · ${s.topology.spines} spine · ${s.topology.bolts} bolt`;
+    label.textContent = t`Schemat ${s.schema_version} · ${s.topology.borders} border · ${s.topology.stems} stem · ${s.topology.spines} spine · ${s.topology.bolts} bolt`;
     for (const [name, value] of Object.entries({
       spines: s.topology.spines, bolts: s.topology.bolts,
       racks_per_bolt: s.topology.racks_per_bolt, hosts_per_rack: s.topology.hosts_per_rack,
@@ -1130,15 +1131,15 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const flows = state.model?.route_state?.traffic ?? [];
     trafficList.replaceChildren();
     if (!flows.length) {
-      const note = document.createElement("span"); note.textContent = "Brak skonfigurowanych przepływów."; trafficList.append(note); return;
+      const note = document.createElement("span"); note.textContent = t("Brak skonfigurowanych przepływów."); trafficList.append(note); return;
     }
-    const label = document.createElement("strong"); label.textContent = "Przepływy:"; trafficList.append(label);
+    const label = document.createElement("strong"); label.textContent = t("Przepływy:"); trafficList.append(label);
     for (const flow of flows) {
       const button = document.createElement("button");
       button.type = "button"; button.className = "dc-flow-button";
       button.dataset.trafficId = flow.id;
       button.classList.toggle("active", (selected?.type === "traffic" && selected.id === flow.id)||selected?.presetID===flow.id);
-      button.textContent = `${flow.id}${flow.reachable ? " · osiągalny" : " · brak trasy"}`;
+      button.textContent = `${t(flow.id)}${flow.reachable ? t(" · osiągalny") : t(" · brak trasy")}`;
       trafficList.append(button);
     }
   }
@@ -1149,7 +1150,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     for (const [name, controls] of Object.entries(viewPresets)) root.querySelector(`#dc-preset-${name}`).setAttribute("aria-pressed", String(controls.every(([control, checked]) => control.checked === checked)));
     const model = state.model;
     if (!model) {
-      graphEl.innerHTML = '<p class="dc-empty">Brak wygenerowanej topologii.</p>';
+      graphEl.innerHTML = t('<p class="dc-empty">Brak wygenerowanej topologii.</p>');
       return;
     }
     const positions = layout(model, {
@@ -1164,7 +1165,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     svg.setAttribute("class", "dc-topology-svg");
     svg.setAttribute("viewBox", `0 0 ${positions.width} ${positions.height}`);
     svg.setAttribute("role", "group");
-    svg.setAttribute("aria-label", `Topologia fizyczna: ${model.nodes.length} urządzeń i ${model.physical_links.length} łączy`);
+    svg.setAttribute("aria-label", t`Topologia fizyczna: ${model.nodes.length} urządzeń i ${model.physical_links.length} łączy`);
     svg.style.width = `${Math.ceil(positions.width * zoom)}px`;
     svg.style.height = `${Math.ceil(positions.height * zoom)}px`;
 
@@ -1212,7 +1213,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     defs.append(arrow); svg.append(defs, groupLayer);
 
     for (const [label, y] of positions.rowLabels) {
-      if (!showUnderlay.checked && label !== "HOSTY" && !(label === "BORDER" && keepBorders.checked)) continue;
+      if (!showUnderlay.checked && label !== t("HOSTY") && !(label === "BORDER" && keepBorders.checked)) continue;
       svg.append(svgText(12, y, label, "dc-row-label"));
     }
 
@@ -1235,7 +1236,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         const group = svgElement("g", {
           class: `dc-edge${selectedClass}`, role: "button", tabindex: "0",
           "data-entity-type": "link", "data-entity-id": link.id,
-          "aria-label": `Łącze ${nodeByID.get(link.a_node_id)?.label} — ${nodeByID.get(link.b_node_id)?.label}`,
+          "aria-label": t`Łącze ${nodeByID.get(link.a_node_id)?.label} — ${nodeByID.get(link.b_node_id)?.label}`,
         });
         const [start,end]=physicalPoints(a,b);
         const x1=start.x,y1=start.y,x2=end.x,y2=end.y;
@@ -1261,7 +1262,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
           class: `dc-session${selectedClass}`, role: "button", tabindex: "0",
           "data-entity-type": "session", "data-entity-id": session.id,
           "data-session-layer": bgpSessionLayer(session),
-          "aria-label": `Sesja BGP ${session.a.label} — ${session.b.label}, ${session.families.map((family) => `${family.afi}/${family.safi}`).join(", ")}`,
+          "aria-label": t`Sesja BGP ${session.a.label} — ${session.b.label}, ${session.families.map((family) => `${family.afi}/${family.safi}`).join(", ")}`,
         });
         const aY = a.y;
         const bY = b.y;
@@ -1312,12 +1313,12 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         class: `dc-node ${node.kind}${selectedClass}`, transform: `translate(${point.x} ${point.y})`,
         role: "button", tabindex: "0", "data-entity-type": "node", "data-entity-id": node.id,
         "aria-label": `${kindLabels[node.kind] ?? node.kind}: ${node.label}`,
-        "aria-description": "Enter: szczegóły. Strzałki: przesuń. Home: przywróć pozycję.",
+        "aria-description": t("Enter: szczegóły. Strzałki: przesuń. Home: przywróć pozycję."),
       });
       group.append(svgElement("rect", { x: -point.width / 2, y: -point.height / 2, width: point.width, height: point.height, rx: 9 }));
       const labelY = node.kind === "host" ? point.height / 2 - 25 : -2;
       group.append(svgText(0, labelY, node.label, "dc-node-label"));
-      group.append(svgText(0, labelY + 16, node.kind === "host" ? `${vmCountByHost.get(node.id) ?? 0} VM · ${node.interface_ids.length} interfejsy` : `AS ${node.asn}`, "dc-node-subtitle"));
+      group.append(svgText(0, labelY + 16, node.kind === "host" ? t`${vmCountByHost.get(node.id) ?? 0} VM · ${node.interface_ids.length} interfejsy` : t`AS ${node.asn}`, "dc-node-subtitle"));
       nodeLayer.append(group);
     }
     svg.append(nodeLayer);
@@ -1348,8 +1349,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         class: `dc-vm ${item.role}${item.entityType === "cluster" ? " cluster" : ""}${selectedClass}${item.members.some(vm=>vm.id===vmHover)?" preview":""}`, transform: `translate(${point.x} ${point.y})`,
         role: "button", tabindex: "0", "data-entity-type": item.entityType, "data-entity-id": item.id,
         "data-host-id": item.hostID, "data-on-host": item.onHost,
-        "aria-label": displayNames(`${item.label}${item.onHost ? `, host ${item.hostID}` : ", widok abstrakcyjny"}`),
-        "aria-description": "Enter: szczegóły. Strzałki: przesuń. Home: przywróć pozycję.",
+        "aria-label": displayNames(`${item.label}${item.onHost ? t`, host ${item.hostID}` : t(", widok abstrakcyjny")}`),
+        "aria-description": t("Enter: szczegóły. Strzałki: przesuń. Home: przywróć pozycję."),
       });
       group.append(svgElement("rect", { x: -47, y: -12, width: 94, height: 24, rx: 7 }));
       group.append(svgText(0, 4, item.label, "dc-vm-label"));
@@ -1412,16 +1413,16 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   function renderInspectorContent(nodeByID, interfaceByID) {
     if (!state.model || !selected) inspectorEl.hidden = true;
     if (!state.model) {
-      detailsEl.innerHTML = "<p>Wybierz urządzenie lub łącze po wczytaniu modelu.</p>";
+      detailsEl.innerHTML = t("<p>Wybierz urządzenie lub łącze po wczytaniu modelu.</p>");
       return;
     }
     if (!selected) {
-      detailsEl.innerHTML = "<p>Wybierz urządzenie lub łącze na diagramie. Adresy są fikcyjne; tablice przedstawiają oczekiwany stan.</p>";
+      detailsEl.innerHTML = t("<p>Wybierz urządzenie lub łącze na diagramie. Adresy są fikcyjne; tablice przedstawiają oczekiwany stan.</p>");
       return;
     }
     if (["update", "packet"].includes(selected.type)) {
       const kind = selected.type;
-      appendInspectorTitle(kind === "update" ? "Przepływ trasy · BGP UPDATE" : "Pakiet i droga między urządzeniami", kind === "update" ? exploration.update?.route?.id ?? "UPDATE" : exploration.packet?.route_id ?? "ICMP");
+      appendInspectorTitle(kind === "update" ? t("Przepływ trasy · BGP UPDATE") : t("Pakiet i droga między urządzeniami"), kind === "update" ? exploration.update?.route?.id ?? "UPDATE" : exploration.packet?.route_id ?? "ICMP");
       if (exploreErrors[kind]) { appendHiddenNote(exploreErrors[kind]); return; }
       if (kind === "update") appendUpdateInspection(detailsEl, exploration.update, state.model, trafficReasonText);
       else appendPacketInspection(detailsEl, exploration.packet, trafficReasonText);
@@ -1431,23 +1432,23 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const node = (nodeByID ?? new Map(state.model.nodes.map((item) => [item.id, item]))).get(selected.id);
       if (!node) { selected = null; return renderInspector(); }
       appendInspectorTitle(`${kindLabels[node.kind] ?? node.kind} · ${node.label}`, node.id);
-      const identity = [`ASN ${node.asn}`, `IPv4 ${node.ipv4}`, `IPv6 ${node.ipv6}`];
-      if (node.bolt_id) identity.push(`Bolt ${node.bolt_id}`);
-      if (node.rack_id) identity.push(`Rack ${node.rack_id}`);
-      if (node.host_id) identity.push(`Host ID ${node.host_id}`);
+      const identity = [t`ASN ${node.asn}`, t`IPv4 ${node.ipv4}`, t`IPv6 ${node.ipv6}`];
+      if (node.bolt_id) identity.push(t`Bolt ${node.bolt_id}`);
+      if (node.rack_id) identity.push(t`Rack ${node.rack_id}`);
+      if (node.host_id) identity.push(t`Host ID ${node.host_id}`);
       const list = document.createElement("ul");
       list.className = "dc-inspector-list";
       for (const value of identity) { const li = document.createElement("li"); li.textContent = value; list.append(li); }
       const interfaces = document.createElement("details");
       interfaces.className = "dc-interface-details";
-      const summary = document.createElement("summary"); summary.textContent = `Interfejsy (${node.interface_ids.length + (node.local_interface_ids?.length ?? 0)}) · TAP ${node.local_interface_ids?.length ?? 0}`;
+      const summary = document.createElement("summary"); summary.textContent = t`Interfejsy (${node.interface_ids.length + (node.local_interface_ids?.length ?? 0)}) · TAP ${node.local_interface_ids?.length ?? 0}`;
       interfaces.append(summary);
       for (const id of [...node.interface_ids, ...(node.local_interface_ids ?? [])]) {
         const iface = (interfaceByID ?? new Map([...state.model.interfaces, ...(state.model.local_interfaces ?? [])].map((item) => [item.id, item]))).get(id);
         if (!iface) continue;
         const row = document.createElement("p");
         row.dataset.addressInterface=iface.id;
-        row.textContent = `${iface.name} ↔ ${iface.peer_node_id}: ${iface.kind === "tap" ? `TAP · ${iface.vpc_id ? `VPC ${iface.vpc_id}` : state.model.vms.find(vm=>vm.id===iface.peer_node_id)?.role==="customer"?"default/public VRF · VNI 3":"infra"} · port lokalny bez adresu L3` : formatAddress(iface)}`;
+        row.textContent = `${iface.name} ↔ ${iface.peer_node_id}: ${iface.kind === "tap" ? t`TAP · ${iface.vpc_id ? t`VPC ${iface.vpc_id}` : state.model.vms.find(vm=>vm.id===iface.peer_node_id)?.role==="customer"?t("default/public VRF · VNI 3"):"infra"} · port lokalny bez adresu L3` : formatAddress(iface)}`;
         interfaces.append(row);
       }
       detailsEl.append(list, interfaces);
@@ -1455,14 +1456,14 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         const hosted = state.model.vms.filter((vm) => vm.host_id === node.id);
         const vmDetails = document.createElement("details");
         vmDetails.className = "dc-interface-details";
-        const vmSummary = document.createElement("summary"); vmSummary.textContent = `Maszyny wirtualne (${hosted.length})`;
+        const vmSummary = document.createElement("summary"); vmSummary.textContent = t`Maszyny wirtualne (${hosted.length})`;
         vmDetails.append(vmSummary);
         for (const vm of hosted) {
           const row = document.createElement("p"); row.textContent = `${vm.label} · ${vm.ipv4} · ${vm.ipv6}`;
           row.className="dc-hosted-vm";
           row.dataset.vmId=vm.id;
           row.tabIndex=0;
-          row.title="Najedź lub ustaw fokus, aby podświetlić maszynę w topologii";
+          row.title=t("Najedź lub ustaw fokus, aby podświetlić maszynę w topologii");
           vmDetails.append(row);
         }
         detailsEl.append(vmDetails);
@@ -1470,7 +1471,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       appendEndpointSessions(detailsEl, state.model, node.id);
       appendSpeakerTableOrLoading(detailsEl, node.id);
       if (inspectorLoaded.has(`${modelRevision}/speaker/${node.id}`)) {
-        appendFIB(detailsEl, state.model, node.id, "Oczekiwana tablica jądra / FIB", root.querySelector("#dc-rib-view").value, appendRouteRows);
+        appendFIB(detailsEl, state.model, node.id, t("Oczekiwana tablica jądra / FIB"), root.querySelector("#dc-rib-view").value, appendRouteRows);
       } else {
         appendInspectorLoading(detailsEl, "speaker", node.id);
       }
@@ -1479,32 +1480,32 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if (selected.type === "vm") {
       const vm = state.model.vms.find((item) => item.id === selected.id);
       if (!vm) { selected = null; return renderInspector(); }
-      appendInspectorTitle(`${vm.label} · ${vm.role === "customer" ? "VM klienta" : "infrastruktura"}`, vm.id);
+      appendInspectorTitle(`${vm.label} · ${vm.role === "customer" ? t("VM klienta") : t("infrastruktura")}`, vm.id);
       if (collapseRouteServers.checked && vm.role !== "customer") {
         const hidden = document.createElement("p");
-        hidden.textContent = "Ten członek jest ukryty w widoku klastra RS; jego model i sesje pozostają bez zmian.";
+        hidden.textContent = t("Ten członek jest ukryty w widoku klastra RS; jego model i sesje pozostają bez zmian.");
         detailsEl.append(hidden);
       }
       const values = [
-        `Host: ${vm.host_id} (bolt ${vm.host_bolt_id}, rack ${vm.host_rack_id})`,
-        `ASN: ${vm.asn}`, `IPv4: ${vm.ipv4}`, `IPv6: ${vm.ipv6}`,
+        t`Host: ${vm.host_id} (bolt ${vm.host_bolt_id}, rack ${vm.host_rack_id})`,
+        t`ASN: ${vm.asn}`, t`IPv4: ${vm.ipv4}`, t`IPv6: ${vm.ipv6}`,
       ];
-      if (vm.vpc_id) values.push(`VPC: ${vm.vpc_id}`);
-      else if(vm.role==="customer")values.push("VRF: default/public · VNI 3");
-      if (vm.served_bolt) values.push(`Obsługiwany bolt: ${vm.served_bolt}`);
-      if (vm.cluster_id) values.push(`Klaster: ${vm.cluster_id}, członek ${vm.member}`);
-      values.push(`Umieszczenie: ${vm.explicit_placement ? "jawne w YAML" : "deterministyczne"}`);
+      if (vm.vpc_id) values.push(t`VPC: ${vm.vpc_id}`);
+      else if(vm.role==="customer")values.push(t("VRF: default/public · VNI 3"));
+      if (vm.served_bolt) values.push(t`Obsługiwany bolt: ${vm.served_bolt}`);
+      if (vm.cluster_id) values.push(t`Klaster: ${vm.cluster_id}, członek ${vm.member}`);
+      values.push(t`Umieszczenie: ${vm.explicit_placement ? t("jawne w YAML") : t("deterministyczne")}`);
       const list = document.createElement("ul"); list.className = "dc-inspector-list";
       for (const value of values) { const li = document.createElement("li"); li.textContent = value; list.append(li); }
       detailsEl.append(list);
       if(vm.role==="customer") {
         const note=document.createElement("p");note.className="dc-customer-routing";
-        note.textContent="Podstawowe IP: static → TAP na hoście → EVPN przez RS Bolt/Ctrl → import VXLAN na innych hostach. Dopiero ta łączność umożliwia sesję z RS User. RS User rozprowadza dodatkowe/Shared IP jako IPv4/IPv6 unicast via podstawowy IP VM.";
+        note.textContent=t("Podstawowe IP: static → TAP na hoście → EVPN przez RS Bolt/Ctrl → import VXLAN na innych hostach. Dopiero ta łączność umożliwia sesję z RS User. RS User rozprowadza dodatkowe/Shared IP jako IPv4/IPv6 unicast via podstawowy IP VM.");
         detailsEl.append(note);
         if(vm.advertised_prefixes?.length) {
           const prefixes=document.createElement("ul");prefixes.className="dc-inspector-list dc-additional-prefixes";
           for(const prefix of vm.advertised_prefixes) {
-            const item=document.createElement("li");item.textContent=`${prefix} → next hop ${prefix.includes(":")?vm.ipv6:vm.ipv4}`;prefixes.append(item);
+            const item=document.createElement("li");item.textContent=t`${prefix} → next hop ${prefix.includes(":")?vm.ipv6:vm.ipv4}`;prefixes.append(item);
           }
           detailsEl.append(prefixes);
         }
@@ -1513,14 +1514,14 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       if (attachment) {
         const tap = state.model.local_interfaces.find((item) => item.id === attachment.tap_interface_id);
         const nic = document.createElement("p"); nic.className = "dc-local-interface";
-        nic.textContent = `eth0 ${vm.ipv4}/32 · ${vm.ipv6}/128 ↔ ${tap.name} na ${vm.host_id}${vm.vpc_id ? ` · VPC ${vm.vpc_id}` : vm.role==="customer"?" · default/public VRF · VNI 3":" · infra"}`;
+        nic.textContent = t`eth0 ${vm.ipv4}/32 · ${vm.ipv6}/128 ↔ ${tap.name} na ${vm.host_id}${vm.vpc_id ? t` · VPC ${vm.vpc_id}` : vm.role==="customer"?t(" · default/public VRF · VNI 3"):t(" · infra")}`;
         detailsEl.append(nic);
       }
       appendEndpointSessions(detailsEl, state.model, vm.id);
       appendSpeakerTableOrLoading(detailsEl, vm.id);
       if (vm.role === "customer") {
         if (inspectorLoaded.has(`${modelRevision}/speaker/${vm.id}`)) {
-          appendFIB(detailsEl, state.model, vm.id, "Widok forwarding VRF/VPC (NVE hosta; nie tabela systemu gościa)", root.querySelector("#dc-rib-view").value, appendRouteRows);
+          appendFIB(detailsEl, state.model, vm.id, t("Widok forwarding VRF/VPC (NVE hosta; nie tabela systemu gościa)"), root.querySelector("#dc-rib-view").value, appendRouteRows);
         } else {
           appendInspectorLoading(detailsEl, "speaker", vm.id);
         }
@@ -1530,15 +1531,15 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if (selected.type === "cluster") {
       const members = state.model.vms.filter((vm) => vm.cluster_id === selected.id).sort((a, b) => a.member - b.member);
       if (!members.length) { selected = null; return renderInspector(); }
-      appendInspectorTitle(`Klaster RS · ${members[0].cluster_id}`, `${members.length} członków`);
-      if (!collapseRouteServers.checked) appendHiddenNote("Widok klastra jest rozwinięty; członkowie są pokazani osobno.");
+      appendInspectorTitle(t`Klaster RS · ${members[0].cluster_id}`, t`${members.length} członków`);
+      if (!collapseRouteServers.checked) appendHiddenNote(t("Widok klastra jest rozwinięty; członkowie są pokazani osobno."));
       const summary = document.createElement("p");
-      summary.textContent = "To zgrupowanie zmienia tylko rysunek. Członkowie zachowują rzeczywiste umieszczenie, adresy i sesje BGP.";
+      summary.textContent = t("To zgrupowanie zmienia tylko rysunek. Członkowie zachowują rzeczywiste umieszczenie, adresy i sesje BGP.");
     detailsEl.append(summary);
       for (const vm of members) {
         const section = document.createElement("details"); section.className = "dc-interface-details";
         const heading = document.createElement("summary"); heading.textContent = `${vm.label} · ${vm.host_id}`;
-        const body = document.createElement("p"); body.textContent = `ASN ${vm.asn} · ${vm.ipv4} · ${vm.ipv6}${vm.served_bolt ? ` · obsługuje bolt ${vm.served_bolt}` : ""}`;
+        const body = document.createElement("p"); body.textContent = t`ASN ${vm.asn} · ${vm.ipv4} · ${vm.ipv6}${vm.served_bolt ? t` · obsługuje bolt ${vm.served_bolt}` : ""}`;
         section.append(heading, body);
         appendEndpointSessions(section, state.model, vm.id);
         detailsEl.append(section);
@@ -1549,16 +1550,16 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if (selected.type === "session") {
       const session = state.model.bgp_sessions.find((item) => item.id === selected.id);
       if (!session) { selected = null; return renderInspector(); }
-      appendInspectorTitle("Sesja BGP", session.id);
-      if (!bgpSessionVisible(session, sessionVisibility())) appendHiddenNote(`Warstwa BGP ${bgpSessionLayer(session)} jest obecnie ukryta.`);
+      appendInspectorTitle(t("Sesja BGP"), session.id);
+      if (!bgpSessionVisible(session, sessionVisibility())) appendHiddenNote(t`Warstwa BGP ${bgpSessionLayer(session)} jest obecnie ukryta.`);
       const summary = document.createElement("p");
-      summary.textContent = `${session.a.label} (AS ${session.a.asn}) ↔ ${session.b.label} (AS ${session.b.asn}) · ${session.state}`;
+      summary.textContent = t`${session.a.label} (AS ${session.a.asn}) ↔ ${session.b.label} (AS ${session.b.asn}) · ${session.state}`;
       const transport = document.createElement("p");
-      transport.textContent = `Transport: ${session.transport} · ${session.a.address} ↔ ${session.b.address}`;
+      transport.textContent = t`Transport: ${session.transport} · ${session.a.address} ↔ ${session.b.address}`;
       const families = document.createElement("ul"); families.className = "dc-inspector-list";
       for (const family of session.families) {
         const li = document.createElement("li");
-        li.textContent = `${family.afi}/${family.safi}${family.route_types?.length ? ` · Type ${family.route_types.join(", ")}` : ""}`;
+        li.textContent = `${family.afi}/${family.safi}${family.route_types?.length ? t` · Type ${family.route_types.join(", ")}` : ""}`;
         families.append(li);
       }
       detailsEl.append(summary, transport, families);
@@ -1574,46 +1575,46 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if (selected.type === "route") {
       const route = state.model.route_state?.origins?.find((item) => item.id === selected.id);
       if (!route) { selected = null; return renderInspector(); }
-      appendInspectorTitle(route.protocol==="static"?"Trasa statyczna i droga wyjścia":"Trasa w wybranym RIB", `${route.prefix} · ${route.id}`);
+      appendInspectorTitle(route.protocol==="static"?t("Trasa statyczna i droga wyjścia"):t("Trasa w wybranym RIB"), `${route.prefix} · ${route.id}`);
       const paths = routePaths(state.model, selected);
       const identity = document.createElement("p");
-      identity.textContent = `${route.afi}/${route.safi}${route.route_type ? ` Type ${route.route_type}` : ""} · origin ${route.origin_id} (${route.origin_label}) · next hop ${paths.nextHop??route.next_hop} · AS ${route.origin_asn}`;
-      if(route.protocol==="static")identity.textContent=`${route.afi}/${route.safi} · statyczna · next hop ${paths.nextHop??route.next_hop} · ${route.origin_label}`;
+      identity.textContent = t`${route.afi}/${route.safi}${route.route_type ? t` Type ${route.route_type}` : ""} · origin ${route.origin_id} (${route.origin_label}) · next hop ${paths.nextHop??route.next_hop} · AS ${route.origin_asn}`;
+      if(route.protocol==="static")identity.textContent=t`${route.afi}/${route.safi} · statyczna · next hop ${paths.nextHop??route.next_hop} · ${route.origin_label}`;
       const context = document.createElement("p");
       context.textContent = route.vpc_id
-        ? `VPC ${route.vpc_id} · RD ${route.rd} · RT ${route.route_target} · VNI ${route.vni}`
-        : route.origin_kind==="border-default"?"Default/public VRF · trasa domyślna z border · underlay bez VXLAN"
-        : route.origin_kind==="customer"||route.origin_kind==="user-injected"?"Default/public VRF · dodatkowy prefiks IPv4/IPv6 unicast · next hop to podstawowy publiczny IP VM"
-        : route.vni===3?`Default/public VRF · VNI 3${route.rd?` · RD ${route.rd}`:""}`:"Underlay · bez kontekstu VPC/VNI";
+        ? t`VPC ${route.vpc_id} · RD ${route.rd} · RT ${route.route_target} · VNI ${route.vni}`
+        : route.origin_kind==="border-default"?t("Default/public VRF · trasa domyślna z border · underlay bez VXLAN")
+        : route.origin_kind==="customer"||route.origin_kind==="user-injected"?t("Default/public VRF · dodatkowy prefiks IPv4/IPv6 unicast · next hop to podstawowy publiczny IP VM")
+        : route.vni===3?t`Default/public VRF · VNI 3${route.rd?t` · RD ${route.rd}`:""}`:t("Underlay · bez kontekstu VPC/VNI");
       detailsEl.append(identity, context);
       const localStatic=selected.candidate?.protocol==="static"&&selected.candidate?.kernel_device?.startsWith("tap-");
       if(localStatic) {
         const note=document.createElement("p");note.className="dc-static-redistribution";
         const sourceVM=route.source_vm_id||state.model.route_state.origins.find(origin=>origin.id===selected.candidate.resolved_route_id)?.source_vm_id;
         const node=state.model.nodes.find(node=>node.id===selected.ownerID);
-        identity.textContent=`Lokalna trasa statyczna ${route.prefix} · dev ${selected.candidate.kernel_device} · VM ${sourceVM??""} na ${node?.label??selected.ownerID}`;
-        note.textContent=(selected.candidate.vni||route.vni)?"Statyczny prefiks lokalnej VM jest redystrybuowany do BGP i ogłaszany jako EVPN Type 5. Inne hosty importują go jako trasę BGP przez VXLAN.":"Statyczna trasa TAP do lokalnej VM infrastruktury; host ogłasza jej IPv6 w underlay BGP.";
-        detailsEl.querySelector("h3").textContent="Lokalna trasa statyczna do VM";
+        identity.textContent=t`Lokalna trasa statyczna ${route.prefix} · dev ${selected.candidate.kernel_device} · VM ${sourceVM??""} na ${node?.label??selected.ownerID}`;
+        note.textContent=(selected.candidate.vni||route.vni)?t("Statyczny prefiks lokalnej VM jest redystrybuowany do BGP i ogłaszany jako EVPN Type 5. Inne hosty importują go jako trasę BGP przez VXLAN."):t("Statyczna trasa TAP do lokalnej VM infrastruktury; host ogłasza jej IPv6 w underlay BGP.");
+        detailsEl.querySelector("h3").textContent=t("Lokalna trasa statyczna do VM");
         detailsEl.append(note);
       }
       const recursive=(state.model.route_state.forwarding??[]).find(f=>f.owner_id===paths.owner&&f.route_id===route.id&&f.resolved_route_id);
       if(recursive) {
         const resolution=document.createElement("p");resolution.className="dc-recursive-resolution";
-        resolution.textContent=`Prefiks ${recursive.prefix} pozostaje unicast via ${recursive.next_hop}. Rozwiązanie next hop: podstawowy EVPN ${recursive.resolved_route_id} → ${recursive.encapsulate_vxlan?`VTEP ${recursive.resolved_next_hop} · VNI ${recursive.vni}`:`lokalny ${recursive.kernel_device}`}.`;
+        resolution.textContent=t`Prefiks ${recursive.prefix} pozostaje unicast via ${recursive.next_hop}. Rozwiązanie next hop: podstawowy EVPN ${recursive.resolved_route_id} → ${recursive.encapsulate_vxlan?t`VTEP ${recursive.resolved_next_hop} · VNI ${recursive.vni}`:t`lokalny ${recursive.kernel_device}`}.`;
         detailsEl.append(resolution);
       }
       const provenance = document.createElement("div"); provenance.className="dc-route-provenance";
-      const learned=document.createElement("p");learned.className="learned";learned.textContent=`Fioletowy · RIB ${paths.owner??""}: ${paths.learned.length>1?paths.learned.join(" → "):"trasa lokalna / brak drogi uczenia"}`;
-      const target=document.createElement("p");target.className="points-to";target.textContent=`Żółty · next hop ${paths.nextHop??route.next_hop}: ${paths.pointsTo.join(" → ")||"brak rozwiązanej drogi"}`;
+      const learned=document.createElement("p");learned.className="learned";learned.textContent=t`Fioletowy · RIB ${paths.owner??""}: ${paths.learned.length>1?paths.learned.join(" → "):t("trasa lokalna / brak drogi uczenia")}`;
+      const target=document.createElement("p");target.className="points-to";target.textContent=t`Żółty · next hop ${paths.nextHop??route.next_hop}: ${paths.pointsTo.join(" → ")||t("brak rozwiązanej drogi")}`;
       provenance.append(learned,target);detailsEl.append(provenance);
       if(route.protocol==="static") {
-        const note=document.createElement("p");note.textContent="Trasa statyczna — nie jest ogłaszana przez BGP.";detailsEl.append(note);
+        const note=document.createElement("p");note.textContent=t("Trasa statyczna — nie jest ogłaszana przez BGP.");detailsEl.append(note);
       }
       const candidate=paths.candidate;
       if(candidate) {
         const attributes=document.createElement("p");
         const received=candidate.received_from??candidate.from_id;
-        attributes.textContent=`RIB ${paths.owner??route.origin_id}${received!==undefined?` · od ${received||"lokalna"}`:""}${candidate.as_path?` · AS_PATH ${candidate.as_path.join(" ")||"pusta"}`:""}${candidate.local_preference!==undefined?` · LP ${candidate.local_preference}`:""}${candidate.med!==undefined?` · MED ${candidate.med}`:""}`;
+        attributes.textContent=t`RIB ${paths.owner??route.origin_id}${received!==undefined?t` · od ${received||t("lokalna")}`:""}${candidate.as_path?t` · AS_PATH ${candidate.as_path.join(" ")||t("pusta")}`:""}${candidate.local_preference!==undefined?t` · LP ${candidate.local_preference}`:""}${candidate.med!==undefined?t` · MED ${candidate.med}`:""}`;
         if(route.protocol!=="static")detailsEl.append(attributes);
       }
       return;
@@ -1621,18 +1622,18 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if (selected.type === "traffic") {
       const flow = state.model.route_state?.traffic?.find((item) => item.id === selected.id);
       if (!flow) { selected = null; return renderInspector(); }
-      appendInspectorTitle(`Przepływ danych · ${flow.id}`, flow.route_id ?? flow.reason ?? flow.id);
+      appendInspectorTitle(t`Przepływ danych · ${flow.id}`, flow.route_id ?? flow.reason ?? flow.id);
       const status = document.createElement("p");
-      status.textContent = flow.reachable ? `Osiągalny · VPC ${flow.vpc_id} · ${flow.destination_prefix}` : `Nieosiągalny · ${trafficReasonText(flow.reason)}`;
+      status.textContent = flow.reachable ? t`Osiągalny · VPC ${flow.vpc_id} · ${flow.destination_prefix}` : t`Nieosiągalny · ${trafficReasonText(flow.reason)}`;
       const hops = document.createElement("p");
-      hops.textContent = `Warstwa logiczna: ${flow.logical_hops.join(" → ") || "brak ścieżki"}`;
+      hops.textContent = t`Warstwa logiczna: ${flow.logical_hops.join(" → ") || t("brak ścieżki")}`;
       const physical = document.createElement("p");
-      physical.textContent = `Warstwa fizyczna: ${flow.physical_node_ids.join(" → ") || "brak ścieżki"}`;
+      physical.textContent = t`Warstwa fizyczna: ${flow.physical_node_ids.join(" → ") || t("brak ścieżki")}`;
       const detail = document.createElement("p");
-      detail.textContent = `${flow.vxlan ? `VXLAN VNI ${flow.vni}` : flow.local_delivery?"Dostarczenie lokalne":"Underlay bez VXLAN"} · ${flow.underlay_cost} hopów · ${flow.equal_cost_path_count} równokosztowych ścieżek · wybrano ${flow.selected_path_index + 1}`;
+      detail.textContent = t`${flow.vxlan ? t`VXLAN VNI ${flow.vni}` : flow.local_delivery?t("Dostarczenie lokalne"):t("Underlay bez VXLAN")} · ${flow.underlay_cost} hopów · ${flow.equal_cost_path_count} równokosztowych ścieżek · wybrano ${flow.selected_path_index + 1}`;
       detailsEl.append(status, hops, physical, detail);
       if (flow.ecmp_next_hops?.length) {
-        const choices = document.createElement("p"); choices.textContent = `ECMP next hops: ${flow.ecmp_next_hops.join(", ")}`; detailsEl.append(choices);
+        const choices = document.createElement("p"); choices.textContent = t`ECMP next hops: ${flow.ecmp_next_hops.join(", ")}`; detailsEl.append(choices);
       }
       return;
     }
@@ -1640,12 +1641,12 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     if (!link) { selected = null; return renderInspector(); }
     const nodes = nodeByID ?? new Map(state.model.nodes.map((item) => [item.id, item]));
     const ifaces = interfaceByID ?? new Map(state.model.interfaces.map((item) => [item.id, item]));
-    appendInspectorTitle(`Łącze fizyczne`, link.id);
-    if (!showLinks.checked) appendHiddenNote("Warstwa łączy fizycznych jest obecnie ukryta.");
+    appendInspectorTitle(t`Łącze fizyczne`, link.id);
+    if (!showLinks.checked) appendHiddenNote(t("Warstwa łączy fizycznych jest obecnie ukryta."));
     const a = nodes.get(link.a_node_id), b = nodes.get(link.b_node_id);
     const aIf = ifaces.get(link.a_interface_id), bIf = ifaces.get(link.b_interface_id);
     const description = document.createElement("p");
-    description.textContent = `${a?.label ?? link.a_node_id} ↔ ${b?.label ?? link.b_node_id}${link.unnumbered ? " · bez adresacji globalnej" : ""}`;
+    description.textContent = `${a?.label ?? link.a_node_id} ↔ ${b?.label ?? link.b_node_id}${link.unnumbered ? t(" · bez adresacji globalnej") : ""}`;
     const addresses = document.createElement("p");
     addresses.textContent = `${aIf?.name}: ${formatAddress(aIf)} · ${bIf?.name}: ${formatAddress(bIf)}`;
     detailsEl.append(description, addresses);
@@ -1693,11 +1694,11 @@ function boundedOffset(x, y, bounds) {
 }
 
 function layout(model, options) {
-  const t = model.config.topology;
+  const topology = model.config.topology;
   const rackWidth = 252, rackGap = 16, boltPadding = 16, boltGap = 32;
-  const blockWidth = Math.max(t.racks_per_bolt * rackWidth + (t.racks_per_bolt - 1) * rackGap + boltPadding * 2, t.leaves_per_bolt * 116 + 32);
-  const fabricWidth = t.bolts * blockWidth + (t.bolts - 1) * boltGap;
-  const width = Math.max(1040, fabricWidth + 160, !options.showInfraOnHosts ? (t.borders - 1) * 124 + 862 : 0);
+  const blockWidth = Math.max(topology.racks_per_bolt * rackWidth + (topology.racks_per_bolt - 1) * rackGap + boltPadding * 2, topology.leaves_per_bolt * 116 + 32);
+  const fabricWidth = topology.bolts * blockWidth + (topology.bolts - 1) * boltGap;
+  const width = Math.max(1040, fabricWidth + 160, !options.showInfraOnHosts ? (topology.borders - 1) * 124 + 862 : 0);
   const margin = (width - fabricWidth) / 2;
   const nodes = new Map();
   const offsetBounds = new Map();
@@ -1717,7 +1718,7 @@ function layout(model, options) {
   const hostHeight = (id) => Math.max(80, (hostedCounts.get(id) ?? 0) * 28 + 52);
   const maxHostHeight = Math.max(80, ...model.nodes.filter((node) => node.kind === "host").map((node) => hostHeight(node.id)));
   const hostRowGap = maxHostHeight + 28;
-  const rackBottom = hostTop + (Math.ceil(t.hosts_per_rack / 2) - 1) * hostRowGap + maxHostHeight + 26;
+  const rackBottom = hostTop + (Math.ceil(topology.hosts_per_rack / 2) - 1) * hostRowGap + maxHostHeight + 26;
 
   // Reserve disjoint cells before applying visual offsets. A small drag stays
   // inside its cell and group; neither neighboring outlines nor VM badges cross.
@@ -1740,7 +1741,7 @@ function layout(model, options) {
     const bounds = abstract && kind === "stem" ? { top: -12, bottom: 12 } : abstract && kind === "spine" ? { top: -4, bottom: 8 } : undefined;
     evenPositions(members, (width - span) / 2, (width + span) / 2).forEach((x, index) => placeNode(members[index], x, y, bounds));
   }
-  for (let bolt = 1; bolt <= t.bolts; bolt++) {
+  for (let bolt = 1; bolt <= topology.bolts; bolt++) {
     const start = margin + (bolt - 1) * (blockWidth + boltGap);
     const end = start + blockWidth;
     groups.set(`bolt-${bolt}`, { x: start, y: leafY - 46, width: blockWidth, height: rackBottom + 16 - (leafY - 46) });
@@ -1749,9 +1750,9 @@ function layout(model, options) {
     leaves.forEach((node, index) => placeNode(node, start + leafCell * (index + .5), leafY, {
       left: -Math.min(48, leafCell / 2 - 55), right: Math.min(48, leafCell / 2 - 55), top: -4, bottom: 20,
     }));
-    if (abstract) rsTiers.push({ role: "rs_bolt", bolt, label: `RS Bolt · Bolt ${bolt}`, x: (start + end) / 2 - 120, y: leafY - 164, width: 240, height: 108 });
-    const rackStartX = (start + end - t.racks_per_bolt * rackWidth - (t.racks_per_bolt - 1) * rackGap) / 2;
-    for (let rack = 1; rack <= t.racks_per_bolt; rack++) {
+    if (abstract) rsTiers.push({ role: "rs_bolt", bolt, label: t`RS Bolt · Bolt ${bolt}`, x: (start + end) / 2 - 120, y: leafY - 164, width: 240, height: 108 });
+    const rackStartX = (start + end - topology.racks_per_bolt * rackWidth - (topology.racks_per_bolt - 1) * rackGap) / 2;
+    for (let rack = 1; rack <= topology.racks_per_bolt; rack++) {
       const rackStart = rackStartX + (rack - 1) * (rackWidth + rackGap);
       const rackEnd = rackStart + rackWidth;
       const tors = model.nodes.filter((node) => node.kind === "tor" && node.bolt_id === bolt && node.rack_id === rack).sort((a, b) => a.role_index - b.role_index);
@@ -1771,8 +1772,8 @@ function layout(model, options) {
     }
   }
   if (abstract) {
-    rsTiers.push({ role: "rs_ctrl", label: "RS Ctrl · klaster", x: width / 2 - 120, y: 202, width: 240, height: 108 });
-    rsTiers.push({ role: "rs_user", label: "RS User · klaster", x: width - 320, y: 24, width: 240, height: 108 });
+    rsTiers.push({ role: "rs_ctrl", label: t("RS Ctrl · klaster"), x: width / 2 - 120, y: 202, width: 240, height: 108 });
+    rsTiers.push({ role: "rs_user", label: t("RS User · klaster"), x: width - 320, y: 24, width: 240, height: 108 });
   }
   const hostCounts = new Map();
   for (const item of displayItems) {
@@ -1801,7 +1802,7 @@ function layout(model, options) {
     const point = displayPoints.get(item.id);
     for (const vm of item.members) entityPoints.set(vm.id, point);
   }
-  const rowLabels = [["BORDER", 74], ["STEM", 164], ["SPINE", spineY + 4], ["LEAF", leafY + 4], ["TOR", torY + 4], ["HOSTY", hostTop + 24]];
+  const rowLabels = [["BORDER", 74], ["STEM", 164], ["SPINE", spineY + 4], ["LEAF", leafY + 4], ["TOR", torY + 4], [t("HOSTY"), hostTop + 24]];
   return { nodes, groups, rsTiers, rowLabels, offsetBounds, displayPoints, entityPoints, displayItems, width, height: rackBottom + 44 };
 }
 
@@ -1830,7 +1831,7 @@ function makeDisplayItems(vms, collapseRouteServers) {
   }
   for (const [clusterID, members] of clusters) {
     const first = members[0];
-    const label = first.role === "rs_bolt" ? `Bolt ${first.served_bolt} ×${members.length}` : `${first.role === "rs_ctrl" ? "Ctrl" : "User"} ×${members.length}`;
+    const label = first.role === "rs_bolt" ? t`Bolt ${first.served_bolt} ×${members.length}` : `${first.role === "rs_ctrl" ? "Ctrl" : "User"} ×${members.length}`;
     items.push({ id: clusterID, entityType: "cluster", role: first.role, label, hostID: first.host_id, members });
   }
   return items.sort((a, b) => {
@@ -1858,16 +1859,16 @@ function svgText(x, y, value, className) {
 }
 
 function formatAddress(iface) {
-  if (!iface) return "brak";
+  if (!iface) return t("brak");
   const addresses = [];
   if (iface.ipv4_address) addresses.push(`${iface.ipv4_address}/${iface.ipv4_prefix}`);
   if (iface.ipv6_address) addresses.push(`${iface.ipv6_address}/${iface.ipv6_prefix}`);
-  if (iface.link_local_ipv6) addresses.push(`${iface.link_local_ipv6} (link-local)`);
+  if (iface.link_local_ipv6) addresses.push(t`${iface.link_local_ipv6} (link-local)`);
   return addresses.length ? addresses.join(", ") : "unnumbered";
 }
 
 function vmShortLabel(vm) {
-  if (vm.role === "customer") return `Klient ${vm.id.slice("customer-".length)}`;
+  if (vm.role === "customer") return t`Klient ${vm.id.slice("customer-".length)}`;
   return vm.label;
 }
 
@@ -1885,52 +1886,52 @@ function appendSessionRoutes(container, model, session) {
 
 function appendControlPath(container, session, path, model) {
   const details = document.createElement("details"); details.className = "dc-interface-details";
-  const summary = document.createElement("summary"); summary.textContent = "Fizyczna droga pakietu BGP";
+  const summary = document.createElement("summary"); summary.textContent = t("Fizyczna droga pakietu BGP");
   const endpoints = document.createElement("p");
-  endpoints.textContent = `Jedna sesja logiczna: ${session.a.label} → ${session.b.label} · ${session.transport}`;
+  endpoints.textContent = t`Jedna sesja logiczna: ${session.a.label} → ${session.b.label} · ${session.transport}`;
   const physical = document.createElement("p");
-  physical.textContent = path.reachable ? `Węzły underlay: ${path.physical_node_ids.join(" → ") || "obie końcówki na tym samym hoście"}` : `Brak drogi: ${trafficReasonText(path.reason)}`;
-  const links = document.createElement("p"); links.textContent = `Łącza fizyczne: ${path.physical_link_ids.join(", ") || "brak"}`;
+  physical.textContent = path.reachable ? t`Węzły underlay: ${path.physical_node_ids.join(" → ") || t("obie końcówki na tym samym hoście")}` : t`Brak drogi: ${trafficReasonText(path.reason)}`;
+  const links = document.createElement("p"); links.textContent = t`Łącza fizyczne: ${path.physical_link_ids.join(", ") || t("brak")}`;
   details.append(summary, endpoints, physical, links);
   if(path.primary_evpn_route_id) {
     const prerequisite=document.createElement("p");prerequisite.className="dc-session-bootstrap";
-    prerequisite.textContent=`Warunek sesji RS User: static TAP → podstawowy EVPN ${path.primary_evpn_route_id} → publiczny import na hoście RS User oraz IPv6 usługi RS w underlay. ${path.reachable?"Spełniony; dodatkowe prefiksy mogą być ogłaszane jako unicast.":"Niespełniony; brak eksportów dodatkowych prefiksów."}`;
+    prerequisite.textContent=t`Warunek sesji RS User: static TAP → podstawowy EVPN ${path.primary_evpn_route_id} → publiczny import na hoście RS User oraz IPv6 usługi RS w underlay. ${path.reachable?t("Spełniony; dodatkowe prefiksy mogą być ogłaszane jako unicast."):t("Niespełniony; brak eksportów dodatkowych prefiksów.")}`;
     details.append(prerequisite);
   }
   const header = document.createElement("p");
-  header.textContent = `Nagłówek transportu: IPv6 ${session.a.address} → ${session.b.address} · TCP 49152 → 179. Port źródłowy i Hop Limit 64 są poglądowe; UPDATE można rozwinąć w eksportach sesji.`;
+  header.textContent = t`Nagłówek transportu: IPv6 ${session.a.address} → ${session.b.address} · TCP 49152 → 179. Port źródłowy i Hop Limit 64 są poglądowe; UPDATE można rozwinąć w eksportach sesji.`;
   details.append(header);
   appendBGPBits(details, session);
   for (const endpoint of [session.a, session.b]) {
     const local = model.local_links?.find((item) => item.vm_id === endpoint.entity_id);
     if (!local) continue;
     const tap = model.local_interfaces.find((item) => item.id === local.tap_interface_id);
-    const attachment = document.createElement("p"); attachment.textContent = `${endpoint.label}: eth0 ↔ ${tap.name} na ${local.host_id}`; details.append(attachment);
+    const attachment = document.createElement("p"); attachment.textContent = t`${endpoint.label}: eth0 ↔ ${tap.name} na ${local.host_id}`; details.append(attachment);
   }
   if (path.ecmp_next_hops?.length) {
-    const ecmp = document.createElement("p"); ecmp.textContent = `Równokosztowe next hops: ${path.ecmp_next_hops.join(", ")}`; details.append(ecmp);
+    const ecmp = document.createElement("p"); ecmp.textContent = t`Równokosztowe next hops: ${path.ecmp_next_hops.join(", ")}`; details.append(ecmp);
   }
   container.append(details);
 }
 
 function trafficReasonText(reason) {
   const messages = {
-    "cross-vpc-not-permitted": "ruch między VPC jest zabroniony",
-    "no-matching-vpc-route": "brak pasującej trasy w tej VPC",
-    "unresolved-underlay-next-hop": "next hop nie jest osiągalny w underlay",
-    "destination-vm-not-found": "VM docelowa nie istnieje",
-    "no-expected-advertisement-path": "brak oczekiwanych eksportów tej trasy między wybranymi końcami",
-    "tenant-target-not-supported": "VM klienta wymaga celu w tej samej VRF albo pasującej trasy BGP/default; brak trasy w jej VRF",
-    "endpoint-address-unavailable": "wybrany koniec nie ma adresu w tej rodzinie IP",
-    "primary-vm-connectivity-required": "sesja RS User wymaga najpierw publicznej trasy TAP/EVPN do podstawowego IPv6 VM i drogi do IPv6 RS",
+    "cross-vpc-not-permitted": t("ruch między VPC jest zabroniony"),
+    "no-matching-vpc-route": t("brak pasującej trasy w tej VPC"),
+    "unresolved-underlay-next-hop": t("next hop nie jest osiągalny w underlay"),
+    "destination-vm-not-found": t("VM docelowa nie istnieje"),
+    "no-expected-advertisement-path": t("brak oczekiwanych eksportów tej trasy między wybranymi końcami"),
+    "tenant-target-not-supported": t("VM klienta wymaga celu w tej samej VRF albo pasującej trasy BGP/default; brak trasy w jej VRF"),
+    "endpoint-address-unavailable": t("wybrany koniec nie ma adresu w tej rodzinie IP"),
+    "primary-vm-connectivity-required": t("sesja RS User wymaga najpierw publicznej trasy TAP/EVPN do podstawowego IPv6 VM i drogi do IPv6 RS"),
   };
-  return messages[reason] ?? reason ?? "nieznana przyczyna";
+  return messages[reason] ?? reason ?? t("nieznana przyczyna");
 }
 
 function appendEndpointSessions(container, model, entityID) {
   const sessions = model.bgp_sessions.filter((session) => session.a.entity_id === entityID || session.b.entity_id === entityID);
   const details = document.createElement("details"); details.className = "dc-interface-details";
-  const summary = document.createElement("summary"); summary.textContent = `Sesje BGP (${sessions.length})`;
+  const summary = document.createElement("summary"); summary.textContent = t`Sesje BGP (${sessions.length})`;
   details.append(summary);
   for (const session of sessions) {
     const peer = session.a.entity_id === entityID ? session.b : session.a;
@@ -1938,7 +1939,7 @@ function appendEndpointSessions(container, model, entityID) {
     button.type = "button"; button.className = "dc-inspector-link";
     button.dataset.sessionId = session.id;
     const routeCount = model.route_state?.advertisement_counts?.[session.id] ?? 0;
-    button.textContent = `${peer.label} · ${session.families.map((family) => `${family.afi}/${family.safi}`).join(", ")} · ${routeCount} ogłoszeń`;
+    button.textContent = t`${peer.label} · ${session.families.map((family) => `${family.afi}/${family.safi}`).join(", ")} · ${routeCount} ogłoszeń`;
     details.append(button);
   }
   container.append(details);
@@ -1946,51 +1947,51 @@ function appendEndpointSessions(container, model, entityID) {
 
 function appendRouteRows(container, entries, simple = false, ownerID = "") {
   if (!entries?.length) {
-    const empty = document.createElement("p"); empty.textContent = "Brak tras."; container.append(empty); return;
+    const empty = document.createElement("p"); empty.textContent = t("Brak tras."); container.append(empty); return;
   }
   for (const route of entries) {
     const row = document.createElement("button");
     row.type = "button";
     row.className = "dc-route-row";
     identifyRoute(row, route, ownerID);
-    row.setAttribute("aria-label", `Wybierz trasę ${route.prefix}`);
+    row.setAttribute("aria-label", t`Wybierz trasę ${route.prefix}`);
     const prefix = route.prefix;
-    const vpc = route.vpc_id ? ` · VPC ${route.vpc_id}` : (route.vni===3||route.vrf==="default"||route.origin_kind==="customer"||route.origin_kind==="border-default"?" · default VRF":"");
-    const nextHop = route.next_hop ? ` · NH ${route.next_hop}` : "";
+    const vpc = route.vpc_id ? t` · VPC ${route.vpc_id}` : (route.vni===3||route.vrf==="default"||route.origin_kind==="customer"||route.origin_kind==="border-default"?t(" · default VRF"):"");
+    const nextHop = route.next_hop ? t` · NH ${route.next_hop}` : "";
     const nextHopInterface = route.next_hop_interface_id ? ` (${route.next_hop_interface_id})` : "";
-    const family = route.protocol==='static'||route.protocol==='kernel'?"":route.route_type ? ` · EVPN Type ${route.route_type}` : (route.afi && route.safi ? ` · ${route.afi}/${route.safi}` : "");
-    const resolution = route.underlay_cost !== undefined ? ` · koszt ${route.underlay_cost}, ECMP ${(route.underlay_next_hops??route.ecmp_next_hops)?.length ?? 0}` : "";
-    const rd = route.rd ? ` · RD ${route.rd}` : "";
-    const rt = route.route_target ? ` · RT ${route.route_target}` : "";
-    const vni = route.vni ? ` · VNI ${route.vni}` : "";
-    const asPath = route.as_path?.length ? ` · AS_PATH ${route.as_path.join(" ")}` : "";
-    const origin = route.origin_id ? ` · origin ${route.origin_id}` : "";
-    const policy = route.local_preference !== undefined ? ` · LP ${route.local_preference}, MED ${route.med ?? 0}, ORIGIN ${route.origin_code ?? 0}` : "";
-    const peer = route.received_from ? ` · od ${route.received_from}` : "";
+    const family = route.protocol==='static'||route.protocol==='kernel'?"":route.route_type ? t` · EVPN Type ${route.route_type}` : (route.afi && route.safi ? ` · ${route.afi}/${route.safi}` : "");
+    const resolution = route.underlay_cost !== undefined ? t` · koszt ${route.underlay_cost}, ECMP ${(route.underlay_next_hops??route.ecmp_next_hops)?.length ?? 0}` : "";
+    const rd = route.rd ? t` · RD ${route.rd}` : "";
+    const rt = route.route_target ? t` · RT ${route.route_target}` : "";
+    const vni = route.vni ? t` · VNI ${route.vni}` : "";
+    const asPath = route.as_path?.length ? t` · AS_PATH ${route.as_path.join(" ")}` : "";
+    const origin = route.origin_id ? t` · origin ${route.origin_id}` : "";
+    const policy = route.local_preference !== undefined ? t` · LP ${route.local_preference}, MED ${route.med ?? 0}, ORIGIN ${route.origin_code ?? 0}` : "";
+    const peer = route.received_from ? t` · od ${route.received_from}` : "";
     const direction = route.from_id && route.to_id ? ` · ${route.from_id} → ${route.to_id}` : "";
     const pathNodes = route.propagation_path ?? route.path;
     const path = pathNodes?.length ? ` · ${pathNodes.join(" → ")}` : "";
-    const label = document.createElement("strong"); label.textContent = `${prefix}${vpc}${family}${route.protocol==="static"?" · statyczna":""}`;
+    const label = document.createElement("strong"); label.textContent = `${prefix}${vpc}${family}${route.protocol==="static"?t(" · statyczna"):""}`;
     const info = document.createElement("span"); info.textContent = `${rd}${rt}${vni}${origin}${peer}${direction}${nextHop}${nextHopInterface}${asPath}${policy}${resolution}${path}`.replace(/^ · /, "");
-    if (simple) info.textContent = `${nextHop}${peer || (route.received_from === "" ? " · lokalna" : "")}${route.received_from === "" ? "" : asPath}${vni}`.replace(/^ · /, "");
-    if(route.resolved_route_id)info.textContent+=` · rekursja EVPN → ${route.resolved_next_hop} · ${route.resolved_route_id}`;
-    if(route.kernel_device)info.textContent+=` · jądro: ${route.kernel_next_hop?`via ${route.kernel_next_hop} `:""}dev ${route.kernel_device} · ${route.protocol} · table ${route.kernel_table}`;
-    if(route.encapsulate_vxlan)info.textContent+=` · VXLAN przez ${route.tunnel_device||`vxlan${route.vni}`}`;
-    else if(route.ecmp_next_hops?.length)info.textContent+=` · underlay ECMP: ${route.ecmp_next_hops.join(", ")}`;
+    if (simple) info.textContent = `${nextHop}${peer || (route.received_from === "" ? t(" · lokalna") : "")}${route.received_from === "" ? "" : asPath}${vni}`.replace(/^ · /, "");
+    if(route.resolved_route_id)info.textContent+=t` · rekursja EVPN → ${route.resolved_next_hop} · ${route.resolved_route_id}`;
+    if(route.kernel_device)info.textContent+=t` · jądro: ${route.kernel_next_hop?t`via ${route.kernel_next_hop} `:""}dev ${route.kernel_device} · ${route.protocol} · table ${route.kernel_table}`;
+    if(route.encapsulate_vxlan)info.textContent+=t` · VXLAN przez ${route.tunnel_device||`vxlan${route.vni}`}`;
+    else if(route.ecmp_next_hops?.length)info.textContent+=t` · underlay ECMP: ${route.ecmp_next_hops.join(", ")}`;
     if(route.owner_id) {
       info.textContent=route.kernel_device
-        ? `${route.kernel_next_hop?`via ${route.kernel_next_hop} `:""}dev ${route.kernel_device}`
-        : `Underlay ECMP: ${(route.ecmp_next_hops??[]).join(", ")||"brak"}`;
-      if(route.encapsulate_vxlan)info.textContent+=` · VXLAN przez ${route.tunnel_device} · VNI ${route.vni}`;
-      info.textContent+=` · ${route.protocol} · table ${route.kernel_table}`;
-      if(route.resolved_route_id)info.textContent+=` · BGP NH ${route.next_hop} → EVPN → VTEP IPv4 ${route.resolved_next_hop}`;
+        ? t`${route.kernel_next_hop?t`via ${route.kernel_next_hop} `:""}dev ${route.kernel_device}`
+        : t`Underlay ECMP: ${(route.ecmp_next_hops??[]).join(", ")||t("brak")}`;
+      if(route.encapsulate_vxlan)info.textContent+=t` · VXLAN przez ${route.tunnel_device} · VNI ${route.vni}`;
+      info.textContent+=t` · ${route.protocol} · table ${route.kernel_table}`;
+      if(route.resolved_route_id)info.textContent+=t` · BGP NH ${route.next_hop} → EVPN → VTEP IPv4 ${route.resolved_next_hop}`;
     }
-    if(route.rib_source==='recursive')info.textContent=`via ${route.next_hop} · IPv${prefix.includes(':')?'6':'4'} unicast · BGP · rekursja do podstawowego IP VM · table ${route.kernel_table}`;
+    if(route.rib_source==='recursive')info.textContent=t`via ${route.next_hop} · IPv${prefix.includes(':')?'6':'4'} unicast · BGP · rekursja do podstawowego IP VM · table ${route.kernel_table}`;
     row.append(label, info);
     container.append(row);
     if (route.from_id && route.to_id) {
       const inspect = document.createElement("button"); inspect.type = "button"; inspect.className = "dc-inspector-link dc-update-inspect";
-      inspect.dataset.updateId = route.id; inspect.textContent = "Inspektuj ten UPDATE"; container.append(inspect);
+      inspect.dataset.updateId = route.id; inspect.textContent = t("Inspektuj ten UPDATE"); container.append(inspect);
     }
   }
 }

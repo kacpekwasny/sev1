@@ -1,0 +1,76 @@
+# Audience questions selected by the presenter in /panel.
+- id: cloud-po-co
+  lecture: "lecture 1"
+  question: "A company has 30 servers. What is hardest about running its own server room?"
+  options:
+    - {id: a, text: "Buying hardware"}
+    - {id: b, text: "Power, cooling, and connectivity"}
+    - {id: c, text: "People who will maintain it at 3 a.m."}
+    - {id: d, text: "Scaling up and down"}
+  reveal: "Hardware is the smallest problem. You mainly pay for c), and for keeping b) working at all times."
+
+- id: dc-redundancja
+  lecture: "lecture 1"
+  question: "A server has two uplinks to different switches. What happens when one switch fails?"
+  options:
+    - {id: a, text: "Nothing; traffic uses the other link"}
+    - {id: b, text: "Half the connections drop and return after a few seconds"}
+    - {id: c, text: "It depends on the bonding and BGP configuration"}
+  reveal: "c). Redundancy is only as good as its configuration and convergence times."
+
+- id: fib-overflow
+  lecture: "lecture 2"
+  question: "A whitebox has room for 32k FIB routes. The network has 300k. What do we do?"
+  options:
+    - {id: a, text: "Buy bigger hardware"}
+    - {id: b, text: "Filter: keep local specifics, use a default for the rest"}
+    - {id: c, text: "Move some routing into the overlay"}
+    - {id: d, text: "Ignore it and hope for the best"}
+  reveal: "b) + c). a) costs as much as a small apartment; d) ends in a Sev1."
+
+- id: overlay-jak
+  lecture: "lecture 2"
+  question: "A VM in Warsaw sends a packet to a VM in Frankfurt. The physical network does not know their addresses. How can it deliver the packet?"
+  options:
+    - {id: a, text: "Advertise VM addresses in the physical network"}
+    - {id: b, text: "Wrap the packet in another packet with host addresses"}
+    - {id: c, text: "Keep a table of all VMs on every host"}
+  reveal: "b) — encapsulation. An envelope with the host address, containing a parcel with the VM address."
+
+- id: route-server-sesje
+  lecture: "lecture 2"
+  question: "100 hosts need to exchange BGP routes. How many sessions are needed in a full mesh?"
+  options:
+    - {id: a, text: "100"}
+    - {id: b, text: "~1000"}
+    - {id: c, text: "4950"}
+    - {id: d, text: "10000"}
+  reveal: "c) = n(n-1)/2. With a route server: 100. That is why route servers exist."
+
+- id: srv6-sid
+  lecture: "lecture 3"
+  question: "What is a SID in SRv6?"
+  options:
+    - {id: a, text: "A new IPv6 header"}
+    - {id: b, text: "An IPv6 address meaning 'do something', not just 'go there'"}
+    - {id: c, text: "An MPLS label encoded in IPv6"}
+  reveal: "b). An IPv6 address is also an instruction — the source of both its power and its complexity."
+
+- id: gpu-adresacja
+  lecture: "lecture 3"
+  question: "Why use an address per interface instead of one host loopback?"
+  options:
+    - {id: a, text: "To spread traffic across multiple paths"}
+    - {id: b, text: "To select a particular NIC next to a GPU"}
+    - {id: c, text: "Because the documentation said so"}
+  reveal: "a) and b). During model training, we want to know exactly which NIC carries the traffic."
+
+- id: rekrutacja-wrazenie
+  lecture: "lecture 3"
+  question: "What makes a stronger impression in an internship interview?"
+  options:
+    - {id: a, text: "Knowing every flag of a tool"}
+    - {id: b, text: "Your own project that you can discuss honestly"}
+    - {id: c, text: "Working sensibly toward a solution with hints"}
+    - {id: d, text: "Saying 'I don't know, but here is how I would check'"}
+  reveal: "b), c), and d). You can look up a) in the manual in ten seconds."

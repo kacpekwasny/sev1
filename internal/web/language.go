@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 
 	"wykladywiet/internal/content"
@@ -40,7 +42,7 @@ func (s *Server) handleLanguage(w http.ResponseWriter, r *http.Request) {
 	query := destination.Query()
 	query.Del("lang")
 	destination.RawQuery = query.Encode()
-	http.SetCookie(w, &http.Cookie{Name: "sev1_language", Value: language, Path: "/", MaxAge: 365 * 24 * 60 * 60, HttpOnly: true, Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https", SameSite: http.SameSiteLaxMode})
+	setLanguageCookie(w, r, language)
 	w.Header().Set("Cache-Control", "no-store")
 	http.Redirect(w, r, destination.String(), http.StatusSeeOther)
 }
@@ -63,14 +65,76 @@ func readCatalog(files fs.FS, language string) (map[string]string, error) {
 	return catalog, nil
 }
 
+func setLanguageCookie(w http.ResponseWriter, r *http.Request, language string) {
+	http.SetCookie(w, &http.Cookie{Name: "sev1_language", Value: language, Path: "/", MaxAge: 365 * 24 * 60 * 60, HttpOnly: true, Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https", SameSite: http.SameSiteLaxMode})
+}
+
+type translationPattern struct {
+	match *regexp.Regexp
+	text  string
+}
+
+var formatPlaceholder = regexp.MustCompile(`%[sdq]|\{[0-9]+\}`)
+
 func translator(catalog map[string]string) func(any) string {
+	// Patterns are only for authored dynamic prose, such as cable tooltips.
+	// Values remain literal strings; no HTML or format directives are executed.
+	var patterns []translationPattern
+	keys := make([]string, 0, len(catalog))
+	for key := range catalog {
+		keys = append(keys, key)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if len(keys[i]) == len(keys[j]) {
+			return keys[i] < keys[j]
+		}
+		return len(keys[i]) > len(keys[j])
+	})
+	for _, key := range keys {
+		if key == catalog[key] || !formatPlaceholder.MatchString(key) {
+			continue
+		}
+		parts := formatPlaceholder.Split(key, -1)
+		var expression strings.Builder
+		expression.WriteString("^")
+		for i, part := range parts {
+			if i > 0 {
+				expression.WriteString("(.+?)")
+			}
+			expression.WriteString(regexp.QuoteMeta(part))
+		}
+		expression.WriteString("$")
+		patterns = append(patterns, translationPattern{regexp.MustCompile(expression.String()), catalog[key]})
+	}
 	return func(value any) string {
 		source := fmt.Sprint(value)
 		if translated, ok := catalog[source]; ok {
 			return translated
 		}
+		for _, pattern := range patterns {
+			values := pattern.match.FindStringSubmatch(source)
+			if values == nil {
+				continue
+			}
+			index := 0
+			return formatPlaceholder.ReplaceAllStringFunc(pattern.text, func(placeholder string) string {
+				position := index
+				index++
+				if strings.HasPrefix(placeholder, "{") {
+					_, _ = fmt.Sscanf(placeholder, "{%d}", &position)
+				}
+				if position+1 < len(values) {
+					return values[position+1]
+				}
+				return placeholder
+			})
+		}
 		return source
 	}
+}
+
+func (s *Server) translate(r *http.Request, text string) string {
+	return s.templates().forLanguage(requestLanguage(r)).translate(text)
 }
 
 func (s *Server) libFor(r *http.Request) *content.Library {
@@ -100,5 +164,6 @@ func (s *Server) libFor(r *http.Request) *content.Library {
 		return original
 	}
 	loaded.Visibility = original.Visibility
+	loaded.Language = language
 	return loaded
 }

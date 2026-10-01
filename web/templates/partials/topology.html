@@ -1,45 +1,45 @@
 {{define "topology-figure"}}
 {{$slug := .Topo.Slug}}
 <figure class="topo" id="topo-{{$slug}}">
-  <div class="topo-views" role="group" aria-label="Widok topologii">
+  <div class="topo-views" role="group" aria-label="{{tr "Widok topologii"}}">
     {{range .Buttons}}
-    <button class="btn small {{if eq .ID $.View}}on{{end}}" title="{{.Hint}}"
+    <button class="btn small {{if eq .ID $.View}}on{{end}}" title="{{tr .Hint}}"
             hx-get="/topologie/{{$slug}}/widok/{{.ID}}"
-            hx-target="#topo-{{$slug}}" hx-swap="outerHTML">{{.Label}}</button>
+            hx-target="#topo-{{$slug}}" hx-swap="outerHTML">{{tr .Label}}</button>
     {{end}}
   </div>
 
   <svg class="topo-svg" viewBox="0 0 {{.Width}} {{.Height}}" role="img"
-       aria-label="{{.Topo.Title}}: widok {{.View}}">
+       aria-label="{{.Topo.Title}}{{tr ": widok"}} {{tr .View}}">
     {{range .Groups}}
     <g class="topo-group">
       <rect x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="10"/>
-      <text class="group-label" x="{{.LabelX}}" y="{{.LabelY}}">{{.Label}}</text>
+      <text class="group-label" x="{{.LabelX}}" y="{{.LabelY}}">{{tr .Label}}</text>
     </g>
     {{end}}
 
     {{range .Cables}}
     <g class="cable {{.Class}}">
       <line x1="{{.X1}}" y1="{{.Y1}}" x2="{{.X2}}" y2="{{.Y2}}" stroke-width="{{.Width}}">
-        <title>{{.Title}}</title>
+        <title>{{tr .Title}}</title>
       </line>
-      {{if .Label}}<text class="cable-label" x="{{.LabelX}}" y="{{.LabelY}}">{{.Label}}</text>{{end}}
+      {{if .Label}}<text class="cable-label" x="{{.LabelX}}" y="{{.LabelY}}">{{tr .Label}}</text>{{end}}
     </g>
     {{end}}
 
     {{range .Rows}}
-    <text class="row-label" x="{{.X}}" y="{{.Y}}">{{.Text}}</text>
+    <text class="row-label" x="{{.X}}" y="{{.Y}}">{{tr .Text}}</text>
     {{end}}
 
     {{range .Nodes}}
     {{$cx := .CX}}
     <g class="node {{.Class}}">
-      {{if .Badge}}<text class="badge" x="{{$cx}}" y="{{.BadgeY}}">{{.Badge}}</text>{{end}}
+      {{if .Badge}}<text class="badge" x="{{$cx}}" y="{{.BadgeY}}">{{tr .Badge}}</text>{{end}}
       <rect x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="8">
-        <title>{{.Title}}</title>
+        <title>{{tr .Title}}</title>
       </rect>
       <text class="name" x="{{$cx}}" y="{{.NameY}}">{{.Name}}</text>
-      {{range .Lines}}<text class="{{.Class}}" x="{{$cx}}" y="{{.Y}}">{{.Text}}</text>{{end}}
+      {{range .Lines}}<text class="{{.Class}}" x="{{$cx}}" y="{{.Y}}">{{tr .Text}}</text>{{end}}
     </g>
     {{end}}
   </svg>
@@ -54,9 +54,9 @@
 
   {{if .Table}}
   <div class="topo-panel">
-    <p class="muted">Adresy łączy lecą po kolei z puli <code>{{.Pool}}</code>, po jednym /31 na kabel.</p>
+    <p class="muted">{{tr "Adresy łączy lecą po kolei z puli"}} <code>{{.Pool}}</code>{{tr ", po jednym /31 na kabel."}}</p>
     <table class="addrs">
-      <thead><tr><th>od</th><th>port</th><th>adres</th><th>do</th><th>port</th><th>adres</th><th>sieć</th></tr></thead>
+      <thead><tr><th>{{tr "od"}}</th><th>{{tr "port"}}</th><th>{{tr "adres"}}</th><th>{{tr "do"}}</th><th>{{tr "port"}}</th><th>{{tr "adres"}}</th><th>{{tr "sieć"}}</th></tr></thead>
       <tbody>
         {{range .Table}}
         <tr {{if not .Routed}}class="unrouted"{{end}}>
@@ -67,8 +67,7 @@
         {{end}}
       </tbody>
     </table>
-    <p class="small muted">Łącze bez adresu to zejście z leafa do szafy — tam nie ma sesji BGP,
-      tylko sieć serwerów.</p>
+    <p class="small muted">{{tr "Łącze bez adresu to zejście z leafa do szafy — tam nie ma sesji BGP,\n      tylko sieć serwerów."}}</p>
   </div>
   {{end}}
 </figure>

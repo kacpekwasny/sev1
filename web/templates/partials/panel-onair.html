@@ -3,14 +3,14 @@
 {{define "panel-onair"}}
 <div class="onair-switch{{if .OnAir}} on{{end}}">
   {{if .OnAir}}
-  <span class="chip live">● trwa</span>
+  <span class="chip live">{{tr "● trwa"}}</span>
   <button class="btn small" hx-post="/panel/nazywo" hx-vals='{"onair":"nie"}'
-          hx-target="#panel-onair" hx-swap="innerHTML">Zakończ wykład</button>
-  <span class="muted small">Kropka świeci się w menu na każdej stronie.</span>
+          hx-target="#panel-onair" hx-swap="innerHTML">{{tr "Zakończ wykład"}}</button>
+  <span class="muted small">{{tr "Kropka świeci się w menu na każdej stronie."}}</span>
   {{else}}
   <button class="btn small primary" hx-post="/panel/nazywo" hx-vals='{"onair":"tak"}'
-          hx-target="#panel-onair" hx-swap="innerHTML">Zaczynamy wykład</button>
-  <span class="muted small">Zapali czerwoną kropkę w menu na każdej stronie.</span>
+          hx-target="#panel-onair" hx-swap="innerHTML">{{tr "Zaczynamy wykład"}}</button>
+  <span class="muted small">{{tr "Zapali czerwoną kropkę w menu na każdej stronie."}}</span>
   {{end}}
 </div>
 {{end}}
