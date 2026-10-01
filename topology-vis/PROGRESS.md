@@ -470,7 +470,7 @@ No pending D25 work. Preview: http://127.0.0.1:8099/topologie/dc/.
 
 No pending D26 work. Preview: http://127.0.0.1:8099/topologie/dc/.
 
-## D27 — implemented; commit and visual checks blocked
+## D27 — implemented and committed; visual checks blocked
 
 1. Defaults now use only physical fabric/host–ToR BGP. Removed combined
    overlay/underlay peer selection; no route server learns or exports a default.
@@ -498,11 +498,29 @@ No pending D26 work. Preview: http://127.0.0.1:8099/topologie/dc/.
    ownership, packet-bit and packet-path checks pass. Browser walkthroughs are
    updated for primary route IDs and unicast RIB output but are unverified here.
 
-Current sandbox makes `.git` read-only: staging fails creating `.git/index.lock`
-with `Operation not permitted`, so neither D27 increment could be committed.
+Sandboxed staging failed creating `.git/index.lock` with `Operation not permitted`.
+The user applied the separate patches outside the sandbox and committed D27:
+`0e3fad7` (underlay defaults), `8fe9cc1` (primary/additional VM routing).
 Local preview binding is denied; Chrome exits during sandboxed launch too.
 The earlier D26 preview was left untouched and does not represent D27.
 Separate patches are saved in `/tmp/sev1-d27-step1.patch` and
 `/tmp/sev1-d27-step2.patch`; they apply sequentially to the original HEAD.
-Next action when tools allow: run desktop/narrow walkthroughs and commit the two
-verified increments separately. Do not reimplement these changes.
+Next action when browser tools allow: run desktop/narrow walkthroughs. Do not
+reimplement or recommit these changes.
+
+
+## D28 — in progress
+
+1. Preset buttons implemented beside Reset układu / Dopasuj. Underlay enables
+   devices/links, hides sessions, places RS members on hosts and expands them.
+   Overlay BGP retains borders/hosts/VMs, hides cables, shows sessions and groups
+   abstract RS tiers. Pressed feedback follows matching switches. Existing flow
+   preference, YAML, route state and dragged offsets remain unchanged.
+   JavaScript syntax, full Go tests and build pass. Browser runtime unavailable and
+   external Chrome exits during launch, so desktop/narrow acceptance is unverified.
+2. Separate underlay/overlay BGP switches: next.
+3. Automatic playlist without IPv4/IPv6 repeats of one path: next.
+
+Sandboxed staging of step 1 failed again creating `.git/index.lock` with
+`Operation not permitted`. No D28 commits have been created. Save each increment
+as a separate sequential patch for commits outside this session's boundary.

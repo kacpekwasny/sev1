@@ -521,6 +521,23 @@ L3-SVI/VTEP (or local TAP) and explains that recursion; additional NLRI has no
 EVPN Type 5, RD or RT. Prefix-target packets retain the additional destination
 and arrive at the backing VM TAP rather than ending on its host.
 
+### D28 — View presets, session layers and distinct automatic paths
+
+Latest user direction, as three separate increments:
+
+1. Add presets beside Reset układu and Dopasuj. Pokaż underlay shows physical
+   devices/links, hides BGP sessions, keeps RSs on hosts and expands RS members.
+   Pokaż overlay BGP hides physical devices except borders and hides links,
+   shows BGP sessions, uses abstract RS tiers and groups RSs. Hosts/VMs remain
+   visible in both views. Match the actual switches with a pressed preset state;
+   manual changes remain available and never modify YAML, routes or drag offsets.
+2. Add separate underlay/overlay BGP visibility switches. Classify physical
+   fabric and host–ToR sessions as underlay; RS/client/border–Ctrl sessions as
+   overlay, independently of transported AFIs or endpoint placement.
+3. Automatic playback should not repeat the same propagation path just because
+   the next example uses the other IP family. Keep both families available for
+   explicit selection and inspection; retain examples with different paths.
+
 ## Recording an answer
 
 Record the latest user direction and affected milestones. If it changes previously implemented work, reopen the affected acceptance checks; do not claim the old checks verify new behavior. Distinguish direct user requirements from authorized implementation defaults. Preserve the original TODO while keeping this decision record and the active plan authoritative for later changes.

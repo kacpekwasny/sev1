@@ -360,6 +360,18 @@ Desktop/narrow walkthroughs and pure ownership/scope tests cover these behaviors
   same-prefix customer unicast. Verify blocked bootstrap, Shared IP best paths,
   local/remote recursion, YAML validation/count preservation and prefix packets.
 
-Both increments are implemented. Domain and pure JS checks pass; the current
-sandbox blocks Git writes, preview binding and Chrome launch. Browser walkthroughs
+Both increments are implemented and committed as 0e3fad7 and 8fe9cc1. Domain
+and pure JS checks pass; sandboxed preview binding and Chrome launch are blocked. Browser walkthroughs
 are updated but have not been rerun for D27. See PROGRESS for exact limitations.
+
+
+## R29–R31 — Presets, session visibility and automatic path variety (D28)
+
+- R29: one-click underlay/overlay BGP presets, compact toolbar buttons and
+  pressed-state feedback from the actual controls. Preserve view offsets/YAML.
+- R30: separate underlay/overlay BGP switches and matching preset/session/flow
+  filtering. Inspecting a hidden route/session can still preview its context.
+- R31: suppress duplicate family paths only during automatic example playback;
+  preserve explicit IPv4/IPv6 selection, UPDATE inspection and distinct paths.
+
+R29 implemented; R30–R31 next. See PROGRESS for validation and commit status.

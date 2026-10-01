@@ -38,6 +38,10 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         <label title="Ilustracja po sesjach BGP; tablice tras pozostają bez zmian."><input id="dc-show-route-flow" type="checkbox" checked> Przepływ tras</label>
         <button id="dc-layout-reset" class="dc-tool-button" type="button">Reset układu</button>
         <button id="dc-fit" class="dc-tool-button" type="button">Dopasuj</button>
+        <div class="dc-view-presets" role="group" aria-label="Gotowe widoki">
+          <button id="dc-preset-underlay" class="dc-tool-button" type="button" aria-pressed="false">Pokaż underlay</button>
+          <button id="dc-preset-overlay" class="dc-tool-button" type="button" aria-pressed="false">Pokaż overlay BGP</button>
+        </div>
         <label class="dc-zoom"><span class="dc-sr-only">Powiększenie</span><input id="dc-zoom" type="range" min="50" max="150" value="85" step="5"><output id="dc-zoom-value">85%</output></label>
       </div>
       <div id="dc-flow-examples" class="dc-flow-examples">
@@ -169,6 +173,10 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   const collapseRouteServers = root.querySelector("#dc-collapse-rs");
   const showUnderlay = root.querySelector("#dc-show-underlay");
   const keepBorders = root.querySelector("#dc-keep-borders");
+  const viewPresets = {
+    underlay: [[showLinks, true], [showSessions, false], [showUnderlay, true], [keepBorders, true], [showInfraOnHosts, true], [collapseRouteServers, false]],
+    overlay: [[showLinks, false], [showSessions, true], [showUnderlay, false], [keepBorders, true], [showInfraOnHosts, false], [collapseRouteServers, true]],
+  };
   const nodeVisible = node => showUnderlay.checked || node.kind === "host" || (node.kind === "border" && keepBorders.checked);
   const zoomInput = root.querySelector("#dc-zoom");
   const zoomOutput = root.querySelector("#dc-zoom-value");
@@ -364,6 +372,11 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     renderGraph();
     renderInspector();
   };
+  function applyViewPreset(name) {
+    for (const [control, checked] of viewPresets[name]) control.checked = checked;
+    clearRoutePreview();
+    onLayerChange({ currentTarget: null });
+  }
   const onZoom = () => {
     zoomOutput.value = `${zoomInput.value}%`;
     renderGraph();
@@ -537,6 +550,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     renderGraph();
   });
   listen(root.querySelector("#dc-fit"), "click", fitGraph);
+  for (const name of Object.keys(viewPresets)) listen(root.querySelector(`#dc-preset-${name}`), "click", () => applyViewPreset(name));
   listen(detailsEl, "click", onInspectorClick);
   const onRouteEnter=(event)=>{
     if(event.type==="pointerover"&&event.pointerType!=="mouse"&&event.pointerType!=="pen")return;
@@ -1118,6 +1132,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
 
   function renderGraph() {
     root.querySelector("#dc-border-option").hidden = showUnderlay.checked;
+    for (const [name, controls] of Object.entries(viewPresets)) root.querySelector(`#dc-preset-${name}`).setAttribute("aria-pressed", String(controls.every(([control, checked]) => control.checked === checked)));
     const model = state.model;
     if (!model) {
       graphEl.innerHTML = '<p class="dc-empty">Brak wygenerowanej topologii.</p>';

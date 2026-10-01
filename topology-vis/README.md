@@ -67,6 +67,11 @@ step, and Home restores its anchor. Reset układu clears offsets; Dopasuj adjust
 zoom to the canvas width. Moving a host carries its displayed VM anchors.
 Dragging changes only the drawing, and offsets clear on a configuration rebuild.
 
+The Pokaż underlay / Pokaż overlay BGP presets beside Reset układu and Dopasuj
+apply the physical-cabling or grouped-overlay workspace switches in one click.
+A pressed preset matches the current controls; manual adjustments remain possible.
+They preserve YAML, calculated routes, dragged offsets and the flow switch.
+
 Łącza and Sesje BGP are independent switches. RS grouping retains four actual
 members per cluster. With RS na hostach enabled, a collapsed icon anchors to the
 first member's real host; the other members keep their own placements and tables.
