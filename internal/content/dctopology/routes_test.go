@@ -905,7 +905,7 @@ func TestBordersAdvertisePublicDefaults(t *testing.T) {
 	}
 	for _, border := range []string{"border-1", "border-2"} {
 		for _, family := range []string{"ipv4", "ipv6"} {
-			fabric, ctrl := false, false
+			fabric := false
 			for _, ad := range model.Routes.Advertisements {
 				if ad.FromID != border || ad.AFI != family {
 					continue
@@ -923,15 +923,12 @@ func TestBordersAdvertisePublicDefaults(t *testing.T) {
 					t.Fatalf("bad originating AS_PATH: %+v", ad)
 				}
 				fabric = fabric || strings.HasPrefix(ad.ToID, "stem-")
-				if strings.HasPrefix(ad.ToID, "rs-ctrl-") {
-					ctrl = true
-					if ad.NextHop != origins[ad.RouteID].NextHop {
-						t.Fatalf("border/Ctrl changed default next hop: %+v", ad)
-					}
+				if !strings.Contains(ad.SessionID, "/fabric/") {
+					t.Fatalf("default must only use physical underlay: %+v", ad)
 				}
 			}
-			if !fabric || !ctrl {
-				t.Fatalf("%s/%s default must reach fabric and Ctrl", border, family)
+			if !fabric {
+				t.Fatalf("%s/%s default must reach fabric", border, family)
 			}
 		}
 	}
@@ -953,8 +950,17 @@ func TestBordersAdvertisePublicDefaults(t *testing.T) {
 				}
 			}
 		}
-		if defaults != 2 {
-			t.Fatalf("%s selected %d defaults, want one per family", table.SpeakerID, defaults)
+		want := 2
+		if isRouteServerEntity(table.SpeakerID) {
+			want = 0
+		}
+		if defaults != want {
+			t.Fatalf("%s selected %d defaults, want %d", table.SpeakerID, defaults, want)
+		}
+	}
+	for _, ad := range model.Routes.Advertisements {
+		if origins[ad.RouteID].OriginKind == "border-default" && !strings.Contains(ad.SessionID, "/fabric/") && !strings.Contains(ad.SessionID, "/host-tor/") {
+			t.Fatalf("default leaked into route-server distribution: %+v", ad)
 		}
 	}
 	for _, host := range model.Nodes {

@@ -478,6 +478,22 @@ bit-field selection; editable YAML/forms and binary grids are not rewritten.
 The route-path legend overlays the canvas so route hover cannot shift addresses
 under the pointer by changing the page height. Teardown removes the hint portal.
 
+### D27 — Underlay defaults and additional customer IPs
+
+Defaults originate only on border physical underlay sessions and travel through
+fabric/host–ToR BGP. No default enters Ctrl, Bolt or User route-server sessions.
+This supersedes D24/D26's default export through Ctrl.
+
+VM primary IPv4/IPv6 addresses start as host static TAP routes in public/default
+VRF, become EVPN via Bolt → Ctrl → Bolt, and appear as imported VXLAN routes
+on remote hosts. Only this reachability can bootstrap VM ↔ RS User connectivity.
+RS User is for Shared IP and additional prefixes, not primary VM addressing.
+Additional prefixes remain IPv4/IPv6 unicast via VM → User → Ctrl → Bolt → hosts;
+their RIB next hop is the VM's primary public address. EVPN resolves that next hop
+for the dataplane; it never converts the additional NLRI into an EVPN route.
+Implement the default correction and the customer route/bootstrap correction as
+separate verified increments.
+
 ## Recording an answer
 
 Record the latest user direction and affected milestones. If it changes previously implemented work, reopen the affected acceptance checks; do not claim the old checks verify new behavior. Distinguish direct user requirements from authorized implementation defaults. Preserve the original TODO while keeping this decision record and the active plan authoritative for later changes.

@@ -111,7 +111,8 @@ Pressing outside the compact send-action popup dismisses it.
 Packet examples use IPv4 ICMP or IPv6 ICMPv6 Echo Request. Customer VM pairs obey
 VPC forwarding/isolation; choosing a border targets a configured external
 prefix or its identity address. Borders advertise public defaults and their
-loopbacks through physical underlay BGP. `route_origins` describes external
+loopbacks through physical underlay BGP only; defaults never pass through route
+servers. `route_origins` describes external
 packet targets; these prefixes do not install static routes across hosts.
 Public external traffic uses the learned default, while private VRFs remain
 isolated without an assumed border egress.

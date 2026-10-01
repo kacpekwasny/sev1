@@ -469,3 +469,13 @@ No pending D25 work. Preview: http://127.0.0.1:8099/topologie/dc/.
    Commit: the commit containing this checkpoint.
 
 No pending D26 work. Preview: http://127.0.0.1:8099/topologie/dc/.
+
+## D27 — in progress
+
+1. Defaults now use only physical fabric/host–ToR BGP. Removed combined
+   overlay/underlay peer selection; no route server learns or exports a default.
+   Tests check both families, every export's session kind, physical kernel
+   nexthops and egress behavior. Domain tests pass.
+2. Separate primary VM reachability from additional RS User prefixes, gate
+   customer peering on established primary EVPN connectivity, and distinguish
+   unicast recursion from EVPN imports in the host RIB: pending.

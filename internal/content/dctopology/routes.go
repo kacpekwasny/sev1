@@ -328,7 +328,6 @@ func BuildExpectedRouteState(model Model) RouteState {
 		}
 	}
 	underlay := newUnderlay(model)
-	defaultPeers := mergeRoutePeers(peersByEntity, underlayPeersByEntity)
 
 	allCandidates := make(map[string][]RouteCandidate)
 	candidateBySpeakerAndRoute := make(map[string]map[string]RouteCandidate)
@@ -340,9 +339,6 @@ func BuildExpectedRouteState(model Model) RouteState {
 		peers := peersByEntity
 		if physicalTransit {
 			peers = underlayPeersByEntity
-		}
-		if route.OriginKind == "border-default" {
-			peers = defaultPeers
 		}
 		start := route.OriginID
 		if route.OriginKind == "host" {
@@ -471,21 +467,6 @@ func overlaySession(kind string) bool {
 	default:
 		return false
 	}
-}
-
-// Defaults can enter through border/fabric and border/Ctrl sessions. Other
-// origins keep their separate underlay and overlay export policies.
-func mergeRoutePeers(a, b map[string][]routePeer) map[string][]routePeer {
-	result := map[string][]routePeer{}
-	for _, peers := range []map[string][]routePeer{a, b} {
-		for id, neighbors := range peers {
-			result[id] = append(result[id], neighbors...)
-		}
-	}
-	for id := range result {
-		sort.Slice(result[id], func(i, j int) bool { return result[id][i].Session.ID < result[id][j].Session.ID })
-	}
-	return result
 }
 
 func routeFamilySupported(session BGPSession, route Route) bool {
@@ -617,7 +598,6 @@ func buildRouteTables(model Model, received, selected map[string][]RouteCandidat
 func buildRouteAdvertisements(model Model, selected map[string][]RouteCandidate, reachable map[string]map[string]RouteCandidate, entities map[string]SessionEndpoint, overlayPeers, underlayPeers map[string][]routePeer) []RouteAdvertisement {
 	var result []RouteAdvertisement
 	seen := map[string]bool{}
-	defaultPeers := mergeRoutePeers(overlayPeers, underlayPeers)
 	for speakerID, candidates := range selected {
 		for _, candidate := range candidates {
 			if entities[speakerID].Kind == "border" && (candidate.OriginID != speakerID || (candidate.OriginKind != "border-default" && candidate.OriginKind != "underlay")) {
@@ -632,9 +612,6 @@ func buildRouteAdvertisements(model Model, selected map[string][]RouteCandidate,
 				peers = underlayPeers
 			} else if !isRouteServerEntity(speakerID) && speakerID != candidate.OriginID {
 				continue
-			}
-			if candidate.OriginKind == "border-default" {
-				peers = defaultPeers
 			}
 			for _, peer := range peers[speakerID] {
 				recipient := peer.Endpoint.EntityID
