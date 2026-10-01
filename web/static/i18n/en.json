@@ -872,5 +872,18 @@
   "enkapsulacja VXLAN": "VXLAN encapsulation",
   "dekapsulacja VXLAN": "VXLAN decapsulation",
   "HOSTY": "HOSTS",
-  "Maszyny wirtualne na hoście {0}": "Virtual machines on host {0}"
+  "Maszyny wirtualne na hoście {0}": "Virtual machines on host {0}",
+  "Animacje": "Animations",
+  "Animacje widoku": "View animations",
+  "Zamknij ustawienia animacji": "Close animation settings",
+  "Animuj zmianę widoku": "Animate view changes",
+  "Pojawianie i znikanie urządzeń": "Devices appearing and disappearing",
+  "Grupowanie i rozgrupowanie RS": "RS clustering and declustering",
+  "RS między hostami a warstwami abstrakcyjnymi": "RS movement between hosts and abstract tiers",
+  "Czas przejścia": "Transition duration",
+  "Krótki · 200 ms": "Short · 200 ms",
+  "Średni · 450 ms": "Medium · 450 ms",
+  "Długi · 800 ms": "Long · 800 ms",
+  "Ustawienia są zapamiętywane w tej przeglądarce.": "Settings are remembered in this browser.",
+  "Ograniczony ruch w ustawieniach systemowych wyłącza animacje widoku.": "Reduced motion in your system settings disables view animations."
 }

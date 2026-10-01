@@ -101,6 +101,13 @@ body.dc-harness { margin: 0; min-width: 320px; background: #0b1018; }
 .dc-host-vm-scroll > svg { display: block; }
 .dc-host-vm-scroll::-webkit-scrollbar { width: 4px; }
 .dc-host-vm-scroll::-webkit-scrollbar-thumb { background: #68c8ae; border-radius: 4px; }
+.dc-motion-layer { pointer-events: none; }
+.dc-motion-controls { display: grid; gap: 16px; padding: 20px; font-size: 13px; }
+.dc-motion-controls label { display: flex; align-items: center; gap: 10px; }
+.dc-motion-controls input { accent-color: #18785e; flex: none; }
+.dc-motion-controls select { min-width: 0; max-width: 100%; }
+.dc-motion-controls .dc-motion-note { margin: 0; font-size: 11px; color: var(--dc-muted); }
+.dc-motion-dialog { max-width: min(480px, calc(100vw - 32px)); }
 .dc-vm-label { fill: #d7c9e5; font-size: 9px; font-weight: 600; pointer-events: none; }
 .dc-vm.customer .dc-vm-label { fill: #f1d7a7; }
 .dc-packet-marker { fill: #ffc36c; stroke: #fff7e8; stroke-width: 2; filter: drop-shadow(0 0 6px #ffa736bb); pointer-events: none; }

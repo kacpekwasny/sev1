@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import { defaultMotionSettings, loadMotionSettings, normalizeMotionSettings, saveMotionSettings, transitionKind } from '../../web/static/dc-topology/view-motion.js';
+for (const value of [null, {}, 'unexpected', { duration: -1, grouping: 'false' }, { duration: 1000000 }]) assert.deepEqual(normalizeMotionSettings(value), defaultMotionSettings);
+assert.deepEqual(loadMotionSettings(undefined), defaultMotionSettings);
+assert.deepEqual(loadMotionSettings({ getItem() { throw new Error('blocked'); } }), defaultMotionSettings);
+assert.deepEqual(loadMotionSettings({ getItem: () => '{broken' }), defaultMotionSettings);
+let stored;
+const storage = { setItem: (_, value) => { stored = value; }, getItem: () => stored };
+const settings = { enabled: false, visibility: false, grouping: true, placement: false, duration: 800 };
+saveMotionSettings(storage, settings);
+assert.deepEqual(loadMotionSettings(storage), settings);
+saveMotionSettings(undefined, settings);
+const member = { key: 'vm/rs-1', onHost: true };
+assert.equal(transitionKind([member], { ...member, onHost: false }), 'placement');
+assert.equal(transitionKind([member], { key: 'cluster/rs', onHost: false }), 'grouping');
+assert.equal(transitionKind([member], member), null);
+console.log('Motion defaults, storage failure/corruption, persistence and VM identity classification: passed');

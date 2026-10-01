@@ -10,7 +10,7 @@
 | A failed English catalog request could prevent topology and graph modules from loading | Module initialization let fetch/JSON failures escape. Catalog loading now falls back to Polish on request errors, invalid data, and timeout. | Network rejection, HTTP failure, invalid JSON/catalog shapes, module import after failure, and an unresponsive request. |
 | Presenter SSE stream exposed moderation data without panel authorization | `widok=panel` selected the presenter snapshot without checking its cookie. The stream now uses the same authorization as the panel. | Reproduced an anonymous `200` response with moderation events. Missing/wrong cookies now receive `403`; authenticated presenter and audience streams still work. |
 | Newly added buttons could keep Polish labels with an older cached English catalog | Catalog requests allowed reuse of cached JSON. Fetch the current catalog with `cache: no-store`. | A simulated stale-catalog regression fails before the fix and passes after it. Actual English browser sessions also display “Show underlay BGP” at both widths. |
-| Preset changes moved switches and disrupted the map | Dependent switches disappeared, and layout dimensions/row spacing depended on RS visibility/grouping. Keep child switches visible but disabled; reserve map geometry, resize hosts from fixed top edges, retain scroll, and reserve the flow-label row. | Geometry regression failed before the fix. Browser assertions now verify identical control positions, viewport bounds, zoom, scroll and customer anchors across all three presets, at both widths and in both languages. |
+| Preset changes moved switches and disrupted the map | Dependent switches disappeared, and layout dimensions/row spacing depended on RS visibility/grouping. Keep child switches visible but disabled; reserve map geometry, keep hosts at one fixed size, retain scroll, and reserve the flow-label row. | Geometry regression failed before the fix. Browser assertions now verify identical control positions, viewport bounds, zoom, scroll and customer anchors across all three presets, at both widths and in both languages. |
 | The English topology retained the Polish HOSTY row label | The row label was a literal. Added it to the translation catalog. | English/Polish layout assertions. |
 | Presenter controls overflowed narrow screens | Grid columns used their contents as a minimum width; the participant table could widen the page. Allow columns to shrink and contain the table in a keyboard-accessible scrolling region. | Reproduced a 429px page at a 390px viewport. Presenter browser checks now assert the page fits the viewport with participants and questions present. |
 | Live questions and answers could widen the page | Long unbroken text and minimum grid/flex widths expanded the cards. Allow text to wrap, constrain question rows, and wrap moderation actions. | Browser viewport assertions with submitted HTML-like text, answers, votes and ownership controls, in Polish and English. |
@@ -75,3 +75,22 @@ Desktop and narrow screenshots were reviewed for the header, topology and live v
 Browser artifacts are saved outside the repository under `/tmp/sev1-site-qa` and
 `/tmp/dc-topology-browser`. This audit covers the shipped scenarios and interactions;
 arbitrary configurations and other browsers may expose additional issues.
+
+## Fixed hosts and configurable view motion
+
+All hosts now retain identical dimensions, including empty hosts and hosts whose RSs
+are shown in abstract tiers. They display five VM rows; additional rows scroll inside
+the host with a wheel, touch or keyboard. Scroll positions survive view changes and
+inspection, and connections to offscreen VMs remain within the host viewport.
+`tests/host-scroll.mjs` passes in both languages at 1280px and 390px. The main browser
+geometry check accounts for clipping in overflow lists and also passes with large models.
+
+View settings provide an overall animation switch, independent appearance, RS grouping
+and RS placement effects, and three durations. Preferences survive reloads. Reduced
+motion suppresses transitions and interrupts an active transition immediately.
+`tests/view-motion-browser.mjs` verifies all effects, movement between hosts and tiers
+in both directions, clustering/declustering, rapid reversals, clean final states,
+remembered settings and reduced motion, in both languages at both widths.
+`tests/view-motion.mjs` verifies preference validation, unavailable/corrupted storage
+and classification using the real VM identities. Screenshots of the settings and
+transitions are saved under `/tmp/view-motion-*.png`.

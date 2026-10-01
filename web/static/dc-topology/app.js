@@ -11,6 +11,7 @@ import { mountAddressHints } from "./addresses.js";
 import { routePaths } from "./route-paths.js";
 import { appendBGPBits } from "./packet-bits.js";
 import { explorerMarkup, appendUpdateInspection, appendPacketInspection } from "./inspection.js";
+import { createViewTransitions, loadMotionSettings, saveMotionSettings } from './view-motion.js';
 
 const kindLabels = {
   border: "Border", stem: "Stem", spine: "Spine", leaf: "Leaf", tor: "ToR", host: "Host",
@@ -48,6 +49,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         <label title="${t("Ilustracja po sesjach BGP; tablice tras pozostają bez zmian.")}"><input id="dc-show-route-flow" type="checkbox" checked> ${t("Przepływ tras")}</label>
         <button id="dc-layout-reset" class="dc-tool-button" type="button">${t("Reset układu")}</button>
         <button id="dc-fit" class="dc-tool-button" type="button">${t("Dopasuj")}</button>
+        <button id="dc-motion-open" class="dc-tool-button" type="button">${t("Animacje")}</button>
         <div class="dc-view-presets" role="group" aria-label="${t("Gotowe widoki")}">
           <button id="dc-preset-underlay" class="dc-tool-button" type="button" aria-pressed="false">${t("Pokaż fizyczną topologię")}</button>
           <button id="dc-preset-underlay-bgp" class="dc-tool-button" type="button" aria-pressed="false">${t("Pokaż underlay BGP")}</button>
@@ -91,6 +93,21 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       ${explorerMarkup}
     </section>
     <p id="dc-message" class="dc-message" role="status" aria-live="polite">${t("Wczytywanie przykładu…")}</p>
+    <dialog id="dc-motion-dialog" class="dc-config-dialog dc-motion-dialog" aria-labelledby="dc-motion-title">
+      <div class="dc-inspector-bar"><h2 id="dc-motion-title">${t("Animacje widoku")}</h2>
+        <button id="dc-motion-close" class="dc-icon-button" type="button" aria-label="${t("Zamknij ustawienia animacji")}" autofocus>×</button></div>
+      <div class="dc-motion-controls">
+        <label><input id="dc-motion-enabled" type="checkbox"> ${t("Animuj zmianę widoku")}</label>
+        <label><input id="dc-motion-visibility" type="checkbox"> ${t("Pojawianie i znikanie urządzeń")}</label>
+        <label><input id="dc-motion-grouping" type="checkbox"> ${t("Grupowanie i rozgrupowanie RS")}</label>
+        <label><input id="dc-motion-placement" type="checkbox"> ${t("RS między hostami a warstwami abstrakcyjnymi")}</label>
+        <label>${t("Czas przejścia")} <select id="dc-motion-duration">
+          <option value="200">${t("Krótki · 200 ms")}</option><option value="450">${t("Średni · 450 ms")}</option><option value="800">${t("Długi · 800 ms")}</option>
+        </select></label>
+        <p class="dc-motion-note">${t("Ustawienia są zapamiętywane w tej przeglądarce.")}</p>
+        <p id="dc-motion-reduced" class="dc-motion-note" hidden>${t("Ograniczony ruch w ustawieniach systemowych wyłącza animacje widoku.")}</p>
+      </div>
+    </dialog>
     <dialog id="dc-config-dialog" class="dc-config-dialog" aria-labelledby="dc-config-title">
       <div class="dc-inspector-bar"><div><p class="dc-kicker">${t("SCENARIUSZ")}</p><h2 id="dc-config-title">${t("Konfiguracja sieci")}</h2></div>
         <button id="dc-config-close" class="dc-icon-button" type="button" aria-label="${t("Zamknij konfigurację")}">×</button></div>
@@ -183,6 +200,30 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   const flowExampleSelect = root.querySelector("#dc-flow-example");
   const currentAdvertisement = root.querySelector("#dc-current-advertisement");
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const viewTransitions = createViewTransitions();
+  let motionStorage;
+  try { motionStorage = window.localStorage; } catch { /* Storage is optional. */ }
+  const motionSettings = loadMotionSettings(motionStorage);
+  const motionDialog = root.querySelector('#dc-motion-dialog');
+  function syncMotionControls() {
+    for (const key of ['enabled', 'visibility', 'grouping', 'placement']) {
+      const control = root.querySelector(`#dc-motion-${key}`);
+      control.checked = motionSettings[key];
+      control.disabled = key !== 'enabled' && !motionSettings.enabled;
+    }
+    root.querySelector('#dc-motion-duration').value = String(motionSettings.duration);
+    root.querySelector('#dc-motion-duration').disabled = !motionSettings.enabled;
+    root.querySelector('#dc-motion-reduced').hidden = !reducedMotion.matches;
+  }
+  syncMotionControls();
+  listen(root.querySelector('#dc-motion-open'), 'click', () => { syncMotionControls(); motionDialog.showModal(); });
+  listen(root.querySelector('#dc-motion-close'), 'click', () => motionDialog.close());
+  listen(motionDialog, 'change', () => {
+    for (const key of ['enabled', 'visibility', 'grouping', 'placement']) motionSettings[key] = root.querySelector(`#dc-motion-${key}`).checked;
+    motionSettings.duration = Number(root.querySelector('#dc-motion-duration').value);
+    saveMotionSettings(motionStorage, motionSettings);
+    viewTransitions.finish(); syncMotionControls();
+  });
   const illustration = { frame: 0, startedAt: 0, sequence: [], streams: [] };
   const showInfraOnHosts = root.querySelector("#dc-show-infra-hosts");
   const collapseRouteServers = root.querySelector("#dc-collapse-rs");
@@ -386,7 +427,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       selectedPath().some(id=>state.model.nodes.some(n=>n.id===id&&!nodeVisible(n))));
     const motionChanged = event.currentTarget === reducedMotion && reducedMotion.matches && !animation.reducedAtStart;
     if (animation.playing && (layerHidden || motionChanged)) pauseAnimation();
-    renderGraph();
+    renderGraph({ animate: true });
     renderInspector();
   };
   function applyViewPreset(name) {
@@ -863,7 +904,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         group.classList.toggle("illustrative",Boolean(step));
         group.classList.toggle("is-flow-current",active.has(group.dataset.entityId));
         if(!step)continue;
-        const from=currentPositions.entityPoints.get(step.fromID),to=currentPositions.entityPoints.get(step.toID);
+        group.dataset.from = step.fromID; group.dataset.to = step.toID;
+        const from=viewTransitions.point(step.fromID,currentPositions.entityPoints.get(step.fromID)),to=viewTransitions.point(step.toID,currentPositions.entityPoints.get(step.toID));
         for(const line of group.querySelectorAll("line"))for(const [name,value] of Object.entries({x1:from.x,y1:from.y,x2:to.x,y2:to.y}))line.setAttribute(name,String(value));
       }
     }
@@ -912,7 +954,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     const markers=graphEl.querySelectorAll(".dc-route-marker"),displayed=new Set();
     let index=0;
     for(const step of wave) {
-      const from=currentPositions?.entityPoints.get(step.fromID),to=currentPositions?.entityPoints.get(step.toID);
+      const from=viewTransitions.point(step.fromID,currentPositions?.entityPoints.get(step.fromID)),to=viewTransitions.point(step.toID,currentPositions?.entityPoints.get(step.toID));
       if(!from||!to)continue;
       // Collapsed cluster members share anchors: draw one copy at that position.
       const key=`${from.x},${from.y}/${to.x},${to.y}`;
@@ -1150,7 +1192,11 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     }
   }
 
-  function renderGraph() {
+  function renderGraph({ animate = false } = {}) {
+    const previousScene = animate && motionSettings.enabled && !reducedMotion.matches
+      ? viewTransitions.capture(graphEl.querySelector('.dc-topology-svg'), currentPositions) : null;
+    viewTransitions.finish();
+    syncMotionControls();
     // Keep the toolbar footprint fixed; dependent switches retain their preferences.
     root.querySelector("#dc-border-option").classList.toggle("is-inactive", showUnderlay.checked);
     keepBorders.disabled = showUnderlay.checked;
@@ -1403,11 +1449,14 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     updatePlaybackControls();
     syncIllustration();
     positionDeviceMenu();
+    if (previousScene) viewTransitions.run(previousScene, svg, positions, motionSettings);
   }
 
   function updateHostScroll(hostID, scroll) {
     const viewport = currentPositions?.hostViewports.get(hostID);
     if (!viewport) return;
+    if (viewport.scroll === scroll) return;
+    viewTransitions.finish();
     viewport.scroll = scroll;
     for (const item of currentPositions.displayItems.filter(item => item.onHost && item.hostID === hostID)) {
       const point = currentPositions.displayPoints.get(item.id);
@@ -1740,6 +1789,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     setState,
     destroy() {
       destroyed = true;
+      viewTransitions.finish();
       addressHints.destroy();
       packetReveal = null;
       clearRoutePreview();
@@ -1748,6 +1798,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       if (dragFrame) cancelAnimationFrame(dragFrame);
       events.abort();
       if (configDialog.open) configDialog.close();
+      if (motionDialog.open) motionDialog.close();
       if (animation.frame) cancelAnimationFrame(animation.frame);
       if (illustration.frame) cancelAnimationFrame(illustration.frame);
       root.replaceChildren();

@@ -87,6 +87,16 @@ The advertisement row retains its space when flow is off, and long wave labels a
 truncated with their complete text available on hover.
 They preserve YAML, calculated routes, dragged offsets and the flow switch.
 
+Animacje opens the view animation settings. Device appearance/disappearance,
+RS clustering/declustering, and RS movement between hosts and abstract tiers can
+each be enabled independently. Select a 200, 450 (default), or 800ms transition,
+or turn view animations off. Preferences are remembered in this browser and apply
+in both languages. The system's reduced-motion preference suppresses these effects.
+RS movement follows the real VM membership, including each member merging into a
+cluster or returning to its own host. BGP lines and illustrative markers follow the
+moving endpoints. A new view interrupts the previous transition without leaving
+copies or hidden cards behind; dragging, zooming and inspection remain available.
+
 Łącza and Sesje BGP are independent switches. The master Sesje BGP switch enables
 BGP underlay and BGP overlay child switches, initially both enabled. When the
 master is off, both child switches stay visible but disabled. Underlay
@@ -335,6 +345,7 @@ node topology-vis/tests/languages.mjs
 node topology-vis/tests/layout.mjs pl
 node topology-vis/tests/layout.mjs en
 node topology-vis/tests/site-controls.mjs
+node topology-vis/tests/view-motion.mjs
 ```
 
 The optional browser walkthrough in [tests/browser.mjs](tests/browser.mjs) uses an
@@ -404,6 +415,13 @@ PLAYWRIGHT_MODULE=/tmp/topology-browser/node_modules/playwright-core/index.mjs \
 [QA.md](QA.md) records confirmed failures, fixes, automated coverage, and checks
 completed in an actual browser. The standalone layout checks also accept a real
 model JSON file as their third argument.
+
+`tests/host-scroll.mjs` verifies equal fixed host dimensions, wheel/keyboard scrolling,
+selection of overflow VMs and retained scroll positions in both languages at both
+widths. `tests/view-motion-browser.mjs` checks appearance/disappearance, RS movement,
+clustering/declustering, interrupted transitions, remembered controls and reduced
+motion. They use the same `PLAYWRIGHT_MODULE` and `TOPOLOGY_URL` environment variables
+as the other topology browser checks.
 
 The live walkthrough uses separate audience and presenter sessions to check voting,
 questions, answers, moderation, translations, viewport fit and SSE draft preservation.
