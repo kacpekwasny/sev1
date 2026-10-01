@@ -494,6 +494,33 @@ for the dataplane; it never converts the additional NLRI into an EVPN route.
 Implement the default correction and the customer route/bootstrap correction as
 separate verified increments.
 
+Implemented configuration defaults: `addresses` remains the host-attached set
+of primary VM addresses; `advertised_prefixes` on a customer override declares
+additional unicast NLRI (up to 16), never TAP/EVPN host routes. No additional
+prefixes are invented when this list is omitted. The shipped public example
+declares separate IPv4 /32s and IPv6 /56, /64 and /128s for its three customers.
+`rs_user_peers` configures customer sessions. A static foundation calculation
+checks the customer's public IPv6 TAP route, infrastructure RS IPv6 reachability
+and the RS-host's primary EVPN return route before admitting those sessions and
+their exports. Private-only customers cannot bootstrap public RS User peering.
+The second calculation adds additional NLRI; neither phase is a convergence
+simulator or driven by animation.
+
+`route_servers.user_origins` optionally injects a prefix from an RS User member
+with a declared `next_hop_vm_id`, even if that VM does not peer with RS User.
+The primary VM route must still be reachable. Duplicate prefixes across VMs
+are allowed for Shared IP; duplicate declarations from one VM and exact primary
+host prefixes are rejected. Existing best-path selection chooses one owner for
+forwarding while the BGP RIB keeps the other candidates. YAML export/reload and
+count trimming preserve these settings or remove references to deleted VMs.
+
+The host RIB keeps primary EVPN imports and additional unicast separate, including
+locally resolved unicast via a primary TAP address. GUI and Zebra output show
+the original unicast next hop. Kernel output separately shows the resolved
+L3-SVI/VTEP (or local TAP) and explains that recursion; additional NLRI has no
+EVPN Type 5, RD or RT. Prefix-target packets retain the additional destination
+and arrive at the backing VM TAP rather than ending on its host.
+
 ## Recording an answer
 
 Record the latest user direction and affected milestones. If it changes previously implemented work, reopen the affected acceptance checks; do not claim the old checks verify new behavior. Distinguish direct user requirements from authorized implementation defaults. Preserve the original TODO while keeping this decision record and the active plan authoritative for later changes.

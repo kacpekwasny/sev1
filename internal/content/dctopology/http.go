@@ -149,6 +149,13 @@ func trimRemovedCustomerReferences(config Config) Config {
 		}
 	}
 	config.CustomerVMs.Overrides = overrides
+	userOrigins := make([]UserRouteOrigin, 0, len(config.RouteServers.UserOrigins))
+	for _, origin := range config.RouteServers.UserOrigins {
+		if origin.NextHopVMID <= count {
+			userOrigins = append(userOrigins, origin)
+		}
+	}
+	config.RouteServers.UserOrigins = userOrigins
 	peers := make([]int, 0, len(config.CustomerVMs.RSUserPeers))
 	for _, id := range config.CustomerVMs.RSUserPeers {
 		if id <= count {

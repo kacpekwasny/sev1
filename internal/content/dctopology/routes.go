@@ -139,6 +139,7 @@ type ResolvedTraffic struct {
 }
 
 type ResolvedControlPath struct {
+	PrimaryEVPNRouteID string   `json:"primary_evpn_route_id,omitempty"`
 	SessionID          string   `json:"session_id"`
 	FromID             string   `json:"from_id"`
 	ToID               string   `json:"to_id"`
@@ -174,6 +175,15 @@ type routePeer struct {
 // BuildExpectedRouteState calculates a static educational snapshot from configuration.
 // It has no BGP update clock, convergence state, or dependency on browser animation.
 func BuildExpectedRouteState(model Model) RouteState {
+	// Primary EVPN and infrastructure underlay must be usable before a customer
+	// session can contribute additional NLRI. Both phases are static calculations.
+	bootstrap := buildExpectedRouteState(model, nil, nil)
+	readiness := customerSessionReadiness(model, bootstrap)
+	additional := additionalRouteOrigins(model, bootstrap, readiness)
+	return buildExpectedRouteState(model, additional, readiness)
+}
+
+func buildExpectedRouteState(model Model, additional []Route, readiness map[string]ResolvedControlPath) RouteState {
 	state := RouteState{VPCs: buildVPCContexts(model.Config.VPCs)}
 	nodes := make(map[string]Node, len(model.Nodes))
 	for _, node := range model.Nodes {
@@ -258,41 +268,7 @@ func BuildExpectedRouteState(model Model) RouteState {
 			state.Origins = append(state.Origins, route)
 		}
 	}
-	selectedPeers := make(map[int]bool, len(model.Config.CustomerVMs.RSUserPeers))
-	for _, id := range model.Config.CustomerVMs.RSUserPeers {
-		selectedPeers[id] = true
-	}
-	for _, vm := range model.VMs {
-		if vm.Role != VMCustomer {
-			continue
-		}
-		var vmNumber int
-		_, _ = fmt.Sscanf(vm.ID, "customer-%d", &vmNumber)
-		if !selectedPeers[vmNumber] {
-			continue
-		}
-		host := nodes[vm.HostID]
-		for _, address := range vm.Addresses {
-			parsed, err := netip.ParseAddr(address)
-			if err != nil {
-				continue
-			}
-			bits, family := 128, "ipv6"
-			if parsed.Is4() {
-				bits, family = 32, "ipv4"
-			}
-			vpc := vpcByID[vm.VPCID]
-			state.Origins = append(state.Origins, Route{
-				ID:     fmt.Sprintf("customer/%s/%s/%s", vm.ID, family, parsed),
-				Prefix: netip.PrefixFrom(parsed, bits).String(), IPFamily: family,
-				AFI: family, SAFI: "unicast", VPCID: vm.VPCID,
-				RouteTarget: vpc.RouteTarget, OriginID: vm.ID, OriginLabel: vm.Label,
-				OriginKind: "customer", SourceVMID: vm.ID, OriginASN: vm.ASN,
-				NextHop: parsed.String(), NextHopNodeID: host.ID,
-				LocalPreference: 100, MED: 0, OriginCode: 0,
-			})
-		}
-	}
+	state.Origins = append(state.Origins, additional...)
 	// Configured uplink prefixes describe external packet targets, not routes
 	// installed statically across the fabric. Public egress uses learned defaults.
 	sort.Slice(state.Origins, func(i, j int) bool { return state.Origins[i].ID < state.Origins[j].ID })
@@ -307,6 +283,9 @@ func BuildExpectedRouteState(model Model) RouteState {
 	peersByEntity := make(map[string][]routePeer)
 	underlayPeersByEntity := make(map[string][]routePeer)
 	for _, session := range model.Sessions {
+		if session.Kind == "customer-rs-user" && !readiness[session.ID].Reachable {
+			continue
+		}
 		peer := routePeer{Endpoint: session.B, Session: session}
 		other := routePeer{Endpoint: session.A, Session: session}
 		switch session.Kind {
@@ -416,6 +395,11 @@ func BuildExpectedRouteState(model Model) RouteState {
 		})
 	}
 
+	if readiness == nil {
+		state.Forwarding = buildForwarding(model, selectedBySpeaker, state.Origins)
+		state.ControlPaths = resolveControlPaths(model, underlay)
+		return state
+	}
 	state.Tables = buildRouteTables(model, allCandidates, selectedBySpeaker)
 	state.Advertisements = buildRouteAdvertisements(model, selectedBySpeaker, candidateBySpeakerAndRoute, entityByID, peersByEntity, underlayPeersByEntity)
 	state.FlowExamples = buildFlowExamples(model, state)
@@ -429,6 +413,11 @@ func BuildExpectedRouteState(model Model) RouteState {
 	state.Forwarding = buildForwarding(model, selectedBySpeaker, state.Origins)
 	state.Traffic = resolveTraffic(model, state.Forwarding, underlay)
 	state.ControlPaths = resolveControlPaths(model, underlay)
+	for i := range state.ControlPaths {
+		if path, ok := readiness[state.ControlPaths[i].SessionID]; ok {
+			state.ControlPaths[i] = path
+		}
+	}
 	return state
 }
 
@@ -718,25 +707,6 @@ func buildForwarding(model Model, selected map[string][]RouteCandidate, origins 
 			entry := forwardingEntry(node.ID, "host", node.ID, overlay)
 			if overlay.VPCID == 0 {
 				entry.VRF = "default"
-				for _, unicast := range selected[node.ID] {
-					if unicast.OriginKind != "customer" || unicast.VPCID != 0 || unicast.IPFamily != overlay.IPFamily || unicast.Prefix != overlay.Prefix {
-						continue
-					}
-					address, err := netip.ParseAddr(unicast.NextHop)
-					prefix, prefixErr := netip.ParsePrefix(overlay.Prefix)
-					if err != nil || prefixErr != nil || !prefix.Contains(address) {
-						continue
-					}
-					// Unicast stays unicast in table main. Its VM next hop resolves
-					// through an imported Type-5 route to an IPv4 VTEP on VNI 3.
-					entry = forwardingEntry(node.ID, "host", node.ID, unicast)
-					entry.VRF, entry.Protocol = "default", "bgp"
-					entry.ResolvedRouteID, entry.ResolvedNextHop = overlay.ID, overlay.NextHop
-					entry.VNI, entry.RouteTarget = overlay.VNI, overlay.RouteTarget
-					entry.NextHopNodeID, entry.EncapsulateVXLAN = overlay.NextHopNodeID, overlay.NextHopNodeID != node.ID
-					entry.UnderlayCost, entry.ECMPNextHops = overlay.UnderlayCost, append([]string(nil), overlay.UnderlayNextHops...)
-					break
-				}
 			}
 			hostEntries[node.ID] = append(hostEntries[node.ID], entry)
 			result = append(result, entry)
@@ -744,14 +714,7 @@ func buildForwarding(model Model, selected map[string][]RouteCandidate, origins 
 		// Resolve other customer prefixes by longest-prefix match of the original
 		// VM next hop against imported EVPN, not by the advertised prefix itself.
 		for _, unicast := range selected[node.ID] {
-			if unicast.OriginKind != "customer" || unicast.VPCID != 0 {
-				continue
-			}
-			already := false
-			for _, entry := range hostEntries[node.ID] {
-				already = already || entry.RouteID == unicast.ID
-			}
-			if already {
+			if (unicast.OriginKind != "customer" && unicast.OriginKind != "user-injected") || unicast.VPCID != 0 {
 				continue
 			}
 			address, err := netip.ParseAddr(unicast.NextHop)
@@ -771,9 +734,9 @@ func buildForwarding(model Model, selected map[string][]RouteCandidate, origins 
 				continue // An unresolved recursive next hop never enters the FIB.
 			}
 			entry := forwardingEntry(node.ID, "host", node.ID, unicast)
-			entry.VRF = "default"
+			entry.VRF, entry.Protocol = "default", "bgp"
 			entry.ResolvedRouteID, entry.ResolvedNextHop = best.ID, best.NextHop
-			entry.NextHopNodeID, entry.VNI, entry.RouteTarget = best.NextHopNodeID, best.VNI, best.RouteTarget
+			entry.NextHopNodeID, entry.VNI = best.NextHopNodeID, best.VNI
 			entry.EncapsulateVXLAN = best.NextHopNodeID != node.ID
 			entry.UnderlayCost, entry.ECMPNextHops = best.UnderlayCost, append([]string(nil), best.UnderlayNextHops...)
 			hostEntries[node.ID] = append(hostEntries[node.ID], entry)
@@ -1064,6 +1027,15 @@ func resolveTrafficInFamily(model Model, forwarding []ForwardingEntry, underlay 
 		result.VNI = entry.VNI
 		result.VXLAN = entry.EncapsulateVXLAN
 		result.DestinationPrefix = prefix.String()
+		if destination == nil && entry.ResolvedRouteID != "" {
+			for _, vm := range vmByID {
+				if primaryVMRouteID(vm, "ipv4") == entry.ResolvedRouteID || primaryVMRouteID(vm, "ipv6") == entry.ResolvedRouteID {
+					destination = &vm
+					result.DestinationVMID, result.DestinationID = vm.ID, vm.ID
+					break
+				}
+			}
+		}
 		if destination != nil {
 			result.DestinationLabel = destination.Label
 		}

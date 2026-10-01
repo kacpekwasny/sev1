@@ -470,12 +470,39 @@ No pending D25 work. Preview: http://127.0.0.1:8099/topologie/dc/.
 
 No pending D26 work. Preview: http://127.0.0.1:8099/topologie/dc/.
 
-## D27 — in progress
+## D27 — implemented; commit and visual checks blocked
 
 1. Defaults now use only physical fabric/host–ToR BGP. Removed combined
    overlay/underlay peer selection; no route server learns or exports a default.
    Tests check both families, every export's session kind, physical kernel
-   nexthops and egress behavior. Domain tests pass.
-2. Separate primary VM reachability from additional RS User prefixes, gate
-   customer peering on established primary EVPN connectivity, and distinguish
-   unicast recursion from EVPN imports in the host RIB: pending.
+   nexthops and egress behavior. Full Go tests/build pass.
+2. Primary VM addresses remain local static TAP routes or remote primary EVPN
+   imports. They are no longer originated again through RS User or replaced by
+   same-prefix customer recursion. A foundation snapshot verifies public primary
+   TAP/EVPN reachability in both directions and RS IPv6 underlay reachability
+   before customer sessions/exports can participate. Missing/private primary
+   reachability blocks those sessions; extra NLRI cannot bootstrap itself.
+   YAML `advertised_prefixes` declares additional VM unicast prefixes; optional
+   `route_servers.user_origins` injects additional/Shared IP at an RS User member
+   via a named VM's primary IP, without requiring that VM to advertise it.
+   Next hops stay original primary IPs through User/Ctrl/Bolt to hosts. Shared
+   declarations remain distinct origins with one selected forwarding route.
+   GUI/Zebra RIB separates primary EVPN imports and additional IPv4/IPv6 unicast
+   via primary IP, including local recursion. Kernel output separately exposes
+   actual L3-SVI/VTEP or TAP resolution. Address hints, VM/session explanations
+   and flow labels reflect these roles. Packets to additional prefixes keep
+   their destination and end on the backing VM, not its hosting node.
+   Tests cover primary/additional separation, bootstrap failure, public/private
+   isolation, User injection/Shared IP, prefix validation/count trimming and
+   additional-target IPv4/IPv6 packets. Go tests/build/vet and pure JS routing,
+   ownership, packet-bit and packet-path checks pass. Browser walkthroughs are
+   updated for primary route IDs and unicast RIB output but are unverified here.
+
+Current sandbox makes `.git` read-only: staging fails creating `.git/index.lock`
+with `Operation not permitted`, so neither D27 increment could be committed.
+Local preview binding is denied; Chrome exits during sandboxed launch too.
+The earlier D26 preview was left untouched and does not represent D27.
+Separate patches are saved in `/tmp/sev1-d27-step1.patch` and
+`/tmp/sev1-d27-step2.patch`; they apply sequentially to the original HEAD.
+Next action when tools allow: run desktop/narrow walkthroughs and commit the two
+verified increments separately. Do not reimplement these changes.

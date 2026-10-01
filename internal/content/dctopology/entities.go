@@ -17,22 +17,23 @@ const (
 )
 
 type VM struct {
-	ID            string   `json:"id"`
-	Label         string   `json:"label"`
-	Role          VMRole   `json:"role"`
-	ClusterID     string   `json:"cluster_id,omitempty"`
-	Member        int      `json:"member,omitempty"`
-	ServedBolt    int      `json:"served_bolt,omitempty"`
-	HostID        string   `json:"host_id"`
-	HostBoltID    int      `json:"host_bolt_id"`
-	HostRackID    int      `json:"host_rack_id"`
-	HostLocalID   int      `json:"host_local_id"`
-	VPCID         uint32   `json:"vpc_id"`
-	ASN           uint32   `json:"asn"`
-	IPv4          string   `json:"ipv4"`
-	IPv6          string   `json:"ipv6"`
-	Addresses     []string `json:"addresses"`
-	ExplicitPlace bool     `json:"explicit_placement"`
+	ID                 string   `json:"id"`
+	Label              string   `json:"label"`
+	Role               VMRole   `json:"role"`
+	ClusterID          string   `json:"cluster_id,omitempty"`
+	Member             int      `json:"member,omitempty"`
+	ServedBolt         int      `json:"served_bolt,omitempty"`
+	HostID             string   `json:"host_id"`
+	HostBoltID         int      `json:"host_bolt_id"`
+	HostRackID         int      `json:"host_rack_id"`
+	HostLocalID        int      `json:"host_local_id"`
+	VPCID              uint32   `json:"vpc_id"`
+	ASN                uint32   `json:"asn"`
+	IPv4               string   `json:"ipv4"`
+	IPv6               string   `json:"ipv6"`
+	Addresses          []string `json:"addresses"`
+	AdvertisedPrefixes []string `json:"advertised_prefixes,omitempty"`
+	ExplicitPlace      bool     `json:"explicit_placement"`
 }
 
 type AFISAFI struct {
@@ -187,7 +188,11 @@ func buildVMs(config Config, nodes []Node) ([]VM, error) {
 		if hasOverride && override.VPCID != nil {
 			vpcID = *override.VPCID
 		}
-		vms = append(vms, newCustomerVM(config.Addressing.IPv6, id, host, vpcID, override.Addresses, explicit))
+		vm := newCustomerVM(config.Addressing.IPv6, id, host, vpcID, override.Addresses, explicit)
+		for _, raw := range override.AdvertisedPrefixes {
+			vm.AdvertisedPrefixes = append(vm.AdvertisedPrefixes, netip.MustParsePrefix(raw).Masked().String())
+		}
+		vms = append(vms, vm)
 	}
 	sort.Slice(vms, func(i, j int) bool { return vms[i].ID < vms[j].ID })
 	return vms, nil

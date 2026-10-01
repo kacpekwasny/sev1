@@ -33,7 +33,7 @@ const inPrefix=(address,prefix)=>{
 };
 
 export function addressInventory(model) {
-  const nodes=new Map(model.nodes.map(node=>[node.id,node]));const entries=new Map();
+  const nodes=new Map(model.nodes.map(node=>[node.id,node]));const entries=new Map(),prefixes=[];
   const add=(raw,entry)=>{
     const address=parseAddress(raw);if(!address)return;
     if(!entries.has(address.key))entries.set(address.key,[]);
@@ -52,7 +52,17 @@ export function addressInventory(model) {
   }
   for(const iface of model.interfaces)if(iface.link_local_ipv6)add(iface.link_local_ipv6,{ownerID:iface.node_id,label:nodes.get(iface.node_id)?.label??iface.node_id,interfaceID:iface.id,
     purpose:'IPv6 link-local / BGP unnumbered',description:`Interfejs ${iface.name} · sąsiad ${nodes.get(iface.peer_node_id)?.label??iface.peer_node_id}. Adres jest ważny tylko na tym łączu i wymaga zakresu interfejsu.`});
-  return {model,nodes,entries};
+  const extra=(raw,vm,owner=vm)=>{
+    const entry={ownerID:owner.id,label:owner.label,vpcID:vm.vpc_id,purpose:'Dodatkowy / Shared IP · prefiks unicast',
+      description:`Skonfigurowany prefiks ${raw} via podstawowy IP ${raw.includes(':')?vm.ipv6:vm.ipv4} VM ${vm.label}. Publikacja przez RS User wymaga publicznej łączności TAP/EVPN; ten prefiks nie jest kolejną trasą EVPN.${vm.vpc_id?' VM jest w prywatnym VRF; publikacja jest zablokowana.':''}`};
+    prefixes.push({...entry,raw});add(raw,entry);
+  };
+  for(const vm of model.vms)for(const prefix of vm.advertised_prefixes??[])extra(prefix,vm);
+  for(const origin of model.config.route_servers?.user_origins??[]) {
+    const vm=model.vms.find(vm=>vm.id===`customer-${origin.next_hop_vm_id}`),rs=model.vms.find(vm=>vm.id===`rs-user-m${origin.member}`);
+    if(vm&&rs)extra(origin.prefix,vm,rs);
+  }
+  return {model,nodes,entries,prefixes};
 }
 
 export function explainAddress(inventory, raw, context={}) {
@@ -62,6 +72,7 @@ export function explainAddress(inventory, raw, context={}) {
   const mapped=address.family===6&&address.bytes.slice(0,10).every(byte=>byte===0)&&address.bytes[10]===255&&address.bytes[11]===255;
   const key=mapped?address.bytes.slice(12).join('.'):address.key;
   let entries=inventory.entries.get(key)??[];
+  if(!entries.length)entries=inventory.prefixes.filter(prefix=>inPrefix(address,prefix.raw));
   const linkLocal=address.family===6&&address.bytes[0]===254&&(address.bytes[1]&192)===128;
   if(linkLocal) {
     const after=context.after?.match(/(?:dev\s+|,\s*)(to-[\w-]+)/)?.[1];

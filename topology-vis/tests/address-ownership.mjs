@@ -25,4 +25,9 @@ assert.match(explainAddress(inventory,'203.0.113.42').description,/bez właścic
 assert.equal(explainAddress(inventory,'64512:65535'),null);
 assert.equal(explainAddress(inventory,'02:00:00:00:00:11'),null);
 assert.equal(explainAddress(inventory,'999.1.2.3'),null);
+model.vms.push({id:'vm-public',label:'Public VM',role:'customer',vpc_id:0,host_id:'host-1',ipv4:'10.64.0.11',ipv6:'2001:db8:6::11',addresses:['10.64.0.11','2001:db8:6::11'],advertised_prefixes:['10.96.0.11/32','2001:db8:6:100::/56']});
+const extra=addressInventory(model);
+assert.deepEqual(explainAddress(extra,'10.96.0.11/32',{vpcID:0}).ownerIDs,['vm-public']);
+assert.match(explainAddress(extra,'2001:db8:6:120::12',{vpcID:0}).description,/prefiks unicast|nie jest kolejną trasą EVPN/);
+assert.deepEqual(explainAddress(extra,'2001:db8:6:120::12',{vpcID:0}).ownerIDs,['vm-public']);
 console.log('Address ownership, configured IPv6, VRF overlap, mapped VTEPs and link-local scope: passed');

@@ -26,7 +26,7 @@ try {
   assert.match(await summary.locator('..').textContent(),/table main/);
   assert.match(await summary.locator('..').textContent(),/rekursja EVPN/);
   await summary.locator('..').locator('[data-route-id^="customer/"]').first().click();
-  assert.match(await page.locator('.dc-recursive-resolution').textContent(),/Default VRF.*EVPN.*VNI 3/);
+  assert.match(await page.locator('.dc-recursive-resolution').textContent(),/pozostaje unicast via.*podstawowy EVPN.*VNI 3/);
   await page.keyboard.press('Escape');
 
   for(const example of model.route_state.flow_examples)for(const s of example.steps)assert(!s.to_id.startsWith("customer-"),"RS User must never export to customer VMs");

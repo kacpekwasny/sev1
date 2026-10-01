@@ -157,6 +157,37 @@ selected VRF routing table, separately from BGP AFI RIBs and kernel FIB output.
 GUI and CLI expose local static TAP routes, remote EVPN imports through
 L3-SVI/VXLAN, recursive customer routes and underlay/connected entries. Imported
 VM routes include VNI and IPv4 VTEP resolution instead of only a BGP next hop.
+Primary VM addresses are static TAP routes on their host and EVPN imports on
+other hosts. RS User does not advertise those primary addresses again. Only
+after public primary EVPN/underlay connectivity exists can a configured VM ↔
+RS User session carry additional unicast prefixes. The combined host RIB shows
+those prefixes as `IPv4/IPv6 unicast via primary VM IP`, including local recursion,
+separately from primary EVPN imports. The kernel FIB shows the resolved delivery
+through an L3-SVI/VTEP or local TAP; it does not change the original unicast NLRI.
+
+Declare additional prefixes separately from host-attached `addresses`:
+
+```yaml
+customer_vms:
+  rs_user_peers: [3]
+  overrides:
+    - id: 3
+      advertised_prefixes: [10.96.0.3/32, "2001:db8:6:300::/64"]
+route_servers:
+  user_origins:
+    - id: shared-ip-example
+      member: 1
+      next_hop_vm_id: 3
+      prefix: 10.96.1.3/32
+```
+
+This fragment extends a complete configuration. A VM advertises only its explicit
+additional list, with its primary IPv4 or IPv6 as next hop. `user_origins` can
+inject a prefix directly at RS User without customer BGP peering, but still needs
+primary VM reachability. Shared prefixes may have multiple VM advertisers; the
+expected RIB retains candidates and its best path selects the backing VM. Exact
+primary /32-/128 duplication is rejected. Private VRFs retain their primary EVPN
+isolation and do not gain public RS User peering or additional-route exports.
 Every device/VM inspector has Trasy inicjowane przez urządzenie, independently
 of learned routes. RSs without local NLRI explain service-prefix ownership by
 the host. Originated routes are clickable in both formats. Their hover/focus and click
@@ -263,6 +294,7 @@ node --input-type=module --check < web/static/dc-topology/route-paths.js
 node topology-vis/tests/packet-bits.mjs
 node topology-vis/tests/packet-path.mjs
 node topology-vis/tests/address-ownership.mjs
+node topology-vis/tests/customer-rib.mjs
 ```
 
 The optional browser walkthrough in [tests/browser.mjs](tests/browser.mjs) uses an

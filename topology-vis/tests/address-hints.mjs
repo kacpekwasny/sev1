@@ -14,7 +14,7 @@ try {
   await identity.hover();await tooltip.waitFor();assert.match(await tooltip.textContent(),/h1001.*VTEP/s);
   await page.locator('.dc-node[data-entity-id="host-b1-h1"].address-preview').waitFor({state:'attached'});
   await identity.focus();assert.equal(await identity.getAttribute('aria-describedby')!==null,true);
-  const remote=page.locator('.dc-routing-rib [data-route-id="customer/customer-3/ipv6/2001:db8:6::3:0:1"]');
+  const remote=page.locator('.dc-routing-rib [data-route-id="vm/customer-3/ipv6/2001:db8:6::3:0:1"]');
   await remote.locator('[data-address="::ffff:10.16.0.17"]').hover();
   assert.match(await tooltip.textContent(),/mapowany na VTEP IPv4.*h2001/s);
   await page.locator('.dc-node[data-entity-id="host-b2-h1"].address-preview').waitFor({state:'attached'});

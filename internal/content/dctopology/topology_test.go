@@ -212,7 +212,11 @@ func TestBuildDefaultVMPlacementsAndBGPSessions(t *testing.T) {
 			t.Errorf("duplicate session ID %s", session.ID)
 		}
 		seenSessions[session.ID] = true
-		if session.State != "established" || session.A.ASN == session.B.ASN {
+		wantState := "established"
+		if session.Kind == "customer-rs-user" {
+			wantState = "blocked"
+		}
+		if session.State != wantState || session.A.ASN == session.B.ASN {
 			t.Errorf("unexpected default session state or ASN pair: %+v", session)
 		}
 		for _, family := range session.Families {

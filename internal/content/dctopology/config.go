@@ -58,10 +58,11 @@ type CustomerVMConfig struct {
 }
 
 type CustomerVMOverride struct {
-	ID        int      `yaml:"id" json:"id"`
-	VPCID     *uint32  `yaml:"vpc_id,omitempty" json:"vpc_id,omitempty"`
-	Host      *HostRef `yaml:"host,omitempty" json:"host,omitempty"`
-	Addresses []string `yaml:"addresses,omitempty" json:"addresses,omitempty"`
+	ID                 int      `yaml:"id" json:"id"`
+	VPCID              *uint32  `yaml:"vpc_id,omitempty" json:"vpc_id,omitempty"`
+	Host               *HostRef `yaml:"host,omitempty" json:"host,omitempty"`
+	Addresses          []string `yaml:"addresses,omitempty" json:"addresses,omitempty"`
+	AdvertisedPrefixes []string `yaml:"advertised_prefixes,omitempty" json:"advertised_prefixes,omitempty"`
 }
 
 type HostRef struct {
@@ -70,7 +71,17 @@ type HostRef struct {
 }
 
 type RouteServerConfig struct {
-	Placements []RouteServerPlacement `yaml:"placements,omitempty" json:"placements,omitempty"`
+	Placements  []RouteServerPlacement `yaml:"placements,omitempty" json:"placements,omitempty"`
+	UserOrigins []UserRouteOrigin      `yaml:"user_origins,omitempty" json:"user_origins,omitempty"`
+}
+
+// UserRouteOrigin injects an additional/Shared IP prefix through a concrete RS
+// User member, recursively using a customer's primary public address.
+type UserRouteOrigin struct {
+	ID          string `yaml:"id" json:"id"`
+	Member      int    `yaml:"member" json:"member"`
+	NextHopVMID int    `yaml:"next_hop_vm_id" json:"next_hop_vm_id"`
+	Prefix      string `yaml:"prefix" json:"prefix"`
 }
 
 type RouteServerPlacement struct {
@@ -285,6 +296,51 @@ func (c Config) Validate() error {
 			}
 			effectiveAddressesByVPC[vpcID][key] = paths[index]
 		}
+	}
+
+	validateAdditionalPrefix := func(raw, path string) {
+		prefix, err := netip.ParsePrefix(raw)
+		if err != nil || prefix.Addr().Is4In6() {
+			add(path, "niepoprawny prefiks IPv4/IPv6")
+			return
+		}
+		if !c.syntheticPrefix(prefix) {
+			add(path, "prefiks musi pochodzić z puli syntetycznej, dokumentacyjnej lub zadeklarowanej puli IPv6")
+		}
+		if prefix != prefix.Masked() {
+			add(path, "podaj adres sieci bez ustawionych bitów hosta")
+		}
+		if prefix.Bits() == prefix.Addr().BitLen() && effectiveAddressesByVPC[0][prefix.Addr().String()] != "" {
+			add(path, "podstawowy adres VM jest ogłaszany przez host jako EVPN; wybierz dodatkowy prefiks")
+		}
+	}
+	for i, override := range c.CustomerVMs.Overrides {
+		path := fmt.Sprintf("customer_vms.overrides[%d].advertised_prefixes", i)
+		checkRange(path+".count", len(override.AdvertisedPrefixes), 0, 16)
+		seen := map[string]bool{}
+		for j, raw := range override.AdvertisedPrefixes {
+			field := fmt.Sprintf("%s[%d]", path, j)
+			validateAdditionalPrefix(raw, field)
+			if prefix, err := netip.ParsePrefix(raw); err == nil {
+				key := prefix.Masked().String()
+				if seen[key] {
+					add(field, "prefiks jest powtórzony dla tej VM")
+				}
+				seen[key] = true
+			}
+		}
+	}
+	checkRange("route_servers.user_origins.count", len(c.RouteServers.UserOrigins), 0, 256)
+	userOriginIDs := map[string]bool{}
+	for i, origin := range c.RouteServers.UserOrigins {
+		path := fmt.Sprintf("route_servers.user_origins[%d]", i)
+		if strings.TrimSpace(origin.ID) == "" || userOriginIDs[origin.ID] {
+			add(path+".id", "ID źródła musi być niepuste i unikalne")
+		}
+		userOriginIDs[origin.ID] = true
+		checkRange(path+".member", origin.Member, 1, 4)
+		checkRange(path+".next_hop_vm_id", origin.NextHopVMID, 1, c.CustomerVMs.Count)
+		validateAdditionalPrefix(origin.Prefix, path+".prefix")
 	}
 
 	placementKeys := map[string]bool{}

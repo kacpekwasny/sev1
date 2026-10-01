@@ -805,8 +805,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
 
   function exampleLabel(route) {
     const family=route.ip_family==="ipv6"?"IPv6":"IPv4";
-    const type=route.safi==="evpn"?`EVPN typ ${route.route_type}`:route.origin_kind==="customer"?"Klient → RS User":route.origin_kind==="border-default"?"Trasa domyślna z border":"Underlay";
-    return displayNames(`${type} · ${family} · ${route.prefix} · ${route.origin_id}${route.vpc_id?` · VPC ${route.vpc_id}`:(route.origin_kind==="customer"||route.vni===3?" · default/public VRF":"")}`);
+    const type=route.safi==="evpn"?`EVPN typ ${route.route_type}`:route.origin_kind==="customer"?"Dodatkowy prefiks: VM → RS User":route.origin_kind==="user-injected"?"Shared IP: ogłoszenie RS User":route.origin_kind==="border-default"?"Trasa domyślna z border":"Underlay";
+    return displayNames(`${type} · ${family} · ${route.prefix} · ${route.origin_id}${route.vpc_id?` · VPC ${route.vpc_id}`:(route.origin_kind==="customer"||route.origin_kind==="user-injected"||route.vni===3?" · default/public VRF":"")}`);
   }
 
   function renderFlowExamples() {
@@ -1464,6 +1464,18 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const list = document.createElement("ul"); list.className = "dc-inspector-list";
       for (const value of values) { const li = document.createElement("li"); li.textContent = value; list.append(li); }
       detailsEl.append(list);
+      if(vm.role==="customer") {
+        const note=document.createElement("p");note.className="dc-customer-routing";
+        note.textContent="Podstawowe IP: static → TAP na hoście → EVPN przez RS Bolt/Ctrl → import VXLAN na innych hostach. Dopiero ta łączność umożliwia sesję z RS User. RS User rozprowadza dodatkowe/Shared IP jako IPv4/IPv6 unicast via podstawowy IP VM.";
+        detailsEl.append(note);
+        if(vm.advertised_prefixes?.length) {
+          const prefixes=document.createElement("ul");prefixes.className="dc-inspector-list dc-additional-prefixes";
+          for(const prefix of vm.advertised_prefixes) {
+            const item=document.createElement("li");item.textContent=`${prefix} → next hop ${prefix.includes(":")?vm.ipv6:vm.ipv4}`;prefixes.append(item);
+          }
+          detailsEl.append(prefixes);
+        }
+      }
       const attachment = state.model.local_links?.find((item) => item.vm_id === vm.id);
       if (attachment) {
         const tap = state.model.local_interfaces.find((item) => item.id === attachment.tap_interface_id);
@@ -1538,7 +1550,8 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       context.textContent = route.vpc_id
         ? `VPC ${route.vpc_id} · RD ${route.rd} · RT ${route.route_target} · VNI ${route.vni}`
         : route.origin_kind==="border-default"?"Default/public VRF · trasa domyślna z border · underlay bez VXLAN"
-        : route.vni===3||route.origin_kind==="customer"?`Default/public VRF · VNI 3${route.rd?` · RD ${route.rd}`:""}`:"Underlay · bez kontekstu VPC/VNI";
+        : route.origin_kind==="customer"||route.origin_kind==="user-injected"?"Default/public VRF · dodatkowy prefiks IPv4/IPv6 unicast · next hop to podstawowy publiczny IP VM"
+        : route.vni===3?`Default/public VRF · VNI 3${route.rd?` · RD ${route.rd}`:""}`:"Underlay · bez kontekstu VPC/VNI";
       detailsEl.append(identity, context);
       const localStatic=selected.candidate?.protocol==="static"&&selected.candidate?.kernel_device?.startsWith("tap-");
       if(localStatic) {
@@ -1553,7 +1566,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const recursive=(state.model.route_state.forwarding??[]).find(f=>f.owner_id===paths.owner&&f.route_id===route.id&&f.resolved_route_id);
       if(recursive) {
         const resolution=document.createElement("p");resolution.className="dc-recursive-resolution";
-        resolution.textContent=`Default VRF · next hop ${recursive.next_hop} → EVPN ${recursive.resolved_route_id} → VTEP ${recursive.resolved_next_hop} · VNI ${recursive.vni}`;
+        resolution.textContent=`Prefiks ${recursive.prefix} pozostaje unicast via ${recursive.next_hop}. Rozwiązanie next hop: podstawowy EVPN ${recursive.resolved_route_id} → ${recursive.encapsulate_vxlan?`VTEP ${recursive.resolved_next_hop} · VNI ${recursive.vni}`:`lokalny ${recursive.kernel_device}`}.`;
         detailsEl.append(resolution);
       }
       const provenance = document.createElement("div"); provenance.className="dc-route-provenance";
@@ -1846,6 +1859,11 @@ function appendControlPath(container, session, path, model) {
   physical.textContent = path.reachable ? `Węzły underlay: ${path.physical_node_ids.join(" → ") || "obie końcówki na tym samym hoście"}` : `Brak drogi: ${trafficReasonText(path.reason)}`;
   const links = document.createElement("p"); links.textContent = `Łącza fizyczne: ${path.physical_link_ids.join(", ") || "brak"}`;
   details.append(summary, endpoints, physical, links);
+  if(path.primary_evpn_route_id) {
+    const prerequisite=document.createElement("p");prerequisite.className="dc-session-bootstrap";
+    prerequisite.textContent=`Warunek sesji RS User: static TAP → podstawowy EVPN ${path.primary_evpn_route_id} → publiczny import na hoście RS User oraz IPv6 usługi RS w underlay. ${path.reachable?"Spełniony; dodatkowe prefiksy mogą być ogłaszane jako unicast.":"Niespełniony; brak eksportów dodatkowych prefiksów."}`;
+    details.append(prerequisite);
+  }
   const header = document.createElement("p");
   header.textContent = `Nagłówek transportu: IPv6 ${session.a.address} → ${session.b.address} · TCP 49152 → 179. Port źródłowy i Hop Limit 64 są poglądowe; UPDATE można rozwinąć w eksportach sesji.`;
   details.append(header);
@@ -1871,6 +1889,7 @@ function trafficReasonText(reason) {
     "no-expected-advertisement-path": "brak oczekiwanych eksportów tej trasy między wybranymi końcami",
     "tenant-target-not-supported": "VM klienta wymaga celu w tej samej VRF albo pasującej trasy BGP/default; brak trasy w jej VRF",
     "endpoint-address-unavailable": "wybrany koniec nie ma adresu w tej rodzinie IP",
+    "primary-vm-connectivity-required": "sesja RS User wymaga najpierw publicznej trasy TAP/EVPN do podstawowego IPv6 VM i drogi do IPv6 RS",
   };
   return messages[reason] ?? reason ?? "nieznana przyczyna";
 }
@@ -1906,7 +1925,7 @@ function appendRouteRows(container, entries, simple = false, ownerID = "") {
     const vpc = route.vpc_id ? ` · VPC ${route.vpc_id}` : (route.vni===3||route.vrf==="default"||route.origin_kind==="customer"||route.origin_kind==="border-default"?" · default VRF":"");
     const nextHop = route.next_hop ? ` · NH ${route.next_hop}` : "";
     const nextHopInterface = route.next_hop_interface_id ? ` (${route.next_hop_interface_id})` : "";
-    const family = route.route_type ? ` · EVPN Type ${route.route_type}` : (route.afi && route.safi ? ` · ${route.afi}/${route.safi}` : "");
+    const family = route.protocol==='static'||route.protocol==='kernel'?"":route.route_type ? ` · EVPN Type ${route.route_type}` : (route.afi && route.safi ? ` · ${route.afi}/${route.safi}` : "");
     const resolution = route.underlay_cost !== undefined ? ` · koszt ${route.underlay_cost}, ECMP ${(route.underlay_next_hops??route.ecmp_next_hops)?.length ?? 0}` : "";
     const rd = route.rd ? ` · RD ${route.rd}` : "";
     const rt = route.route_target ? ` · RT ${route.route_target}` : "";
@@ -1933,6 +1952,7 @@ function appendRouteRows(container, entries, simple = false, ownerID = "") {
       info.textContent+=` · ${route.protocol} · table ${route.kernel_table}`;
       if(route.resolved_route_id)info.textContent+=` · BGP NH ${route.next_hop} → EVPN → VTEP IPv4 ${route.resolved_next_hop}`;
     }
+    if(route.rib_source==='recursive')info.textContent=`via ${route.next_hop} · IPv${prefix.includes(':')?'6':'4'} unicast · BGP · rekursja do podstawowego IP VM · table ${route.kernel_table}`;
     row.append(label, info);
     container.append(row);
     if (route.from_id && route.to_id) {

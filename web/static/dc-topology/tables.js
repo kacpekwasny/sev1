@@ -86,7 +86,7 @@ export function routingEntries(model, ownerID) {
     const origins=model.route_state?.origins??[];
     const origin=origins.find(item=>item.id===route.resolved_route_id)??origins.find(item=>item.id===route.route_id);
     const source=route.protocol==='static'?'local-static':route.protocol==='kernel'?'connected'
-      :route.encapsulate_vxlan?(route.resolved_route_id&&route.prefix!==origin?.prefix?'recursive':'evpn-import'):'bgp-underlay';
+      :route.resolved_route_id?'recursive':route.encapsulate_vxlan?'evpn-import':'bgp-underlay';
     return {...route,rib_source:source,source_route_id:origin?.id};
   });
 }
@@ -96,14 +96,15 @@ export function zebraRouteLine(model, route) {
   const network=route.prefix==='0.0.0.0/0'||route.prefix==='::/0'?'default':route.prefix;
   const distance=code==='S'?1:code==='C'?0:20;
   let line=`${code}>* ${network} [${distance}/0]`;
-  if(route.kernel_device)line+=route.kernel_next_hop?` via ${route.kernel_next_hop}, ${route.kernel_device}${route.encapsulate_vxlan?' onlink':''}`:` is directly connected, ${route.kernel_device}`;
+  if(route.resolved_route_id)line+=` via ${route.next_hop} (recursive)`;
+  else if(route.kernel_device)line+=route.kernel_next_hop?` via ${route.kernel_next_hop}, ${route.kernel_device}${route.encapsulate_vxlan?' onlink':''}`:` is directly connected, ${route.kernel_device}`;
   else for(const hop of route.ecmp_next_hops??[]) {
     const iface=model.interfaces.find(item=>item.node_id===route.owner_id&&item.peer_node_id===hop);
     const peer=model.interfaces.find(item=>item.link_id===iface?.link_id&&item.node_id===hop);
     if(iface&&peer)line+=`\n    via ${peer.link_local_ipv6||peer.ipv6_address}, ${iface.name}`;
   }
-  if(route.encapsulate_vxlan)line+=`\n    # ${route.rib_source==='recursive'?'rekursja BGP przez':'import'} EVPN → ${route.tunnel_device}, VNI ${route.vni}, VTEP IPv4 ${route.resolved_next_hop||route.next_hop}`;
-  if(route.resolved_route_id)line+=`\n    # BGP NH ${route.next_hop}; EVPN ${route.resolved_route_id}`;
+  if(route.resolved_route_id)line+=`\n    # IPv${route.prefix.includes(':')?'6':'4'} unicast; next hop to podstawowy IP VM. Rozwiązanie: ${route.resolved_route_id}${route.encapsulate_vxlan?` → VTEP ${route.resolved_next_hop}`:` → ${route.kernel_device}`}`;
+  else if(route.encapsulate_vxlan)line+=`\n    # import EVPN → ${route.tunnel_device}, VNI ${route.vni}, VTEP IPv4 ${route.next_hop}`;
   return line+'\n';
 }
 
@@ -112,13 +113,13 @@ export function appendRoutingRIB(container, model, ownerID, mode, appendRows) {
   const parent=section(container,`Tablica routingu hosta · RIB Zebra · ${entries.length} wybranych`,true);
   parent.classList.add('dc-routing-rib');
   const note=document.createElement('p');
-  note.textContent='Wybrane trasy ze wszystkich źródeł: lokalne TAP-y, underlay i import EVPN do VRF. Zdalne VM używają VXLAN; tablice BGP poniżej zachowują oryginalny next hop i wszystkie ścieżki.';
+  note.textContent='Podstawowe IP VM: lokalna trasa statyczna TAP lub zdalny import EVPN/VXLAN. Dodatkowe prefiksy z RS User: IPv4/IPv6 unicast via podstawowy publiczny IP VM. Rekursja rozwiązuje ten next hop; nie zmienia prefiksu w EVPN. Jądro/FIB poniżej pokazuje rozwiązany dataplane.';
   parent.append(note);
   const vrfs=[...new Set(entries.map(route=>route.vpc_id))];
   for(const vpc of vrfs) {
     const group=section(parent,vpc?`VRF vpc${vpc}`:'Default/public VRF',true);
     group.dataset.routingVrf=String(vpc);
-    const categories=[['evpn-import','VM przez EVPN / VXLAN'],['recursive','BGP rekursywny przez EVPN / VXLAN'],['local-static','Lokalne trasy statyczne do VM'],['bgp-underlay','BGP underlay'],['connected','Adresy loopback · connected']];
+    const categories=[['evpn-import','Podstawowe IP VM · import EVPN / VXLAN'],['recursive','Dodatkowe prefiksy · IPv4/IPv6 unicast via IP VM'],['local-static','Lokalne trasy statyczne do VM'],['bgp-underlay','BGP underlay · w tym default'],['connected','Adresy loopback · connected']];
     for(const [key,label] of categories) {
       const rows=entries.filter(route=>route.vpc_id===vpc&&route.rib_source===key);
       if(!rows.length)continue;

@@ -255,7 +255,7 @@ func inspectPacket(model Model, from, to, family string, preset *ResolvedTraffic
 		var flow ResolvedTraffic
 		if preset != nil {
 			flow = *preset
-			if !destinationVM && flow.DestinationPrefix != "" {
+			if flow.DestinationPrefix != "" && !netip.MustParsePrefix(flow.DestinationPrefix).Contains(netip.MustParseAddr(result.Destination)) {
 				prefix := netip.MustParsePrefix(flow.DestinationPrefix)
 				address := prefix.Addr()
 				if prefix.Contains(address.Next()) {

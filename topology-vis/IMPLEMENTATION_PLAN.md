@@ -346,3 +346,20 @@ local TAP-only static routes, remote EVPN/VXLAN imports, and address hints in
 identity/route/kernel/decoded-packet displays. Hints highlight known owners and
 keep viewport bounds; the canvas legend preserves stationary hover targets.
 Desktop/narrow walkthroughs and pure ownership/scope tests cover these behaviors.
+
+## R27–R28 — Underlay defaults and customer primary/additional separation (D27)
+
+- R27: defaults use physical BGP only. Verify both families at all physical
+  speakers, no RS/default exports, scoped kernel nexthops and public egress.
+- R28: primary public VM static TAP routes originate EVPN via Bolt/Ctrl/Bolt;
+  those routes and infrastructure IPv6 reachability bootstrap RS User peering.
+  Additional/Shared IP prefixes, declared independently in YAML, remain unicast
+  via the primary VM IP through User/Ctrl/Bolt to hosts. Support optional User
+  injection with the same next-hop prerequisite. Keep original host RIB next
+  hops separate from resolved kernel delivery; do not replace primary EVPN with
+  same-prefix customer unicast. Verify blocked bootstrap, Shared IP best paths,
+  local/remote recursion, YAML validation/count preservation and prefix packets.
+
+Both increments are implemented. Domain and pure JS checks pass; the current
+sandbox blocks Git writes, preview binding and Chrome launch. Browser walkthroughs
+are updated but have not been rerun for D27. See PROGRESS for exact limitations.

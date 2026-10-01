@@ -32,10 +32,14 @@ customer_vms:
   overrides:
     - id: 1
       host: {bolt_id: 1, host_id: 1}
+      # Dodatkowy IPv4 i sieć IPv6; next hop to podstawowy publiczny IP tej VM.
+      advertised_prefixes: [10.96.0.1/32, "2001:db8:6:100::/56"]
     - id: 2
       host: {bolt_id: 1, host_id: 1}
+      advertised_prefixes: [10.96.0.2/32, "2001:db8:6:200::/64"]
     - id: 3
       host: {bolt_id: 2, host_id: 1}
+      advertised_prefixes: [10.96.0.3/32, "2001:db8:6:300::3/128"]
 
 route_servers:
   placements:

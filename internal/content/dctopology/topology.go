@@ -239,6 +239,15 @@ func BuildTopology(config Config) (Model, error) {
 		return Model{}, err
 	}
 	model.Routes = BuildExpectedRouteState(model)
+	for _, path := range model.Routes.ControlPaths {
+		if !path.Reachable {
+			for i := range model.Sessions {
+				if model.Sessions[i].ID == path.SessionID {
+					model.Sessions[i].State = "blocked"
+				}
+			}
+		}
+	}
 	return model, nil
 }
 

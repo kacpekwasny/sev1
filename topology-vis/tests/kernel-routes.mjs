@@ -31,12 +31,12 @@ try {
   assert(defaults.every(line=>line.startsWith('default proto bgp\n')&&line.includes('nexthop via')&&!line.includes('vxlan')));
   assert.match(await fib.textContent(),/bridge fdb show dev vxlan3/);
   assert((await fib.textContent()).includes(`dst ${vtep} self extern_learn`));
-  const route=fib.locator('[data-route-id="customer/customer-3/ipv4/10.64.0.3"]').filter({hasText:'proto bgp onlink'});
+  const route=fib.locator('[data-route-id="vm/customer-3/ipv4/10.64.0.3"]').filter({hasText:'proto bgp onlink'});
   await route.hover();await page.locator('.dc-route-propagation-marker').first().waitFor();
   await route.click();assert((await page.locator('.dc-recursive-resolution').textContent()).includes(`VTEP ${vtep}`));
   await page.locator('#dc-inspector-back').click();assert.equal(await page.locator('#dc-rib-view').inputValue(),'linux');
   await page.locator('#dc-rib-view').selectOption('gui');
-  const remote=page.locator('.dc-fib [data-route-id="customer/customer-3/ipv4/10.64.0.3"]');
+  const remote=page.locator('.dc-fib [data-route-id="vm/customer-3/ipv4/10.64.0.3"]');
   assert.match(await remote.textContent(),/dev br3.*VXLAN przez vxlan3/);
   await remote.hover();
   await page.screenshot({path:`/tmp/kernel-routes-${viewport.width}.png`});

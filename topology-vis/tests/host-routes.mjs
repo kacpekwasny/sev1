@@ -33,11 +33,16 @@ try {
   await page.locator('.dc-routing-rib').waitFor();
   for(const mode of ['gui','linux']) {
    await page.locator('#dc-rib-view').selectOption(mode);
-   const remote=page.locator('.dc-routing-rib [data-route-id="customer/customer-3/ipv4/10.64.0.3"]');
+   const remote=page.locator('.dc-routing-rib [data-route-id="vm/customer-3/ipv4/10.64.0.3"]');
    assert.equal(await remote.count(),1);
    assert.match(await remote.textContent(),/VXLAN|vxlan3/);
    assert.match(await remote.textContent(),/br3/);
-   const local=page.locator('.dc-routing-rib [data-route-id="customer/customer-1/ipv4/10.64.0.1"]');
+   const extra=page.locator('.dc-routing-rib [data-route-id="customer/customer-3/ipv4/10.96.0.3/32"]');
+   assert.equal(await extra.count(),1);
+   assert.match(await extra.textContent(),/via 10\.64\.0\.3/);
+   assert.doesNotMatch(await extra.textContent(),/via 10\.16\.0\.17|EVPN Type 5|VXLAN przez/);
+   assert.equal(await extra.locator('xpath=ancestor::details[@data-routing-source="recursive"]').count(),1);
+   const local=page.locator('.dc-routing-rib [data-route-id="vm/customer-1/ipv4/10.64.0.1"]');
    assert.match(await local.textContent(),/tap-c1/);
    await local.click();assert.match(await page.locator('.dc-static-redistribution').textContent(),/EVPN Type 5/);
    assert.equal(await page.locator('.dc-route-learned').count(),0);

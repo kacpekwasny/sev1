@@ -29,8 +29,8 @@ func TestDefaultRouteStateAndForwarding(t *testing.T) {
 			tenantOrigins++
 		}
 	}
-	if underlayOrigins != 72 || tenantOrigins != 12 {
-		t.Fatalf("BGP route origins: underlay=%d tenant=%d; want 72 and 12", underlayOrigins, tenantOrigins)
+	if underlayOrigins != 72 || tenantOrigins != 6 {
+		t.Fatalf("BGP route origins: underlay=%d tenant=%d; want 72 and 6", underlayOrigins, tenantOrigins)
 	}
 	routes := map[string]Route{}
 	for _, route := range state.Origins {
@@ -66,26 +66,26 @@ func TestDefaultRouteStateAndForwarding(t *testing.T) {
 		tables[table.SpeakerID] = table
 	}
 	local := tables["host-b1-h1"]
-	if countRoutesByVPC(local.LocallyOriginated, 1) != 4 || countRoutesByVPC(local.Selected, 1) != 12 {
-		t.Fatalf("host with two local VMs should originate four and select twelve BGP tenant prefixes: local=%d selected=%d", countRoutesByVPC(local.LocallyOriginated, 1), countRoutesByVPC(local.Selected, 1))
+	if countRoutesByVPC(local.LocallyOriginated, 1) != 4 || countRoutesByVPC(local.Selected, 1) != 6 {
+		t.Fatalf("host with two local VMs should originate four and select six EVPN tenant prefixes: local=%d selected=%d", countRoutesByVPC(local.LocallyOriginated, 1), countRoutesByVPC(local.Selected, 1))
 	}
 	remote := tables["host-b2-h1"]
-	if countRoutesByVPC(remote.LocallyOriginated, 1) != 2 || countRoutesByVPC(remote.Selected, 1) != 12 {
+	if countRoutesByVPC(remote.LocallyOriginated, 1) != 2 || countRoutesByVPC(remote.Selected, 1) != 6 {
 		t.Fatalf("remote VPC host route table mismatch: local=%d selected=%d", countRoutesByVPC(remote.LocallyOriginated, 1), countRoutesByVPC(remote.Selected, 1))
 	}
-	if got := countRoutesByVPC(tables["host-b1-h2"].Selected, 1); got != 12 {
-		t.Errorf("host without a VPC should retain six EVPN and six unicast routes in the RIB: got %d", got)
+	if got := countRoutesByVPC(tables["host-b1-h2"].Selected, 1); got != 6 {
+		t.Errorf("host without a VPC should retain six EVPN routes in the RIB: got %d", got)
 	}
 	for _, entry := range state.Forwarding {
 		if entry.OwnerID == "host-b1-h2" && entry.VPCID != 0 {
 			t.Errorf("host without VPC imported forwarding entry: %+v", entry)
 		}
 	}
-	if got := countRoutesByVPC(tables["rs-ctrl-m1"].Selected, 1); got != 12 {
-		t.Errorf("RS Ctrl selected route count=%d; want 12", got)
+	if got := countRoutesByVPC(tables["rs-ctrl-m1"].Selected, 1); got != 6 {
+		t.Errorf("RS Ctrl selected route count=%d; want 6", got)
 	}
-	if got := len(tables["customer-1"].Selected); got != 2 {
-		t.Errorf("selected customer BGP table should contain only its two local routes: got %d, want 2", got)
+	if got := len(tables["customer-1"].Selected); got != 0 {
+		t.Errorf("private customer BGP table cannot export via public RS User: got %d, want 0", got)
 	}
 	for _, candidate := range remote.Selected {
 		if candidate.VPCID != 1 {
@@ -288,7 +288,7 @@ func TestRouteContextsKeepOverlappingPrefixesIsolated(t *testing.T) {
 }
 
 func TestOnlyYAMLSelectedCustomerVMsUseRSUserForUnicastRoutes(t *testing.T) {
-	config := exampleConfig(t)
+	config := publicConfig(t)
 	config.CustomerVMs.RSUserPeers = []int{1}
 	model, err := BuildTopology(config)
 	if err != nil {
@@ -585,7 +585,7 @@ func TestIllustratedRSBranchesAlwaysContinueToEndDevices(t *testing.T) {
 }
 
 func TestRSUserCustomerSessionsOnlyImport(t *testing.T) {
-	model, err := BuildTopology(exampleConfig(t))
+	model, err := BuildTopology(publicConfig(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -742,18 +742,18 @@ func TestKernelForwardingSeparatesUnderlayAndVXLAN(t *testing.T) {
 			continue
 		}
 		origin := origins[entry.RouteID]
-		if origin.OriginKind == "customer" || origin.OriginKind == "host" {
+		if origin.OriginKind == "host" {
 			if entry.EncapsulateVXLAN {
 				remote++
 				if entry.KernelDevice != "br3" || entry.TunnelDevice != "vxlan3" || entry.RouterMAC == "" || entry.KernelTable != "main" {
 					t.Fatalf("unresolved kernel tunnel: %+v", entry)
 				}
-				expected := entry.ResolvedNextHop
+				expected := entry.NextHop
 				if origin.IPFamily == "ipv6" {
 					expected = "::ffff:" + expected
 				}
 				if entry.KernelNextHop != expected {
-					t.Fatalf("kernel uses original recursive VM next hop: %+v", entry)
+					t.Fatalf("primary EVPN kernel route has incorrect VTEP: %+v", entry)
 				}
 			} else {
 				local++
@@ -784,7 +784,7 @@ func TestKernelForwardingSeparatesUnderlayAndVXLAN(t *testing.T) {
 	for _, table := range model.Routes.Tables {
 		selected[table.SpeakerID] = append([]RouteCandidate(nil), table.Selected...)
 	}
-	route := origins["customer/customer-3/ipv4/10.64.0.3"]
+	route := origins["customer/customer-3/ipv4/10.96.0.3/32"]
 	route.ID, route.Prefix, route.NextHopNodeID = "customer/test-network", "203.0.113.0/24", "host-b1-h2"
 	selected["host-b1-h1"] = append(selected["host-b1-h1"], RouteCandidate{Route: route})
 	unreachable := route

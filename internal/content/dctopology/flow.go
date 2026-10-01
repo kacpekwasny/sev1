@@ -73,7 +73,7 @@ func buildFlowExamples(model Model, state RouteState) []FlowExample {
 			if route.SAFI == "evpn" {
 				return 0
 			}
-			if route.OriginKind == "customer" {
+			if route.OriginKind == "customer" || route.OriginKind == "user-injected" {
 				return 1
 			}
 			return 2
