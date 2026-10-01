@@ -76,10 +76,17 @@ The underlay BGP preset shows physical devices with fabric and host–ToR sessio
 hiding cables and overlay BGP. The overlay preset shows grouped RS tiers and
 overlay BGP with fabric devices and cables hidden.
 A pressed preset matches the current controls; manual adjustments remain possible.
+Dependent switches stay in place and become disabled when their parent layer is off.
+Canvas dimensions, rack outlines, device row anchors, customer positions, zoom and
+scroll stay stable across presets and RS grouping. Host boxes resize downward from
+fixed top edges; moving RSs to abstract tiers uses reserved space above the fabric.
+The advertisement row retains its space when flow is off, and long wave labels are
+truncated with their complete text available on hover.
 They preserve YAML, calculated routes, dragged offsets and the flow switch.
 
-Łącza and Sesje BGP are independent switches. The master Sesje BGP switch reveals
-BGP underlay and BGP overlay child switches, initially both enabled. Underlay
+Łącza and Sesje BGP are independent switches. The master Sesje BGP switch enables
+BGP underlay and BGP overlay child switches, initially both enabled. When the
+master is off, both child switches stay visible but disabled. Underlay
 controls fabric and host–ToR peering; overlay controls host/Bolt/Ctrl/User,
 customer/User and border/Ctrl peering regardless of AFI or physical placement.
 The overlay preset enables overlay BGP only; enabling Sesje BGP after the
@@ -96,8 +103,8 @@ Ctrl centered, and User at the top right. Expanded cards show all four members;
 Grupuj RS replaces them with one aggregate icon. Rack outlines stay inside their
 bolt, with gaps between neighboring racks and bolts.
 Urządzenia underlay hides fabric switches and their links while retaining hosts
-and VMs. Its Zachowaj routery border suboption appears when underlay is hidden and is enabled
-by default: border devices remain visible with their RS Ctrl sessions when Sesje
+and VMs. Its Zachowaj routery border suboption is always visible, becomes available when
+underlay is hidden, and is enabled by default: border devices remain visible with their RS Ctrl sessions when Sesje
 BGP is on. Turn the suboption off to hide borders too. Hidden physical paths pause
 playback; the configuration stays unchanged.
 Hosts use slugs such as `h2001`; individual RSs use `rs13001`, `rsctrl4`, and
@@ -322,6 +329,9 @@ node topology-vis/tests/automatic-route-flow.mjs
 node topology-vis/tests/address-ownership.mjs
 node topology-vis/tests/customer-rib.mjs
 node topology-vis/tests/languages.mjs
+node topology-vis/tests/layout.mjs pl
+node topology-vis/tests/layout.mjs en
+node topology-vis/tests/site-controls.mjs
 ```
 
 The optional browser walkthrough in [tests/browser.mjs](tests/browser.mjs) uses an
@@ -377,4 +387,26 @@ node topology-vis/tests/host-routes.mjs
 PLAYWRIGHT_MODULE=/path/to/playwright-core/index.mjs \
 TOPOLOGY_URL=http://127.0.0.1:8081/topologie/dc/ \
 node topology-vis/tests/address-hints.mjs
+```
+
+The site regression walkthrough checks immediate language changes, header alignment,
+rendered local page links, hints, topology views, and the DC controls in both languages
+at desktop and narrow widths. Run it on a disposable local server:
+
+```sh
+PLAYWRIGHT_MODULE=/tmp/topology-browser/node_modules/playwright-core/index.mjs \
+  SEV1_URL=http://127.0.0.1:8081/ node topology-vis/tests/site-browser.mjs
+```
+
+[QA.md](QA.md) records confirmed failures, fixes, automated coverage, and checks
+completed in an actual browser. The standalone layout checks also accept a real
+model JSON file as their third argument.
+
+The live walkthrough uses separate audience and presenter sessions to check voting,
+questions, answers, moderation, translations, viewport fit and SSE draft preservation.
+It changes the disposable server's in-memory live state:
+
+```sh
+PLAYWRIGHT_MODULE=/tmp/topology-browser/node_modules/playwright-core/index.mjs \
+  SEV1_URL=http://127.0.0.1:8081/ node topology-vis/tests/live-browser.mjs
 ```

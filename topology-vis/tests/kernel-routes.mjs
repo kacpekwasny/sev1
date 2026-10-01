@@ -33,7 +33,11 @@ try {
   assert((await fib.textContent()).includes(`dst ${vtep} self extern_learn`));
   const route=fib.locator('[data-route-id="vm/customer-3/ipv4/10.64.0.3"]').filter({hasText:'proto bgp onlink'});
   await route.hover();await page.locator('.dc-route-propagation-marker').first().waitFor();
-  await route.click();assert((await page.locator('.dc-recursive-resolution').textContent()).includes(`VTEP ${vtep}`));
+  await route.click();assert.match(await page.locator('#dc-details').textContent(), /Default\/public VRF · VNI 3/);
+  assert.equal(await page.locator('.dc-recursive-resolution').count(),0,'The primary EVPN route is already resolved');
+  await page.locator('#dc-inspector-back').click();
+  await page.locator('.dc-fib [data-route-id="customer/customer-3/ipv4/10.96.0.3/32"]').filter({hasText:'proto bgp onlink'}).click();
+  assert((await page.locator('.dc-recursive-resolution').textContent()).includes(`VTEP ${vtep}`));
   await page.locator('#dc-inspector-back').click();assert.equal(await page.locator('#dc-rib-view').inputValue(),'linux');
   await page.locator('#dc-rib-view').selectOption('gui');
   const remote=page.locator('.dc-fib [data-route-id="vm/customer-3/ipv4/10.64.0.3"]');

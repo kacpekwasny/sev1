@@ -26,7 +26,8 @@ try {
   });
   assert(routeFlowStreams.some(stream=>stream.steps[0].fromID==='customer-1'&&stream.steps[0].toID.startsWith('rs-user-')));
   const initial=await page.locator('.dc-node').count();
-  assert.equal(await page.locator('#dc-border-option').isHidden(),true);
+  assert.equal(await page.locator('#dc-border-option').isVisible(),true);
+  assert.equal(await page.locator('#dc-keep-borders').isDisabled(),true);
   await page.locator('#dc-show-underlay').uncheck();
   assert.equal(await page.locator('#dc-border-option').isVisible(),true);
   assert.equal(await page.locator('#dc-keep-borders').isChecked(),true);
@@ -43,7 +44,8 @@ try {
   assert.equal(await page.locator('.dc-vm').count(),19);
   assert.equal(await page.locator('.dc-edge').count(),0);
   await page.locator('#dc-show-underlay').check();
-  assert.equal(await page.locator('#dc-border-option').isHidden(),true);
+  assert.equal(await page.locator('#dc-border-option').isVisible(),true);
+  assert.equal(await page.locator('#dc-keep-borders').isDisabled(),true);
   assert.equal(await page.locator('.dc-node').count(),initial);
   await page.locator('#dc-show-underlay').uncheck();
   await page.locator('#dc-keep-borders').check();

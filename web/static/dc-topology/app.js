@@ -41,7 +41,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
         <label><input id="dc-collapse-rs" type="checkbox"> ${t("Grupuj RS")}</label>
         <div class="dc-underlay-options">
           <label><input id="dc-show-underlay" type="checkbox" checked> ${t("Urządzenia underlay")}</label>
-          <label id="dc-border-option" class="dc-underlay-suboption" hidden><input id="dc-keep-borders" type="checkbox" checked> ${t("Zachowaj routery border")}</label>
+          <label id="dc-border-option" class="dc-underlay-suboption"><input id="dc-keep-borders" type="checkbox" checked> ${t("Zachowaj routery border")}</label>
         </div>
         <label title="${t("Ilustracja po sesjach BGP; tablice tras pozostają bez zmian.")}"><input id="dc-show-route-flow" type="checkbox" checked> ${t("Przepływ tras")}</label>
         <button id="dc-layout-reset" class="dc-tool-button" type="button">${t("Reset układu")}</button>
@@ -865,7 +865,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       }
     }
     const label=t`${exampleLabel(stream.route)} · fala ${waveIndex+1}/${stream.waves.length}${reducedMotion.matches?t(" · widok bez animacji"):""}`;
-    if(currentAdvertisement.textContent!==label)currentAdvertisement.textContent=label;
+    if(currentAdvertisement.textContent!==label) { currentAdvertisement.textContent=label; currentAdvertisement.title=label; }
   }
 
   function syncIllustration() {
@@ -1147,8 +1147,11 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   }
 
   function renderGraph() {
-    root.querySelector("#dc-border-option").hidden = showUnderlay.checked;
-    root.querySelector("#dc-session-types").hidden = !showSessions.checked;
+    // Keep the toolbar footprint fixed; dependent switches retain their preferences.
+    root.querySelector("#dc-border-option").classList.toggle("is-inactive", showUnderlay.checked);
+    keepBorders.disabled = showUnderlay.checked;
+    root.querySelector("#dc-session-types").classList.toggle("is-inactive", !showSessions.checked);
+    showUnderlayBGP.disabled = showOverlayBGP.disabled = !showSessions.checked;
     for (const [name, controls] of Object.entries(viewPresets)) root.querySelector(`#dc-preset-${name}`).setAttribute("aria-pressed", String(controls.every(([control, checked]) => control.checked === checked)));
     const model = state.model;
     if (!model) {
@@ -1365,7 +1368,10 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       const routeMarker=svgElement("circle",{...(index===0?{id:"dc-route-marker"}:{}),class:"dc-route-marker",r:5,visibility:"hidden"});
       routeMarker.append(svgElement("title",{}));svg.append(routeMarker);
     }
+    const scrollLeft = graphEl.scrollLeft, scrollTop = graphEl.scrollTop;
     graphEl.replaceChildren(svg);
+    graphEl.scrollLeft = scrollLeft;
+    graphEl.scrollTop = scrollTop;
     highlightAddressOwners();
     updateAnimationMarker();
     updatePlaybackControls();
@@ -1695,12 +1701,14 @@ function boundedOffset(x, y, bounds) {
   };
 }
 
-function layout(model, options) {
+export function layout(model, options) {
   const topology = model.config.topology;
   const rackWidth = 252, rackGap = 16, boltPadding = 16, boltGap = 32;
   const blockWidth = Math.max(topology.racks_per_bolt * rackWidth + (topology.racks_per_bolt - 1) * rackGap + boltPadding * 2, topology.leaves_per_bolt * 116 + 32);
   const fabricWidth = topology.bolts * blockWidth + (topology.bolts - 1) * boltGap;
-  const width = Math.max(1040, fabricWidth + 160, !options.showInfraOnHosts ? (topology.borders - 1) * 124 + 862 : 0);
+  // Reserve the same map for hosted/tiered and grouped/expanded RS views.
+  const reservesRSTiers = model.vms.some(vm => vm.role !== "customer");
+  const width = Math.max(1040, fabricWidth + 160, reservesRSTiers ? (topology.borders - 1) * 124 + 862 : 0);
   const margin = (width - fabricWidth) / 2;
   const nodes = new Map();
   const offsetBounds = new Map();
@@ -1715,10 +1723,14 @@ function layout(model, options) {
     if (item.onHost) hostedCounts.set(item.hostID, (hostedCounts.get(item.hostID) ?? 0) + 1);
   }
   const abstract = displayItems.some((item) => !item.onHost);
-  const spineY = abstract ? 340 : 250, leafY = abstract ? 545 : 350;
+  const spineY = reservesRSTiers ? 340 : 250, leafY = reservesRSTiers ? 545 : 350;
   const rackTop = leafY + 65, torY = rackTop + 55, hostTop = torY + 60;
   const hostHeight = (id) => Math.max(80, (hostedCounts.get(id) ?? 0) * 28 + 52);
-  const maxHostHeight = Math.max(80, ...model.nodes.filter((node) => node.kind === "host").map((node) => hostHeight(node.id)));
+  const expandedHostCounts = new Map();
+  for (const vm of model.vms) expandedHostCounts.set(vm.host_id, (expandedHostCounts.get(vm.host_id) ?? 0) + 1);
+  // Boxes resize downward from their fixed top; later rows and rack outlines stay put.
+  const maxHostHeight = Math.max(80, ...model.nodes.filter(node => node.kind === "host")
+    .map(node => (expandedHostCounts.get(node.id) ?? 0) * 28 + 52));
   const hostRowGap = maxHostHeight + 28;
   const rackBottom = hostTop + (Math.ceil(topology.hosts_per_rack / 2) - 1) * hostRowGap + maxHostHeight + 26;
 
@@ -1740,7 +1752,7 @@ function layout(model, options) {
   for (const [kind, y] of tiers) {
     const members = model.nodes.filter((node) => node.kind === kind).sort((a, b) => a.role_index - b.role_index);
     const span = kind === "spine" ? fabricWidth - 120 : (members.length - 1) * 124;
-    const bounds = abstract && kind === "stem" ? { top: -12, bottom: 12 } : abstract && kind === "spine" ? { top: -4, bottom: 8 } : undefined;
+    const bounds = reservesRSTiers && kind === "stem" ? { top: -12, bottom: 12 } : reservesRSTiers && kind === "spine" ? { top: -4, bottom: 8 } : undefined;
     evenPositions(members, (width - span) / 2, (width + span) / 2).forEach((x, index) => placeNode(members[index], x, y, bounds));
   }
   for (let bolt = 1; bolt <= topology.bolts; bolt++) {
