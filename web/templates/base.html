@@ -29,11 +29,10 @@
 <header class="topbar{{if .Bare}} clean{{end}}">
   <a class="brand" href="/"><span class="sev">SEV1</span> <span class="brand-sub">wykłady @ WIET AGH</span></a>
   <nav>
-    <a href="/wyklady/" {{if eq .Path "/wyklady/"}}class="on"{{end}}>Wykłady</a>
-    <a href="/notatki/" {{if eq .Path "/notatki/"}}class="on"{{end}}>Notatki</a>
-    <a href="/notatki/graf" {{if eq .Path "/notatki/graf"}}class="on"{{end}}>Graf</a>
-    <a href="/topologie/" {{if or (eq .Path "/topologie/") .DCTopology}}class="on"{{end}}>Topologie</a>
-    <a href="/zadania/" {{if eq .Path "/zadania/"}}class="on"{{end}}>Zadania</a>
+    {{if .Visibility.Lectures}}<a href="/wyklady/" {{if eq .Path "/wyklady/"}}class="on"{{end}}>Wykłady</a>{{end}}
+    {{if .Visibility.Notes}}<a href="/notatki/" {{if eq .Path "/notatki/"}}class="on"{{end}}>Notatki</a>{{end}}
+    {{if .Visibility.Topologies}}<a href="/topologie/" {{if or (eq .Path "/topologie/") .DCTopology}}class="on"{{end}}>Topologie</a>{{end}}
+    {{if .Visibility.Tasks}}<a href="/zadania/" {{if eq .Path "/zadania/"}}class="on"{{end}}>Zadania</a>{{end}}
     {{template "live-nav" .OnAir}}
   </nav>
 </header>
@@ -45,7 +44,7 @@
 {{if not .Bare}}
 <footer>
   <span>Routing Services · Akamai</span>
-  <span>Materiały: <a href="/notatki/vault.zip">vault .zip</a> dla Obsidiana</span>
+  {{if .Visibility.Notes}}<span>Materiały: <a href="/notatki/vault.zip">vault .zip</a> dla Obsidiana</span>{{end}}
 </footer>
 {{end}}
 </body>

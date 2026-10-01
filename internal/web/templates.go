@@ -129,6 +129,7 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, page string, dat
 	}
 	data["Path"] = r.URL.Path
 	data["BaseURL"] = baseURL(r)
+	data["Visibility"] = s.lib().Visibility
 	// Kropka "na żywo" wisi w menu, a menu jest na każdej stronie - więc stan
 	// wykładu dokłada się tutaj, raz, zamiast w każdym handlerze osobno.
 	data["OnAir"] = s.hub.OnAir()
@@ -173,6 +174,12 @@ type NickView struct {
 	Me    live.Participant
 	Error string // shown next to the field, e.g. nickname already taken
 	Saved bool
+}
+
+type VisibilityPanelView struct {
+	Visibility content.Visibility
+	Error      string
+	Saved      bool
 }
 
 // QuestionsView wraps the shared snapshot with the audience member's id so
@@ -241,13 +248,15 @@ func pollView(lib *content.Library, snap live.Snapshot) PollView {
 // entries come from the agenda block owning the active poll, so the presenter
 // controls which words are useful for the current slide in content files.
 type GlossaryView struct {
-	Terms    []content.AgendaTerm
-	HasSlide bool
+	Terms     []content.AgendaTerm
+	HasSlide  bool
+	ShowNotes bool
 }
 
 func glossaryView(lib *content.Library, snap live.Snapshot) GlossaryView {
 	return GlossaryView{
-		Terms:    lib.TermsForPoll(snap.PollID),
-		HasSlide: snap.PollID != "",
+		Terms:     lib.TermsForPoll(snap.PollID),
+		HasSlide:  snap.PollID != "",
+		ShowNotes: lib.Visibility.Notes,
 	}
 }

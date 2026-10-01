@@ -9,7 +9,7 @@
       <div class="glossary-entry">
         <dt>{{.Term.Name}}{{if .Earlier}} <span class="glossary-badge">wcześniej</span>{{end}}</dt>
         <dd>{{.Term.Short}}</dd>
-        {{if .Term.Note}}<dd><a href="/notatki/{{.Term.Note}}">dłuższe wyjaśnienie →</a></dd>{{end}}
+        {{if and $.ShowNotes .Term.Note}}<dd><a href="/notatki/{{.Term.Note}}">dłuższe wyjaśnienie →</a></dd>{{end}}
       </div>
       {{end}}
     </dl>

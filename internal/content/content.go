@@ -12,6 +12,7 @@ package content
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"html/template"
 	"os"
@@ -38,6 +39,15 @@ type Lecture struct {
 	Summary string        `yaml:"summary"`
 	Agenda  []AgendaItem  `yaml:"agenda"`
 	Body    template.HTML `yaml:"-"`
+}
+
+// Visibility controls which content sections are shown and served publicly.
+// Missing values in visibility.yaml keep their default (enabled) state.
+type Visibility struct {
+	Lectures   bool `yaml:"lectures"`
+	Notes      bool `yaml:"notes"`
+	Topologies bool `yaml:"topologies"`
+	Tasks      bool `yaml:"tasks"`
 }
 
 // Kolejne stany wykładu w serii. Sterują tym, co strona główna wysuwa na
@@ -180,6 +190,7 @@ type AgendaTerm struct {
 
 // Library is the whole site content, loaded in one go.
 type Library struct {
+	Visibility     Visibility
 	Lectures       []*Lecture
 	Notes          []*Note
 	NoteBySlug     map[string]*Note
@@ -206,12 +217,16 @@ var markdown = goldmark.New(
 // request in -dev mode, so notes can be edited without a restart.
 func Load(dir string) (*Library, error) {
 	lib := &Library{
+		Visibility:     Visibility{Lectures: true, Notes: true, Topologies: true, Tasks: true},
 		NoteBySlug:     map[string]*Note{},
 		TaskBySlug:     map[string]*Task{},
 		TopologyBySlug: map[string]*Topology{},
 		PollByID:       map[string]*Poll{},
 		LectureBySlug:  map[string]*Lecture{},
 		TermByID:       map[string]*Term{},
+	}
+	if err := lib.loadVisibility(filepath.Join(dir, "visibility.yaml")); err != nil {
+		return nil, err
 	}
 	if err := lib.loadLectures(filepath.Join(dir, "lectures")); err != nil {
 		return nil, err
@@ -233,6 +248,24 @@ func Load(dir string) (*Library, error) {
 	}
 	lib.indexTerms()
 	return lib, nil
+}
+
+func (l *Library) loadVisibility(path string) error {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	config := struct {
+		Sections Visibility `yaml:"sections"`
+	}{Sections: l.Visibility}
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return fmt.Errorf("visibility: %w", err)
+	}
+	l.Visibility = config.Sections
+	return nil
 }
 
 func (l *Library) loadLectures(dir string) error {

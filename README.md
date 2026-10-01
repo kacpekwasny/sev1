@@ -67,6 +67,15 @@ chodzi w granacie z plakatu i bez stopki (`Bare` w danych szablonu).
 `/wyklady/` to **strona z materiałami**, czyli to, co było wcześniej stroną główną:
 najbliższy termin, program, zadania i notatki.
 
+Widoczność tych działów ustawiasz w `content/visibility.yaml` albo w panelu
+prowadzącego (`/panel`). W pliku ustaw `false` albo odznacz odpowiedni dział w
+panelu, żeby ukryć go w menu, na stronach i w odnośnikach; podstrony działu też
+zwracają 404. Wspólny hub `/wyklady/`
+zostaje dostępny dla pozostałych włączonych materiałów. Graf, eksport ZIP i pliki
+Markdown należą do działu notatek. Zmiana w panelu zapisuje plik i od razu działa;
+serwer potrzebuje prawa zapisu do `content/`. Zmiany pliku ładują się przy każdym
+żądaniu w `-dev`, a poza tym trybem po restarcie.
+
 Terminy na wejściówce biorą się z nagłówków wykładów (`date:`), a najbliższy termin
 na `/wyklady/` — z tego oznaczonego `status: najblizszy`. Po każdym wykładzie przestaw
 go na `odbyty`, a następnemu wpisz `najblizszy`. Testy `TestEntryPageIsThePoster`
@@ -160,6 +169,8 @@ wersji interaktywnej przez `[[topologie/spine-leaf|…]]`.
 
 **Eksplorator DC.** `/topologie/dc/` to osobna, dynamiczna aplikacja JavaScript:
 urządzenia można lekko przesuwać, a szczegóły otwierają się nad topologią.
+Strona i jej API respektują widoczność działu „Topologie” ustawianą w panelu
+lub w `content/visibility.yaml`.
 Konfiguracja YAML przelicza oczekiwane tablice tras; przełącznik przepływu tras
 włącza poglądową ilustrację. Kod nie symuluje konwergencji BGP. Osobny harness:
 `go run ./cmd/dc-topology` (port 8084). Opis konfiguracji i sprawdzeń:

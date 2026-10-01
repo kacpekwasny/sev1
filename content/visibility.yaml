@@ -1,0 +1,7 @@
+# Set a section to false to hide its pages and links while it is being prepared.
+# Sections default to true if this file or an individual setting is omitted.
+sections:
+  lectures: true
+  notes: false
+  topologies: false
+  tasks: false

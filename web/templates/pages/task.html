@@ -20,7 +20,7 @@
   </ul>
   {{end}}
 
-  {{if .Notes}}
+  {{if and $.Visibility.Notes .Notes}}
   <h2>Powiązane notatki</h2>
   <p>{{range .Notes}}<a class="chip" href="/notatki/{{.}}">{{noteTitle $lib .}}</a>{{end}}</p>
   {{end}}

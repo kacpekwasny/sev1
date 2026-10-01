@@ -7,11 +7,13 @@ import (
 	"strings"
 	"testing"
 
+	"wykladywiet/internal/content"
 	"wykladywiet/internal/live"
 )
 
 // newTestServer serves the real content and templates from the repo, so a
 // broken template or a typo in a wikilink shows up as a failing test.
+// Enable every section in this isolated cache, independent of deployment settings.
 func newTestServer(t *testing.T) *Server {
 	t.Helper()
 	srv, err := New(Options{
@@ -22,6 +24,9 @@ func newTestServer(t *testing.T) *Server {
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
+	library := *srv.cache
+	library.Visibility = content.Visibility{Lectures: true, Notes: true, Topologies: true, Tasks: true}
+	srv.cache = &library
 	return srv
 }
 
@@ -107,7 +112,7 @@ func TestHubHasTheMaterials(t *testing.T) {
 	}
 
 	body := get(t, srv, "/wyklady/").Body.String()
-	for _, want := range []string{next.Title, next.Date, next.Place, "WRSS", "Pobierz vault"} {
+	for _, want := range []string{next.Title, next.Date, next.Place, `href="/wyklady/` + next.Slug + `"`, "Pobierz vault"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("na /wyklady/ brakuje %q", want)
 		}
