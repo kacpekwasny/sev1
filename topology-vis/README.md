@@ -78,8 +78,11 @@ overlay BGP with fabric devices and cables hidden.
 A pressed preset matches the current controls; manual adjustments remain possible.
 Dependent switches stay in place and become disabled when their parent layer is off.
 Canvas dimensions, rack outlines, device row anchors, customer positions, zoom and
-scroll stay stable across presets and RS grouping. Host boxes resize downward from
-fixed top edges; moving RSs to abstract tiers uses reserved space above the fabric.
+scroll stay stable across presets and RS grouping. All hosts have the same fixed
+dimensions with room for five VM rows. Longer VM lists scroll inside their host
+with a wheel, touch or keyboard; scroll positions survive view changes. BGP endpoints
+for offscreen VMs remain within the host viewport. Moving RSs to abstract tiers uses
+reserved space above the fabric.
 The advertisement row retains its space when flow is off, and long wave labels are
 truncated with their complete text available on hover.
 They preserve YAML, calculated routes, dragged offsets and the flow switch.

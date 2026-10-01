@@ -1,5 +1,7 @@
 import { t } from "../i18n.js";
 const NS = "http://www.w3.org/2000/svg";
+const HOST_VM_LIMIT = 5, VM_ROW_HEIGHT = 28;
+const HOST_HEIGHT = HOST_VM_LIMIT * VM_ROW_HEIGHT + 52;
 import { appendRIB, appendFIB, identifyRoute, appendRoutingRIB, appendOriginatedRoutes } from "./tables.js";
 import { routeFlowStreams, originatedRouteFlow, automaticRouteFlowStreams } from "./route-flow.js";
 import { bgpSessionLayer, bgpSessionVisible, filterRouteFlowLayers } from "./session-layers.js";
@@ -203,6 +205,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
   const inspectorPending = new Set();
   const inspectorErrors = new Map();
   const viewOffsets = new Map();
+  const hostScrolls = new Map();
   let drag = null;
   let dragFrame = 0;
   let suppressClickUntil = 0;
@@ -1034,6 +1037,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       endDrag(null, true);
       cancelResize();
       viewOffsets.clear();
+      hostScrolls.clear();
       inspectorEl.hidden = true;
       selected = null;
       inspectorHistory.length = 0; popupPosition = null; popupSize = null; endpointPick = null; deviceMenu = null;
@@ -1162,6 +1166,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       showInfraOnHosts: showInfraOnHosts.checked,
       collapseRouteServers: collapseRouteServers.checked,
       offsets: viewOffsets,
+      hostScrolls,
     });
     const visibility = sessionVisibility();
     for (const node of model.nodes) if (!nodeVisible(node)) positions.entityPoints.delete(node.id);
@@ -1267,6 +1272,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
           class: `dc-session${selectedClass}`, role: "button", tabindex: "0",
           "data-entity-type": "session", "data-entity-id": session.id,
           "data-session-layer": bgpSessionLayer(session),
+          "data-from": step?.fromID ?? session.a.entity_id, "data-to": step?.toID ?? session.b.entity_id,
           "aria-label": t`Sesja BGP ${session.a.label} — ${session.b.label}, ${session.families.map((family) => `${family.afi}/${family.safi}`).join(", ")}`,
         });
         const aY = a.y;
@@ -1346,6 +1352,25 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       svg.append(svgElement("line",{x1:a.x,y1:a.y,x2:b.x,y2:b.y,class:segment.internal?"dc-packet-internal-track":"dc-packet-track","data-from":segment.from,"data-to":segment.to,"data-duration":segment.duration,"aria-hidden":"true"}));
     }
     const vmLayer = svgElement("g", { class: "dc-vms" });
+    const hostLists = new Map();
+    for (const [hostID, viewport] of positions.hostViewports) {
+      if (viewport.count <= HOST_VM_LIMIT) continue;
+      const foreign = svgElement("foreignObject", { x: viewport.x, y: viewport.y, width: viewport.width, height: viewport.height });
+      const scroller = document.createElementNS('http://www.w3.org/1999/xhtml', 'div');
+      scroller.className = 'dc-host-vm-scroll';
+      scroller.dataset.hostId = hostID;
+      scroller.tabIndex = 0;
+      scroller.setAttribute('role', 'region');
+      scroller.setAttribute('aria-label', t`Maszyny wirtualne na hoście ${model.nodes.find(node => node.id === hostID)?.label ?? hostID}`);
+      const list = svgElement('svg', { width: viewport.width, height: viewport.count * VM_ROW_HEIGHT,
+        viewBox: `${viewport.x} ${viewport.y} ${viewport.width} ${viewport.count * VM_ROW_HEIGHT}` });
+      scroller.append(list); foreign.append(scroller); vmLayer.append(foreign);
+      hostLists.set(hostID, { list, scroller });
+      scroller.addEventListener('scroll', () => {
+        hostScrolls.set(hostID, scroller.scrollTop);
+        updateHostScroll(hostID, scroller.scrollTop);
+      }, { signal: events.signal });
+    }
     for (const item of positions.displayItems) {
       const point = positions.displayPoints.get(item.id);
       if (!point) continue;
@@ -1359,7 +1384,7 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       });
       group.append(svgElement("rect", { x: -47, y: -12, width: 94, height: 24, rx: 7 }));
       group.append(svgText(0, 4, item.label, "dc-vm-label"));
-      vmLayer.append(group);
+      (item.onHost && hostLists.has(item.hostID) ? hostLists.get(item.hostID).list : vmLayer).append(group);
     }
     svg.append(vmLayer,propagationLayer);
     svg.append(svgElement("circle", { id: "dc-packet-marker", class: "dc-packet-marker", r: 7, visibility: "hidden" }));
@@ -1372,11 +1397,48 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
     graphEl.replaceChildren(svg);
     graphEl.scrollLeft = scrollLeft;
     graphEl.scrollTop = scrollTop;
+    for (const [hostID, { scroller }] of hostLists) scroller.scrollTop = positions.hostViewports.get(hostID).scroll;
     highlightAddressOwners();
     updateAnimationMarker();
     updatePlaybackControls();
     syncIllustration();
     positionDeviceMenu();
+  }
+
+  function updateHostScroll(hostID, scroll) {
+    const viewport = currentPositions?.hostViewports.get(hostID);
+    if (!viewport) return;
+    viewport.scroll = scroll;
+    for (const item of currentPositions.displayItems.filter(item => item.onHost && item.hostID === hostID)) {
+      const point = currentPositions.displayPoints.get(item.id);
+      const anchor = { x: point.x, y: Math.max(viewport.y + 12, Math.min(viewport.y + viewport.height - 12, point.y - scroll)) };
+      for (const vm of item.members) currentPositions.entityPoints.set(vm.id, anchor);
+    }
+    for (const line of graphEl.querySelectorAll('.dc-session line, .dc-route-paths line')) {
+      const owner = line.closest('[data-from]');
+      const a = currentPositions.entityPoints.get(owner?.dataset.from), b = currentPositions.entityPoints.get(owner?.dataset.to);
+      if (!a || !b) continue;
+      const shift = line.classList.contains('dc-route-learned') ? -4 : line.classList.contains('dc-route-points-to') ? 4 : 0;
+      for (const [attribute, value] of Object.entries({ x1: a.x + shift, y1: a.y, x2: b.x + shift, y2: b.y })) line.setAttribute(attribute, value);
+    }
+    currentPacketSegments = packetSegments(state.model, currentPositions, selectedPath());
+    currentPacketTraversal = packetTraversal(currentPacketSegments);
+    for (const line of graphEl.querySelectorAll('.dc-local-path')) {
+      const link = state.model.local_links?.find(link => link.tap_interface_id === line.dataset.tapId);
+      if (!link) continue;
+      const [a, b] = tapPoints(currentPositions.nodes.get(link.host_id), currentPositions.entityPoints.get(link.vm_id));
+      for (const [attribute, value] of Object.entries({ x1: a.x, y1: a.y, x2: b.x, y2: b.y })) line.setAttribute(attribute, value);
+    }
+    const propagation = graphEl.querySelector('.dc-route-propagation-marker animateMotion');
+    if (propagation) propagation.setAttribute('path', [...graphEl.querySelectorAll('.dc-route-learned')]
+      .map(line => `M ${line.getAttribute('x1')} ${line.getAttribute('y1')} L ${line.getAttribute('x2')} ${line.getAttribute('y2')}`).join(' '));
+    const tracks = graphEl.querySelectorAll('.dc-packet-track, .dc-packet-internal-track');
+    currentPacketTraversal.forEach((segment, index) => {
+      const line = tracks[index]; if (!line) return;
+      const [a, b] = segment.points;
+      for (const [attribute, value] of Object.entries({ x1: a.x, y1: a.y, x2: b.x, y2: b.y })) line.setAttribute(attribute, value);
+    });
+    positionDeviceMenu(); updateAnimationMarker();
   }
 
   function renderInspector(nodeByID, interfaceByID) {
@@ -1716,6 +1778,7 @@ export function layout(model, options) {
   const rsTiers = [];
   const displayPoints = new Map();
   const entityPoints = new Map();
+  const hostViewports = new Map();
   const displayItems = makeDisplayItems(model.vms, options.collapseRouteServers);
   const hostedCounts = new Map();
   for (const item of displayItems) {
@@ -1725,12 +1788,7 @@ export function layout(model, options) {
   const abstract = displayItems.some((item) => !item.onHost);
   const spineY = reservesRSTiers ? 340 : 250, leafY = reservesRSTiers ? 545 : 350;
   const rackTop = leafY + 65, torY = rackTop + 55, hostTop = torY + 60;
-  const hostHeight = (id) => Math.max(80, (hostedCounts.get(id) ?? 0) * 28 + 52);
-  const expandedHostCounts = new Map();
-  for (const vm of model.vms) expandedHostCounts.set(vm.host_id, (expandedHostCounts.get(vm.host_id) ?? 0) + 1);
-  // Boxes resize downward from their fixed top; later rows and rack outlines stay put.
-  const maxHostHeight = Math.max(80, ...model.nodes.filter(node => node.kind === "host")
-    .map(node => (expandedHostCounts.get(node.id) ?? 0) * 28 + 52));
+  const maxHostHeight = HOST_HEIGHT;
   const hostRowGap = maxHostHeight + 28;
   const rackBottom = hostTop + (Math.ceil(topology.hosts_per_rack / 2) - 1) * hostRowGap + maxHostHeight + 26;
 
@@ -1778,7 +1836,7 @@ export function layout(model, options) {
         const row = Math.floor(index / 2);
         const centered = hosts.length === 1 || hosts.length === 3 && index === 2;
         const x = centered ? (rackStart + rackEnd) / 2 : columns[index % 2];
-        const height = hostHeight(host.id);
+        const height = HOST_HEIGHT;
         placeNode(host, x, hostTop + row * hostRowGap + height / 2, {
           left: centered ? -48 : -8, right: centered ? 48 : 8, top: -12, bottom: 12,
         }, 104, height);
@@ -1790,6 +1848,12 @@ export function layout(model, options) {
     rsTiers.push({ role: "rs_user", label: t("RS User · klaster"), x: width - 320, y: 24, width: 240, height: 108 });
   }
   const hostCounts = new Map();
+  for (const node of model.nodes.filter(node => node.kind === 'host')) {
+    const host = nodes.get(node.id), count = hostedCounts.get(node.id) ?? 0;
+    const scroll = Math.max(0, Math.min(options.hostScrolls?.get(node.id) ?? 0, Math.max(0, count - HOST_VM_LIMIT) * VM_ROW_HEIGHT));
+    hostViewports.set(node.id, { x: host.x - host.width / 2, y: host.y - host.height / 2 + 10,
+      width: host.width, height: HOST_VM_LIMIT * VM_ROW_HEIGHT, count, scroll });
+  }
   for (const item of displayItems) {
     if (!item.onHost) continue;
     const index = hostCounts.get(item.hostID) ?? 0;
@@ -1814,10 +1878,12 @@ export function layout(model, options) {
   for (const node of model.nodes) entityPoints.set(node.id, nodes.get(node.id));
   for (const item of displayItems) {
     const point = displayPoints.get(item.id);
-    for (const vm of item.members) entityPoints.set(vm.id, point);
+    const viewport = item.onHost ? hostViewports.get(item.hostID) : null;
+    const anchor = viewport ? { x: point.x, y: clamp(point.y - viewport.scroll, viewport.y + 12, viewport.y + viewport.height - 12) } : point;
+    for (const vm of item.members) entityPoints.set(vm.id, anchor);
   }
   const rowLabels = [["BORDER", 74], ["STEM", 164], ["SPINE", spineY + 4], ["LEAF", leafY + 4], ["TOR", torY + 4], [t("HOSTY"), hostTop + 24]];
-  return { nodes, groups, rsTiers, rowLabels, offsetBounds, displayPoints, entityPoints, displayItems, width, height: rackBottom + 44 };
+  return { nodes, groups, rsTiers, rowLabels, offsetBounds, displayPoints, entityPoints, displayItems, hostViewports, width, height: rackBottom + 44 };
 }
 
 function makeDisplayItems(vms, collapseRouteServers) {

@@ -50,15 +50,25 @@ const checkLayout = async (model = null) => {
       for (const other of hosts) if (host.id < other.id && overlaps(nodeRect(host.id), nodeRect(other.id))) failures.push(`Hosts overlap: ${host.id}, ${other.id}`);
     }
     const vms = [...document.querySelectorAll(".dc-vm")];
+    const vmRect = vm => {
+      const box = vm.querySelector('rect').getBoundingClientRect();
+      const scroller = vm.closest('.dc-host-vm-scroll');
+      if (!scroller) return box;
+      const viewport = scroller.getBoundingClientRect();
+      const visible = { left: Math.max(box.left, viewport.left), right: Math.min(box.right, viewport.right),
+        top: Math.max(box.top, viewport.top), bottom: Math.min(box.bottom, viewport.bottom) };
+      return visible.left < visible.right && visible.top < visible.bottom ? visible : null;
+    };
     for (const vm of vms) {
-      const box = vm.querySelector("rect").getBoundingClientRect();
+      const box = vmRect(vm);
+      if (!box) continue; // Overflow rows are clipped inside the host's scroll region.
       if (vm.dataset.onHost === "true") {
         const host = nodeRect(vm.dataset.hostId);
         const label = rect(`.dc-node[data-entity-id="${vm.dataset.hostId}"] .dc-node-label`);
         if (!contains(host, box) || box.bottom >= label.top) failures.push(`VM must be inside host above its name: ${vm.dataset.entityId}`);
         for (const other of hosts) if (other.id !== vm.dataset.hostId && overlaps(box, nodeRect(other.id))) failures.push(`VM overlaps another host: ${vm.dataset.entityId}`);
       }
-      for (const other of vms) if (vm.dataset.entityId < other.dataset.entityId && overlaps(box, other.querySelector("rect").getBoundingClientRect())) failures.push(`VM badges overlap: ${vm.dataset.entityId}, ${other.dataset.entityId}`);
+      for (const other of vms) if (vm.dataset.entityId < other.dataset.entityId && overlaps(box, vmRect(other))) failures.push(`VM badges overlap: ${vm.dataset.entityId}, ${other.dataset.entityId}`);
     }
     const tiers = [...document.querySelectorAll(".dc-rs-tier")];
     const graph = document.querySelector(".dc-topology-svg").getBoundingClientRect();

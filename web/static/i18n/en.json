@@ -871,5 +871,6 @@
   "routowanie IP": "IP routing",
   "enkapsulacja VXLAN": "VXLAN encapsulation",
   "dekapsulacja VXLAN": "VXLAN decapsulation",
-  "HOSTY": "HOSTS"
+  "HOSTY": "HOSTS",
+  "Maszyny wirtualne na hoście {0}": "Virtual machines on host {0}"
 }

@@ -45,16 +45,20 @@ for (const showInfraOnHosts of [true, false]) for (const collapseRouteServers of
     if (item.onHost) {
       const host = view.nodes.get(item.hostID);
       assert(point.x > host.x - host.width / 2 && point.x < host.x + host.width / 2);
-      assert(point.y - 12 > host.y - host.height / 2 && point.y + 12 < host.y + host.height / 2 - 35, 'VM badge remains inside its resized host above the name');
+      const viewport = view.hostViewports.get(item.hostID);
+      const anchor = view.entityPoints.get(item.members[0].id);
+      assert(anchor.y >= viewport.y + 12 && anchor.y <= viewport.y + viewport.height - 12, 'Offscreen VM connections remain inside the host viewport');
     } else assert(view.rsTiers.some(tier => point.x > tier.x && point.x < tier.x + tier.width && point.y > tier.y && point.y < tier.y + tier.height));
   }
 
-  // Layer changes may resize a host, but must not move its top or the surrounding map.
+  const hosts = model.nodes.filter(node => node.kind === 'host').map(node => view.nodes.get(node.id));
+  assert.equal(new Set(hosts.map(host => `${host.width}/${host.height}`)).size, 1, 'Every host has identical fixed dimensions');
+  // Layer changes must not move or resize hosts or the surrounding map.
   const stable = {
     width: view.width, height: view.height, groups: [...view.groups], rows: view.rowLabels,
     devices: model.nodes.map(node => {
       const point = view.nodes.get(node.id);
-      return [node.id, point.x, node.kind === 'host' ? point.y - point.height / 2 : point.y];
+      return [node.id, point.x, point.y, point.width, point.height];
     }),
     customers: model.vms.filter(vm => vm.role === 'customer').map(vm => [vm.id, view.entityPoints.get(vm.id)]),
   };
