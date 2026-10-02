@@ -1375,7 +1375,11 @@ export function mountTopologyApp(root, { onCommand = () => {} } = {}) {
       group.append(svgElement("rect", { x: -point.width / 2, y: -point.height / 2, width: point.width, height: point.height, rx: 9 }));
       const labelY = node.kind === "host" ? point.height / 2 - 25 : -2;
       group.append(svgText(0, labelY, node.label, "dc-node-label"));
-      group.append(svgText(0, labelY + 16, node.kind === "host" ? t`${vmCountByHost.get(node.id) ?? 0} VM · ${node.interface_ids.length} interfejsy` : t`AS ${node.asn}`, "dc-node-subtitle"));
+      const subtitle=svgText(0,labelY+16,node.kind==="host"?t`${vmCountByHost.get(node.id)??0} VM · ${node.interface_ids.length} interfejsy`:t`AS ${node.asn}`,"dc-node-subtitle");
+      if(node.kind!=="host") {
+        subtitle.dataset.asn=String(node.asn);subtitle.classList.add('dc-asn');subtitle.setAttribute('tabindex','0');
+      }
+      group.append(subtitle);
       nodeLayer.append(group);
     }
     svg.append(nodeLayer);

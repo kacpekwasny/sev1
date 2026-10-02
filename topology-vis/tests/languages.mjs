@@ -46,11 +46,17 @@ const { explorerMarkup } = await import('../../web/static/dc-topology/inspection
 assert.match(explorerMarkup, /Packet path · ICMP Echo/);
 assert.match(explorerMarkup, /Choose a compatible route/);
 assert.doesNotMatch(explorerMarkup, /[ąćęłńóśźż]/i);
-const { addressInventory, explainAddress } = await import('../../web/static/dc-topology/addresses.js');
+const { addressInventory, explainAddress, explainASN } = await import('../../web/static/dc-topology/addresses.js');
 const inventory = addressInventory({ config: {}, nodes: [{ id: 'host-1', label: 'h1001', kind: 'host', ipv4: '10.16.0.1', ipv6: '2001:db8:2::1' }], vms: [], interfaces: [] });
 const hint = explainAddress(inventory, '10.16.0.1');
 assert.match(hint.description, /Device address in the underlay/);
 assert.deepEqual(hint.ownerIDs, ['host-1']);
+const asnInventory=addressInventory({config:{},interfaces:[],vms:[],nodes:[{id:'border-1',kind:'border',label:'Border 01',asn:4200000001,ipv4:'10.0.0.1',ipv6:'2001:db8::1'}]});
+const asn=explainASN(asnInventory,4200000001);
+assert.match(asn.title,/autonomous system number/);
+assert.match(asn.description,/Border 01.*IPv4 10\.0\.0\.1/);
+assert.match(asn.description,/advertisement passed/);
+assert.doesNotMatch(asn.description,/[ąćęłńóśźż]/i);
 const { encodePacket, checksum } = await import('../../web/static/dc-topology/packet-bits.js');
 const packet = { from_id: 'customer-1', to_id: 'customer-3', physical_node_ids: ['host-1', 'host-3'], source: '10.64.0.1', destination: '10.64.0.3', payload: 'SEV1: sample packet', ttl: 64,
   vxlan: true, vni: 3, outer_source: '10.16.0.1', outer_destination: '10.16.0.2', udp_source_port: 49152, udp_destination_port: 4789 };

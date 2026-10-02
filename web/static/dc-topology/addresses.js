@@ -1,5 +1,5 @@
 import { t } from "../i18n.js";
-// Address ownership is derived from the current model, including interface and
+// Address and ASN ownership is derived from the current model, including interface and
 // VRF scope. No network lookup or production address inventory is used.
 function parseAddress(raw) {
   const value=raw.split('/')[0].split('%')[0].toLowerCase();
@@ -34,7 +34,13 @@ const inPrefix=(address,prefix)=>{
 };
 
 export function addressInventory(model) {
-  const nodes=new Map(model.nodes.map(node=>[node.id,node]));const entries=new Map(),prefixes=[];
+  const nodes=new Map(model.nodes.map(node=>[node.id,node]));const entries=new Map(),prefixes=[],asns=new Map();
+  for(const owner of [...model.nodes,...model.vms]) {
+    const asn=Number(owner.asn);
+    if(!Number.isInteger(asn)||asn<1||asn>4294967295)continue;
+    if(!asns.has(asn))asns.set(asn,[]);
+    asns.get(asn).push(owner);
+  }
   const add=(raw,entry)=>{
     const address=parseAddress(raw);if(!address)return;
     if(!entries.has(address.key))entries.set(address.key,[]);
@@ -63,7 +69,41 @@ export function addressInventory(model) {
     const vm=model.vms.find(vm=>vm.id===`customer-${origin.next_hop_vm_id}`),rs=model.vms.find(vm=>vm.id===`rs-user-m${origin.member}`);
     if(vm&&rs)extra(origin.prefix,vm,rs);
   }
-  return {model,nodes,entries,prefixes};
+  return {model,nodes,entries,prefixes,asns};
+}
+
+export function explainASN(inventory, raw) {
+  if(!/^\d+$/.test(String(raw)))return null;
+  const asn=Number(raw);
+  if(!Number.isInteger(asn)||asn<1||asn>4294967295)return null;
+  const owners=inventory.asns.get(asn)??[];
+  const roles={host:t('Host'),tor:'ToR',border:'Border',stem:'Stem',spine:'Spine',leaf:'Leaf',
+    customer:t('VM klienta'),rs_bolt:'RS Bolt',rs_ctrl:'RS Ctrl',rs_user:'RS User'};
+  const description=owners.map(owner=>{
+    const role=roles[owner.kind??owner.role]??owner.kind??owner.role;
+    const host=owner.role&&owner.host_id?t` · Host ${inventory.nodes.get(owner.host_id)?.label??owner.host_id}`:'';
+    const vrf=owner.role==='customer'?(owner.vpc_id?t` · VPC ${owner.vpc_id}`:t(' · default/public VRF')):'';
+    return t`${owner.label} · ${role}${host}${vrf} · IPv4 ${owner.ipv4} · IPv6 ${owner.ipv6}`;
+  });
+  if(!owners.length)description.push(t('ASN bez właściciela w bieżącym modelu. Może oznaczać zewnętrzny system autonomiczny.'));
+  description.push(t('Numer identyfikuje system autonomiczny w BGP; w AS_PATH wskazuje systemy, przez które przeszło ogłoszenie.'));
+  return {title:t`ASN ${asn} · numer systemu autonomicznego`,description:description.join('\n'),ownerIDs:owners.map(owner=>owner.id)};
+}
+
+// Plain numbers are ASN tokens only in explicitly labeled AS/ASN/AS_PATH text
+// or a marked path field. In particular, RD/RT, VNI, IPs and metrics stay literal.
+export function asnTextMatches(text, path=false) {
+  const numbers=value=>[...value.matchAll(/(?<![\w.:/+\-])\d+(?![\w.:/+\-])/g)]
+    .filter(match=>Number(match[0])>0&&Number(match[0])<=4294967295);
+  if(path)return numbers(text);
+  const matches=[];
+  for(const group of text.matchAll(/\b(AS_PATH|ASN|AS)\b[ \t]*:?[ \t]*(\d+(?:[ \t]+\d+)*)(?![\w.:/])/g)) {
+    const start=group.index+group[0].length-group[2].length;
+    for(const match of numbers(group[2]).slice(0,group[1]==='AS_PATH'?undefined:1)) {
+      match.index+=start;matches.push(match);
+    }
+  }
+  return matches;
 }
 
 export function explainAddress(inventory, raw, context={}) {
@@ -110,6 +150,7 @@ export function mountAddressHints(root,{getModel,getContext,onPreview,signal}) {
   const tooltip=document.createElement('div');tooltip.id=`dc-address-tooltip-${++hintInstance}`;tooltip.className='dc-address-tooltip';tooltip.hidden=true;tooltip.setAttribute('role','tooltip');
   document.body.append(tooltip);
   let inventory=null,model=null,active=null;
+  const hintSelector='[data-address],[data-asn]';
   const clear=()=>{active?.removeAttribute('aria-describedby');active=null;tooltip.hidden=true;onPreview([]);};
   const refresh=()=>{if(model!==getModel()){model=getModel();inventory=model?addressInventory(model):null;}return inventory;};
   const contextFor=element=>{
@@ -140,18 +181,19 @@ export function mountAddressHints(root,{getModel,getContext,onPreview,signal}) {
   const show=element=>{
     if(!refresh())return;
     if(active!==element)clear();active=element;
-    const info=explainAddress(inventory,element.dataset.address,{...contextFor(element),before:element.dataset.addressBefore,after:element.dataset.addressAfter});
+    const info=element.dataset.asn!==undefined?explainASN(inventory,element.dataset.asn)
+      :explainAddress(inventory,element.dataset.address,{...contextFor(element),before:element.dataset.addressBefore,after:element.dataset.addressAfter});
     if(!info)return;
     const title=document.createElement('strong');title.textContent=info.title;
     const body=document.createElement('p');body.textContent=info.description;
     tooltip.replaceChildren(title,body);tooltip.hidden=false;active.setAttribute('aria-describedby',tooltip.id);onPreview(info.ownerIDs);
     position();
   };
-  const enter=event=>{const element=event.target.closest?.('[data-address]');if(element&&root.contains(element)&&element!==active)show(element);};
-  const leave=event=>{if(event.target.closest?.('[data-address]')===active&&!active.contains(event.relatedTarget))clear();};
+  const enter=event=>{const element=event.target.closest?.(hintSelector);if(element&&root.contains(element)&&element!==active)show(element);};
+  const leave=event=>{if(event.target.closest?.(hintSelector)===active&&!active.contains(event.relatedTarget))clear();};
   root.addEventListener('pointerover',enter,{signal});root.addEventListener('focusin',enter,{signal});
-  root.addEventListener('pointerout',event=>{if(event.target.closest?.('[data-address]'))leave(event);},{signal});
-  root.addEventListener('focusout',event=>{if(event.target.closest?.('[data-address]'))leave(event);},{signal});
+  root.addEventListener('pointerout',event=>{if(event.target.closest?.(hintSelector))leave(event);},{signal});
+  root.addEventListener('focusout',event=>{if(event.target.closest?.(hintSelector))leave(event);},{signal});
   root.addEventListener('click',clear,{signal});window.addEventListener('scroll',position,{signal,capture:true});window.addEventListener('resize',position,{signal});
   const observer=new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.nodeType===1)decorate(node);});
   const decorate=container=>{
@@ -159,14 +201,18 @@ export function mountAddressHints(root,{getModel,getContext,onPreview,signal}) {
     const walker=document.createTreeWalker(container,NodeFilter.SHOW_TEXT);const nodes=[];
     while(walker.nextNode()) {
       const text=walker.currentNode;
-      if(text.parentElement&&!text.parentElement.closest('svg,textarea,option,input,script,style,[data-address],.dc-bit-grid,.dc-address-tooltip'))nodes.push(text);
+      if(text.parentElement&&!text.parentElement.closest('svg,textarea,option,input,script,style,[data-address],[data-asn],.dc-bit-grid,.dc-address-tooltip'))nodes.push(text);
     }
     for(const text of nodes) {
-      const matches=[...text.nodeValue.matchAll(candidates)].filter(match=>parseAddress(match[0]));if(!matches.length)continue;
+      const matches=[...[...text.nodeValue.matchAll(candidates)].filter(match=>parseAddress(match[0])),
+        ...asnTextMatches(text.nodeValue,Boolean(text.parentElement.closest('[data-as-path]'))).map(match=>Object.assign(match,{asn:true}))]
+        .sort((a,b)=>a.index-b.index);
+      if(!matches.length)continue;
       const fragment=document.createDocumentFragment();let offset=0;
       for(const match of matches) {
         fragment.append(text.nodeValue.slice(offset,match.index));
-        const span=document.createElement('span');span.className='dc-address';span.dataset.address=match[0];span.textContent=match[0];span.tabIndex=0;
+        const span=document.createElement('span');span.className=match.asn?'dc-address dc-asn':'dc-address';
+        span.dataset[match.asn?'asn':'address']=match[0];span.textContent=match[0];span.tabIndex=0;
         span.dataset.addressBefore=text.nodeValue.slice(0,match.index);span.dataset.addressAfter=text.nodeValue.slice(match.index+match[0].length);
         fragment.append(span);offset=match.index+match[0].length;
       }

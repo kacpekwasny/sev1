@@ -315,6 +315,7 @@ body.dc-page { background: #0b1018; }
 .dc-packet-internal-track { stroke: #ffe16a; stroke-width: 3; fill: none; opacity: .7; pointer-events: none; }
 
 .dc-address { display:inline-block; max-width:100%; text-decoration:underline dotted #5e91a3; text-underline-offset:3px; cursor:help; border-radius:2px; }
+.dc-node .dc-asn { cursor:help; text-decoration:underline dotted; pointer-events:auto; }
 .dc-route-row .dc-address { display:inline-block; font:inherit; }
 .dc-address:hover, .dc-address:focus-visible { background:#d6eff5; color:#153d51; outline:1px solid #6ca4b4; }
 .dc-terminal .dc-address:hover, .dc-terminal .dc-address:focus-visible { background:#315361; color:#ecfbff; }

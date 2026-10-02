@@ -8,6 +8,7 @@ function fields(container, values) {
   for (const [label, value] of values) {
     const dt = document.createElement("dt"), dd = document.createElement("dd");
     dt.textContent = label; dd.textContent = String(value ?? "—"); dl.append(dt, dd);
+    if(label==='AS_PATH')dd.dataset.asPath='';
   }
   container.append(dl);
 }

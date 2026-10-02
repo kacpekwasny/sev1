@@ -127,3 +127,21 @@ passed in both languages at 1280px and 390px, following each replacement link,
 checking the removed URLs, translated lecture labels and viewport fit. They also
 confirmed that a stale workspace cookie loads the 28-device default explorer.
 Index screenshots were reviewed; artifacts are under `/tmp/sev1-topology-removal-*`.
+
+## ASN ownership hints
+
+ASNs now share the IP tooltip and owner highlight behavior, including keyboard
+focus and Escape dismissal. Hints cover diagram AS labels, device/VM identities,
+session endpoints, individual GUI and FRR AS_PATH entries, and decoded UPDATE
+fields. Tooltips show the real owner's role and addresses, plus VM host and VRF
+context. Grouped RSs highlight their aggregate badge while identifying the member.
+Shared ASNs retain all owners; unknown values do not highlight an invented owner.
+Matching is limited to explicit ASN/AS/path fields, keeping RD/RT, VNI and metrics
+out of the ASN hints.
+
+`tests/asn-ownership.mjs` checks ownership, VM placement, shared ASNs, 32-bit values,
+model changes and token boundaries. The language checks verify English tooltip copy.
+`tests/asn-hints.mjs` passes in Polish and English at 1280px and 390px, covering all
+display contexts, focus, dismissal, viewport bounds and IP lookup alongside ASNs.
+The existing IP browser walkthrough passes at both widths. Desktop and narrow
+screenshots were reviewed; artifacts are under `/tmp/asn-hints-*.png`.

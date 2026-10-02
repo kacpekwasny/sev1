@@ -247,6 +247,13 @@ Customer addresses are resolved within their VRF; shared or unknown addresses
 are labeled without inventing ownership. Hints also work in Linux output and
 decoded packet fields, and remain inside the viewport while the popup scrolls.
 
+ASNs use the same hover and keyboard-focus hints. Device AS labels, inspector
+identities, BGP session endpoints, and individual AS_PATH values in GUI, FRR and
+decoded UPDATEs show the owner's role, addresses and VM placement, and highlight
+that owner in the diagram. A grouped RS highlights its cluster while naming the
+actual member. Shared ASNs highlight all matching owners; unknown ASNs are labeled
+without inventing a device. RD/RT values, VNIs and metrics stay ordinary numbers.
+
 AFI/SAFI sections are visually nested under the expected RIB. Routes in either
 format are clickable. The back arrow restores the previous table and its expanded
 sections. Purple arrows show the route's learned path into that specific RIB;
@@ -341,6 +348,7 @@ node topology-vis/tests/packet-path.mjs
 node topology-vis/tests/session-layers.mjs
 node topology-vis/tests/automatic-route-flow.mjs
 node topology-vis/tests/address-ownership.mjs
+node topology-vis/tests/asn-ownership.mjs
 node topology-vis/tests/customer-rib.mjs
 node topology-vis/tests/languages.mjs
 node topology-vis/tests/layout.mjs pl
@@ -403,6 +411,7 @@ node topology-vis/tests/host-routes.mjs
 PLAYWRIGHT_MODULE=/path/to/playwright-core/index.mjs \
 TOPOLOGY_URL=http://127.0.0.1:8081/topologie/dc/ \
 node topology-vis/tests/address-hints.mjs
+node topology-vis/tests/asn-hints.mjs
 ```
 
 The site regression walkthrough checks immediate language changes, header alignment,

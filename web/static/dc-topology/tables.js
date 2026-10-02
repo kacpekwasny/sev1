@@ -15,6 +15,7 @@ const routeLine = (pre, route, ownerID, value) => {
   button.className = "dc-cli-route"; button.textContent = value;
   button.setAttribute("aria-label", t`Inspektuj trasę ${route.prefix}`);
   identifyRoute(button, route, ownerID); pre.append(button);
+  return button;
 };
 const originCode = (value) => ({ 0: "i", 1: "e", 2: "?" })[value] ?? "?";
 
@@ -65,10 +66,16 @@ export function appendRIB(container, model, speakerID, mode, appendRows) {
         const nlri = afi === "l2vpn" ? `[5]:[0]:[${route.prefix.split("/")[1]}]:[${route.prefix.split("/")[0]}]` : route.prefix;
         let line = afi === "l2vpn" ? t`Route Distinguisher: ${route.rd}\n` : "";
         const asPath = route.received_from ? route.as_path ?? [] : [];
-        line += `${bestIDs.has(route.id) ? "*>" : "* "} ${nlri.padEnd(40)} ${route.next_hop.padEnd(24)} ${String(route.med).padEnd(6)} ${String(route.local_preference).padEnd(6)} ${asPath.join(" ")} ${originCode(route.origin_code)}\n`;
+        line += `${bestIDs.has(route.id) ? "*>" : "* "} ${nlri.padEnd(40)} ${route.next_hop.padEnd(24)} ${String(route.med).padEnd(6)} ${String(route.local_preference).padEnd(6)} `;
+        const pathStart=line.length,pathText=asPath.join(' ');
+        line += `${pathText} ${originCode(route.origin_code)}\n`;
         if (afi === "l2vpn") line += t`   RT ${route.route_target}  VNI ${route.vni}  VPC ${route.vpc_id}\n`;
         if (route.received_from) line += t`   od ${route.received_from}\n`;
-        routeLine(pre, route, speakerID, line);
+        const button=routeLine(pre, route, speakerID, line);
+        if(pathText) {
+          const path=document.createElement('span');path.dataset.asPath='';path.textContent=pathText;
+          button.replaceChildren(line.slice(0,pathStart),path,line.slice(pathStart+pathText.length));
+        }
       }
       if (!rows.length) pre.append(t("Brak tras.\n"));
     } else {
