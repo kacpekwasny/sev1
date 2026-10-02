@@ -309,9 +309,10 @@ last valid snapshot intact.
 
 Edited scenarios are private to the browser and stay in memory. They expire after
 30 idle minutes or server restart; at most 16 edited scenarios are retained, with
-the oldest evicted when necessary. An expired scenario reports an error instead
-of silently returning different tables. Reload YAML or restore the example to
-continue; export YAML to retain a scenario. The default fixture is read at server
+the oldest evicted when necessary. An expired scenario automatically falls back
+to the default and clears its stale browser cookie. If inspection or exploration
+discovers the expiry in an open page, the diagram and tables reload together.
+Export YAML to retain a custom scenario. The default fixture is read at server
 startup; restart after editing it. Production embeds browser assets under `web/`,
 while the YAML ships with `content/` and follows the site's `-content` flag.
 
@@ -346,6 +347,7 @@ node topology-vis/tests/layout.mjs pl
 node topology-vis/tests/layout.mjs en
 node topology-vis/tests/site-controls.mjs
 node topology-vis/tests/view-motion.mjs
+node topology-vis/tests/scenario-recovery.mjs
 ```
 
 The optional browser walkthrough in [tests/browser.mjs](tests/browser.mjs) uses an

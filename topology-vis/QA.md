@@ -12,6 +12,7 @@
 | Newly added buttons could keep Polish labels with an older cached English catalog | Catalog requests allowed reuse of cached JSON. Fetch the current catalog with `cache: no-store`. | A simulated stale-catalog regression fails before the fix and passes after it. Actual English browser sessions also display “Show underlay BGP” at both widths. |
 | Preset changes moved switches and disrupted the map | Dependent switches disappeared, and layout dimensions/row spacing depended on RS visibility/grouping. Keep child switches visible but disabled; reserve map geometry, keep hosts at one fixed size, retain scroll, and reserve the flow-label row. | Geometry regression failed before the fix. Browser assertions now verify identical control positions, viewport bounds, zoom, scroll and customer anchors across all three presets, at both widths and in both languages. |
 | The English topology retained the Polish HOSTY row label | The row label was a literal. Added it to the translation catalog. | English/Polish layout assertions. |
+| An expired scenario prevented the default topology from loading | A stale workspace cookie caused reads to return `409`. Reads now clear the cookie and use the default; an open diagram reloads when inspection/exploration detects expiry. | Concurrent API reads after idle expiry, eviction and restart; integrated cookie-path checks; page-controller recovery and subsequent inspection. |
 | Presenter controls overflowed narrow screens | Grid columns used their contents as a minimum width; the participant table could widen the page. Allow columns to shrink and contain the table in a keyboard-accessible scrolling region. | Reproduced a 429px page at a 390px viewport. Presenter browser checks now assert the page fits the viewport with participants and questions present. |
 | Live questions and answers could widen the page | Long unbroken text and minimum grid/flex widths expanded the cards. Allow text to wrap, constrain question rows, and wrap moderation actions. | Browser viewport assertions with submitted HTML-like text, answers, votes and ownership controls, in Polish and English. |
 | The sticky header covered automatically scrolled inspector routes | A wrapped header was taller than the browser's scrolling clearance. Measure the header and apply matching viewport scroll padding. | Reproduced an intercepted route click at 390px. The complete route-flow browser walkthrough now passes at desktop and narrow widths. |
@@ -48,7 +49,7 @@ The direct JavaScript tests also passed: `site-controls`, `languages`, `layout`
 
 ## Completed browser verification
 
-Chrome 148 runs successfully with localhost and Git writes in the current environment.
+The previous full audit ran successfully in Chrome 148 with localhost and Git writes available.
 Browser checks ran against a disposable server with a copied content directory and
 all material sections enabled; repository visibility settings were not changed.
 
@@ -94,3 +95,20 @@ remembered settings and reduced motion, in both languages at both widths.
 `tests/view-motion.mjs` verifies preference validation, unavailable/corrupted storage
 and classification using the real VM identities. Screenshots of the settings and
 transitions are saved under `/tmp/view-motion-*.png`.
+
+## Automatic default scenario recovery
+
+Expired custom scenarios now fall back to the immutable default without a manual
+reset. A response marker also tells the page controller to reload an open custom
+diagram before accepting default inspector tables or exploration results. Concurrent
+expired detail requests share one reload, and new writes receive a fresh private
+workspace cookie.
+
+The Go regression checks cover idle expiry, eviction and server restart, simultaneous
+reads, default configuration/model/tables/exploration, cookie removal at both API
+paths, and isolation of subsequent writes. `tests/scenario-recovery.mjs` exercises
+the actual page controller, including repeated recovery and working inspection.
+`go test ./...`, `go build .`, the controller and language checks, and
+`go test -race ./internal/content/dctopology ./internal/live ./internal/web` pass.
+A browser rerun for this fix was blocked by the sandbox at the time of verification:
+starting the local server returned `bind: operation not permitted`.

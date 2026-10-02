@@ -69,3 +69,21 @@ func TestHiddenTopologiesHideDCTopologyPageAndAPI(t *testing.T) {
 		}
 	}
 }
+
+func TestDCTopologyExpiredCookieLoadsDefault(t *testing.T) {
+	srv := newTestServer(t)
+	for _, path := range []string{"/api/dc-topology/config.yaml", "/api/dc-topology/status", "/api/dc-topology/model"} {
+		r := httptest.NewRequest(http.MethodGet, path, nil)
+		r.AddCookie(&http.Cookie{Name: "sev1_dc_workspace", Value: "scenario-from-before-restart"})
+		w := httptest.NewRecorder()
+		srv.ServeHTTP(w, r)
+		baseline := get(t, srv, path)
+		if w.Code != http.StatusOK || w.Body.String() != baseline.Body.String() {
+			t.Fatalf("expired cookie must load the default at %s: %d %s", path, w.Code, w.Body.String())
+		}
+		cookies := w.Result().Cookies()
+		if len(cookies) != 1 || cookies[0].MaxAge != -1 || cookies[0].Path != "/api/dc-topology/" {
+			t.Fatalf("expired cookie must be cleared at the integrated API path: %+v", cookies)
+		}
+	}
+}

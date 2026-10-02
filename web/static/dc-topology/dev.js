@@ -6,6 +6,7 @@ const root = document.querySelector("#dc-topology-app");
 const apiBase = root.dataset.apiBase || "/api";
 const requests = new AbortController();
 let commandQueue = Promise.resolve();
+let recoveringDefault = false;
 const app = mountTopologyApp(root, { onCommand(command) {
   if (command.type === "load_inspector") return loadInspector(command);
   if (command.type === "explore") return loadExploration(command);
@@ -22,7 +23,7 @@ window.addEventListener("pagehide", (event) => {
 async function loadInspector(command) {
   const query = new URLSearchParams({ kind: command.kind, id: command.id });
   try {
-    const data = await request(`/inspector?${query}`);
+    const data = await request(`/inspector?${query}`, { recoverOnReset: true });
     app.setState({ inspectorData: { ...data, kind: command.kind, id: command.id, revision: command.revision } });
   } catch (error) {
     if (error.name === "AbortError") return;
@@ -36,7 +37,7 @@ async function loadExploration(command) {
   try {
     const query = new URLSearchParams({kind,from,to,route,family});
     if(traffic)query.set("traffic",traffic);
-    const data = await request(`/explore?${query}`);
+    const data = await request(`/explore?${query}`, { recoverOnReset: true });
     app.setState({explorationData:{...data,kind,requestID,revision}});
   } catch(error) {
     if (error.name !== "AbortError") app.setState({explorationData:{ok:false,kind,requestID,revision,message:error.message}});
@@ -70,8 +71,19 @@ async function handleCommand(command) {
   }
 }
 
-async function request(path, { raw = false, ...options } = {}) {
+async function request(path, { raw = false, recoverOnReset = false, ...options } = {}) {
   const response = await fetch(`${apiBase}${path}`, { cache: "no-store", signal: requests.signal, ...options });
+  if (recoverOnReset && response.headers.get("X-DC-Topology-Reset") === "default") {
+    // Do not put default tables into a diagram of the expired custom scenario.
+    // Serialize one full reload with configuration writes, even if several
+    // inspector/explorer requests discover the expired cookie together.
+    if (!recoveringDefault) {
+      recoveringDefault = true;
+      commandQueue = commandQueue.then(() => handleCommand({ type: "initialize" }))
+        .finally(() => { recoveringDefault = false; });
+    }
+    throw new DOMException("Scenario reset", "AbortError");
+  }
   if (raw) {
     const body = await response.text();
     if (!response.ok) throw new Error(translateRuntime(body) || t`HTTP ${response.status}`);
