@@ -28,9 +28,9 @@ Every leaf connects to every spine. The path between any two servers has the sam
 number of hops, and capacity grows by adding spines rather than replacing one
 huge device. Traffic is spread across parallel paths using ECMP.
 
-The drawing above fits in a text file. To inspect cables, ports, link addresses,
-and the actual packet path, open
-[[topologie/spine-leaf|the interactive version of this topology]].
+The drawing above fits in a text file. To explore a larger network, its devices,
+links, BGP sessions, and packet paths, open
+[[topologie/dc|the interactive data-center explorer]].
 
 ## Redundancy
 

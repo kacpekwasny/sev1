@@ -21,7 +21,7 @@
           <span class="chip poll" title="{{pollQuestion $lib .Poll}}">{{tr "pytanie do sali"}}</span>
           {{end}}
           {{if $.Visibility.Notes}}{{range .Notes}}<a class="chip" href="/notatki/{{.}}">{{noteTitle $lib .}}</a>{{end}}{{end}}
-          {{if $.Visibility.Topologies}}{{range .Topologies}}<a class="chip topo" href="/topologie/{{.}}">{{topologyTitle $lib .}}</a>{{end}}{{end}}
+          {{if $.Visibility.Topologies}}{{range .Topologies}}<a class="chip topo" href="{{topologyURL .}}">{{tr (topologyTitle $lib .)}}</a>{{end}}{{end}}
           {{if $.Visibility.Tasks}}{{range .Tasks}}<a class="chip task" href="/zadania/{{.}}">{{taskTitle $lib .}}</a>{{end}}{{end}}
         </p>
       </div>

@@ -153,19 +153,9 @@ inaczej cudzy głos kasowałby tekst, który ktoś właśnie pisze.
 **Podpowiedzi do zadań.** Odkrywane pojedynczo — student dostaje kierunek, nie
 rozwiązanie.
 
-**Topologie.** `/topologie/` rysuje sieci z wykładu jako SVG, z czterema widokami tej
-samej sieci: **kable** (każdy osobno), **uproszczone** (wiązka ×N zamiast pęku —
-whiteboard), **adresy** (loopbacki, ASN, /31 na łączach) i **routing** (podświetlone
-ścieżki plus wypis `show ip route`). Przełączanie to zwykły GET zwracający jeden
-fragment, tak samo jak odkrywanie podpowiedzi — bez naszego JavaScriptu.
-
-Rysunek składa się po stronie serwera, bo układ fabrika nie jest zagadką: warstwa to
-rząd, urządzenia rozkładają się po nim równo. Podział jest taki, że `internal/content`
-wie, **czym sieć jest** (urządzenia, kable, porty, adresy, ścieżki), a `internal/web`
-wie, **gdzie to leży na ekranie** (x, y).
-
+**Topologie.** `/topologie/` prowadzi do interaktywnego eksploratora centrum danych.
 W notatkach ASCII art zostaje — plik `.md` ma działać w Obsidianie. Notatka linkuje do
-wersji interaktywnej przez `[[topologie/spine-leaf|…]]`.
+aplikacji przez `[[topologie/dc|…]]`.
 
 **Eksplorator DC.** `/topologie/dc/` to osobna, dynamiczna aplikacja JavaScript:
 urządzenia można lekko przesuwać, a szczegóły otwierają się nad topologią.
@@ -202,7 +192,7 @@ Nazwa pliku to slug. Link `[[coś]]` szuka notatki `coś.md`; link z ukośnikiem
 (`[[zadania/…]]`) prowadzi poza notatki i nie liczy się jako krawędź grafu.
 Test `TestNoDanglingWikilinks` przypilnuje literówek.
 
-## Dodanie topologii
+## Statyczne topologie YAML (opcjonalne)
 
 Wrzuć plik do `content/topologies/`. Opisujesz urządzenia i **reguły** kablowania, nie
 same kable:
@@ -233,7 +223,9 @@ tabela adresów i wypis z routera dopiszą się same i nie mogą się rozjechać
 jedno źródło. Zły plik (nieistniejąca warstwa w regule, trasa donikąd, za mała pula)
 wywala się przy starcie, a nie dziwnym obrazkiem na wykładzie.
 
-Slug (nazwa pliku) wpisuje się do agendy wykładu jako `topologies: [spine-leaf]`.
+Slug (nazwa pliku) wpisuje się do agendy wykładu jako `topologies: [przyklad]`.
+Interaktywny eksplorator używa `topologies: [dc]`; jego konfiguracja jest opisana w
+[topology-vis/README.md](topology-vis/README.md).
 
 ## Przed pierwszym wykładem
 

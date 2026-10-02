@@ -113,6 +113,7 @@
   "Inspektuj trasę {0}": "Inspect route {0}",
   "Interaktywna topologia centrum danych: urządzenia, sesje BGP i oczekiwane tablice tras.": "Interactive data-center topology: devices, BGP sessions, and expected route tables.",
   "Interaktywny DC": "Interactive DC",
+  "Centrum danych do obejrzenia z bliska. Przełączaj warstwy topologii, sprawdzaj sesje BGP i ścieżki pakietów oraz zmieniaj konfigurację sieci w interaktywnym eksploratorze.": "Explore a data center up close. Switch topology layers, inspect BGP sessions and packet paths, and change the network configuration in the interactive explorer.",
   "Interfejs {0} · sąsiad {1}. Adres jest ważny tylko na tym łączu i wymaga zakresu interfejsu.": "Interface {0} · neighbor {1}. This address is valid only on this link and requires interface scope.",
   "Interfejsy ({0}) · TAP {1}": "Interfaces ({0}) · TAP {1}",
   "Jak rozpętałem drugą Sev1": "How I Caused a Second Sev1",

@@ -46,7 +46,7 @@ func TestHiddenTopologiesHideDCTopologyPageAndAPI(t *testing.T) {
 	srv.cache = &library
 
 	for _, path := range []string{
-		"/topologie/", "/topologie/dc/", "/topologie/spine-leaf",
+		"/topologie/", "/topologie/dc", "/topologie/dc/", "/topologie/spine-leaf",
 		"/api/dc-topology/model", "/api/dc-topology/status", "/api/dc-topology/config.yaml",
 		"/api/dc-topology/default.yaml", "/api/dc-topology/inspector?kind=speaker&id=border-1",
 		"/api/dc-topology/explore?kind=packet&from=customer-1&to=customer-3&family=ipv4",
@@ -84,6 +84,45 @@ func TestDCTopologyExpiredCookieLoadsDefault(t *testing.T) {
 		cookies := w.Result().Cookies()
 		if len(cookies) != 1 || cookies[0].MaxAge != -1 || cookies[0].Path != "/api/dc-topology/" {
 			t.Fatalf("expired cookie must be cleared at the integrated API path: %+v", cookies)
+		}
+	}
+}
+
+func TestDeprecatedSpineLeafTopologyRemoved(t *testing.T) {
+	srv := newTestServer(t)
+	for _, language := range []string{"pl", "en"} {
+		suffix := "?lang=" + language
+		redirect := get(t, srv, "/topologie/dc"+suffix)
+		if redirect.Code != http.StatusMovedPermanently || redirect.Header().Get("Location") != "/topologie/dc/"+suffix {
+			t.Errorf("normalized wikilink must redirect to the explorer and preserve language (%s)", language)
+		}
+		for _, path := range []string{"/topologie/spine-leaf", "/topologie/spine-leaf/",
+			"/topologie/spine-leaf/widok/kable", "/topologie/spine-leaf/widok/uproszczone",
+			"/topologie/spine-leaf/widok/adresy", "/topologie/spine-leaf/widok/routing"} {
+			if rec := get(t, srv, path+suffix); rec.Code != http.StatusNotFound {
+				t.Errorf("deprecated page %s (%s): %d; want 404", path, language, rec.Code)
+			}
+		}
+		for _, path := range []string{"/topologie/", "/wyklady/01", "/notatki/centrum-obliczeniowe"} {
+			rec := get(t, srv, path+suffix)
+			target := "/topologie/dc/"
+			if strings.HasPrefix(path, "/notatki/") {
+				target = "/topologie/dc" // Wikilinks normalize away trailing slashes.
+			}
+			if rec.Code != http.StatusOK || strings.Contains(rec.Body.String(), "/topologie/spine-leaf") || !strings.Contains(rec.Body.String(), `href="`+target+`"`) {
+				t.Errorf("%s (%s) must link to the interactive explorer: %d", path, language, rec.Code)
+			}
+		}
+		lecture := get(t, srv, "/wyklady/01"+suffix).Body.String()
+		title := "Eksplorator centrum danych"
+		if language == "en" {
+			title = "Data-center explorer"
+		}
+		if !strings.Contains(lecture, `href="/topologie/dc/">`+title+`</a>`) {
+			t.Errorf("lecture explorer link needs a translated title (%s)", language)
+		}
+		if rec := get(t, srv, "/topologie/dc/"+suffix); rec.Code != http.StatusOK {
+			t.Errorf("interactive replacement (%s): %d", language, rec.Code)
 		}
 	}
 }

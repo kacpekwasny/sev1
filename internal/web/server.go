@@ -136,6 +136,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/graf.json", s.onlySection(sectionNotes, s.handleGraphJSON))
 
 	s.mux.HandleFunc("GET /topologie/{$}", s.onlySection(sectionTopologies, s.handleTopologies))
+	s.mux.HandleFunc("GET /topologie/dc", s.onlySection(sectionTopologies, s.handleDCTopologyRedirect))
 	s.mux.HandleFunc("GET /topologie/dc/{$}", s.onlySection(sectionTopologies, s.handleDCTopology))
 	s.mux.HandleFunc("/api/dc-topology/", s.onlySection(sectionTopologies, s.handleDCTopologyAPI))
 	s.mux.HandleFunc("GET /topologie/{slug}", s.onlySection(sectionTopologies, s.handleTopology))

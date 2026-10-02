@@ -29,9 +29,9 @@ serwerami ma tyle samo przeskoków, a przepustowość rośnie przez dokładanie 
 nie przez wymianę jednego wielkiego urządzenia. Ruch rozkłada się po równoległych
 ścieżkach (ECMP).
 
-Rysunek wyżej mieści się w pliku tekstowym i tyle mu wystarczy. Kable, porty, adresy
-łączy i to, którędy naprawdę pójdzie pakiet, są do obejrzenia w
-[[topologie/spine-leaf|interaktywnej wersji tej topologii]].
+Rysunek wyżej mieści się w pliku tekstowym i tyle mu wystarczy. Większą sieć,
+jej urządzenia, łącza, sesje BGP i ścieżki pakietów można obejrzeć w
+[[topologie/dc|interaktywnym eksploratorze centrum danych]].
 
 ## Redundancja
 

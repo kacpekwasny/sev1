@@ -4,12 +4,37 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"wykladywiet/internal/content"
 )
+
+// Static renderer fixtures are independent of the published interactive explorer.
+func testStaticTopology(t *testing.T) *content.Topology {
+	t.Helper()
+	lib, err := content.Load("testdata")
+	if err != nil {
+		t.Fatal(err)
+	}
+	topo := lib.TopologyBySlug["spine-leaf"]
+	if topo == nil {
+		t.Fatal("missing static topology fixture")
+	}
+	return topo
+}
+
+func staticTopologyServer(t *testing.T) *Server {
+	t.Helper()
+	srv := newTestServer(t)
+	topo := testStaticTopology(t)
+	srv.cache.TopologyBySlug[topo.Slug] = topo
+	srv.cache.Topologies = append(srv.cache.Topologies, topo)
+	return srv
+}
 
 // Każdy widok rysuje tę samą sieć inaczej, ale żaden nie może zgubić
 // urządzeń - pudełka są w każdym z nich.
 func TestEveryViewDrawsEveryDevice(t *testing.T) {
-	topo := newTestServer(t).lib().TopologyBySlug["spine-leaf"]
+	topo := testStaticTopology(t)
 	if topo == nil {
 		t.Fatal("brak topologii spine-leaf")
 	}
@@ -29,7 +54,7 @@ func TestEveryViewDrawsEveryDevice(t *testing.T) {
 // Rysunku nie da się obejrzeć w teście, więc pilnujemy tego, co da się
 // policzyć: pudełka w jednym rzędzie nie mogą na siebie wchodzić.
 func TestBoxesInARowDoNotOverlap(t *testing.T) {
-	topo := newTestServer(t).lib().TopologyBySlug["spine-leaf"]
+	topo := testStaticTopology(t)
 	view := topologyView(topo, ViewCabling)
 
 	rightEdge := map[string]int{} // warstwa -> gdzie skończyło się poprzednie pudełko
@@ -44,7 +69,7 @@ func TestBoxesInARowDoNotOverlap(t *testing.T) {
 // Widok uproszczony ma zastąpić pęk kabli jedną wiązką na urządzenie: mniej
 // linii niż kabli, a mimo to nic nie znika z opisu.
 func TestSimpleViewBundlesCables(t *testing.T) {
-	topo := newTestServer(t).lib().TopologyBySlug["spine-leaf"]
+	topo := testStaticTopology(t)
 	full := topologyView(topo, ViewCabling)
 	simple := topologyView(topo, ViewSimple)
 
@@ -71,7 +96,7 @@ func TestSimpleViewBundlesCables(t *testing.T) {
 // Wypis "show ip route" powstaje z tych samych kabli, które są podświetlone
 // na rysunku - to jest cały sens liczenia tego po stronie serwera.
 func TestRoutingViewMatchesTheHighlightedCables(t *testing.T) {
-	topo := newTestServer(t).lib().TopologyBySlug["spine-leaf"]
+	topo := testStaticTopology(t)
 	got := topologyView(topo, ViewRouting)
 	if got.Route == nil {
 		t.Fatal("brak panelu z routingiem")
@@ -100,7 +125,7 @@ func TestRoutingViewMatchesTheHighlightedCables(t *testing.T) {
 // Widok adresów pokazuje każdy kabel w tabeli i podpisuje na rysunku te,
 // które mają /31.
 func TestAddressViewListsEveryCable(t *testing.T) {
-	topo := newTestServer(t).lib().TopologyBySlug["spine-leaf"]
+	topo := testStaticTopology(t)
 	got := topologyView(topo, ViewAddresses)
 
 	if len(got.Table) != len(topo.Cables) {
@@ -121,7 +146,7 @@ func TestAddressViewListsEveryCable(t *testing.T) {
 }
 
 func TestUnknownTopologyViewIsNotFound(t *testing.T) {
-	srv := newTestServer(t)
+	srv := staticTopologyServer(t)
 	if rec := get(t, srv, "/topologie/spine-leaf/widok/kabelki"); rec.Code != http.StatusNotFound {
 		t.Errorf("kod = %d, chcę 404", rec.Code)
 	}
@@ -130,7 +155,7 @@ func TestUnknownTopologyViewIsNotFound(t *testing.T) {
 // Przycisk widoku to zwykły GET wymieniający jeden fragment - taki sam
 // kształt jak odkrywanie podpowiedzi do zadania.
 func TestViewButtonReturnsTheWholeFigure(t *testing.T) {
-	srv := newTestServer(t)
+	srv := staticTopologyServer(t)
 	body := get(t, srv, "/topologie/spine-leaf/widok/adresy").Body.String()
 	for _, want := range []string{`id="topo-spine-leaf"`, "<svg", "10.255.0.0/31"} {
 		if !strings.Contains(body, want) {

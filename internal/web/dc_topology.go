@@ -25,6 +25,12 @@ func (s *Server) handleDCTopology(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) handleDCTopologyRedirect(w http.ResponseWriter, r *http.Request) {
+	target := *r.URL
+	target.Path = "/topologie/dc/"
+	http.Redirect(w, r, target.String(), http.StatusMovedPermanently)
+}
+
 func (s *Server) handleDCTopologyAPI(w http.ResponseWriter, r *http.Request) {
 	request := r.Clone(r.Context())
 	request.URL.Path = "/api" + strings.TrimPrefix(r.URL.Path, "/api/dc-topology")

@@ -622,6 +622,9 @@ func TestLectureReferencesExist(t *testing.T) {
 				}
 			}
 			for _, slug := range item.Topologies {
+				if slug == "dc" {
+					continue // The interactive explorer has its own model and API.
+				}
 				if _, ok := lib.TopologyBySlug[slug]; !ok {
 					t.Errorf("%s: nie ma topologii %q", lec.Slug, slug)
 				}

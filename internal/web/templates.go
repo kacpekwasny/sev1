@@ -38,10 +38,19 @@ var funcs = template.FuncMap{
 		return slug
 	},
 	"topologyTitle": func(lib *content.Library, slug string) string {
+		if slug == "dc" {
+			return "Eksplorator centrum danych"
+		}
 		if topo, ok := lib.TopologyBySlug[slug]; ok {
 			return topo.Title
 		}
 		return slug
+	},
+	"topologyURL": func(slug string) string {
+		if slug == "dc" {
+			return "/topologie/dc/"
+		}
+		return "/topologie/" + slug
 	},
 	"pollQuestion": func(lib *content.Library, id string) string {
 		if poll, ok := lib.PollByID[id]; ok {

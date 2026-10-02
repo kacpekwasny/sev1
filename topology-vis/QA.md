@@ -112,3 +112,18 @@ the actual page controller, including repeated recovery and working inspection.
 `go test -race ./internal/content/dctopology ./internal/live ./internal/web` pass.
 A browser rerun for this fix was blocked by the sandbox at the time of verification:
 starting the local server returned `bind: operation not permitted`.
+
+## Retired published spine-leaf topology
+
+The deprecated `/topologie/spine-leaf` page and its four SVG view URLs return 404.
+The topology index, lecture agenda and data-center notes link to the interactive
+explorer in Polish and English. Its short `/topologie/dc` URL redirects to
+`/topologie/dc/`, retaining query parameters and section visibility checks.
+The old Polish YAML now lives only in a test fixture; the published Polish and
+English static examples are removed. Generic SVG renderer tests still run.
+
+`go test ./...`, `go build .` and the language checks pass. Chrome navigation checks
+passed in both languages at 1280px and 390px, following each replacement link,
+checking the removed URLs, translated lecture labels and viewport fit. They also
+confirmed that a stale workspace cookie loads the 28-device default explorer.
+Index screenshots were reviewed; artifacts are under `/tmp/sev1-topology-removal-*`.
