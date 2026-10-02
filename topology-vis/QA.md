@@ -145,3 +145,11 @@ model changes and token boundaries. The language checks verify English tooltip c
 display contexts, focus, dismissal, viewport bounds and IP lookup alongside ASNs.
 The existing IP browser walkthrough passes at both widths. Desktop and narrow
 screenshots were reviewed; artifacts are under `/tmp/asn-hints-*.png`.
+
+The ASN walkthrough now also follows host → expected BGP table → select a route,
+then hovers and focuses every ASN in the route details. This click-through check
+passes in both languages and at both widths; screenshots are under
+`/tmp/asn-route-hints-*.png`. JavaScript and CSS responses now send
+`Cache-Control: no-cache`, requiring revalidation before browsers reuse them after
+UI changes. HTTP checks cover the module entry point, imported modules and styles,
+while fonts retain their ordinary caching behavior. Go tests and the build pass.

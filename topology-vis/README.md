@@ -322,6 +322,8 @@ discovers the expiry in an open page, the diagram and tables reload together.
 Export YAML to retain a custom scenario. The default fixture is read at server
 startup; restart after editing it. Production embeds browser assets under `web/`,
 while the YAML ships with `content/` and follows the site's `-content` flag.
+Browser JavaScript and CSS revalidate before reuse. Reload the page after UI
+changes; an embedded production build also needs rebuilding and restarting.
 
 The canonical model and expected-state calculator live in
 `internal/content/dctopology/`, browser layout/interactions in

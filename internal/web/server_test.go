@@ -66,6 +66,20 @@ func TestEveryPageRenders(t *testing.T) {
 	}
 }
 
+func TestBrowserCodeAndStylesRevalidate(t *testing.T) {
+	srv := newTestServer(t)
+	for _, path := range []string{"/static/dc-topology/dev.js", "/static/dc-topology/app.js",
+		"/static/dc-topology/addresses.js", "/static/dc-topology/app.css", "/static/app.css", "/static/site.js"} {
+		rec := get(t, srv, path)
+		if rec.Code != http.StatusOK || rec.Header().Get("Cache-Control") != "no-cache" {
+			t.Errorf("%s must revalidate before reuse: %d %q", path, rec.Code, rec.Header().Get("Cache-Control"))
+		}
+	}
+	if rec := get(t, srv, "/static/vendor/fonts/poppins-400.woff2"); rec.Code != http.StatusOK || rec.Header().Get("Cache-Control") != "" {
+		t.Fatal("code refresh policy must preserve ordinary font caching")
+	}
+}
+
 // Wejściówka jest plakatem: kiedy, gdzie i że można wejść z ulicy. Terminy
 // idą z nagłówków wykładów, więc test pilnuje, żeby nie rozjechały się
 // z treścią - zła data na plakacie to jedyny błąd, którego nie da się odkręcić.

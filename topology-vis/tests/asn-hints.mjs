@@ -38,6 +38,16 @@ try {
     const guiPaths=page.locator('.dc-rib-family[data-family="l2vpn"] [data-asn]:visible');
     assert(await guiPaths.count()>0);await preview(guiPaths.first());
     assert.equal(await page.locator('[data-asn][data-address]').count(),0);
+    const selectedRoute=guiPaths.first().locator('xpath=ancestor::button');
+    const routeID=await selectedRoute.getAttribute('data-route-id');
+    await selectedRoute.click();
+    await page.locator('.dc-details > code').filter({hasText:routeID}).waitFor();
+    const routeASNs=page.locator('.dc-details > p [data-asn]');
+    assert(await routeASNs.count()>0,'Selecting a BGP route must keep its ASN hints');
+    for(const asn of await routeASNs.all())await preview(asn);
+    await page.screenshot({path:`/tmp/asn-route-hints-${language}-${width}.png`});
+    await page.locator('#dc-inspector-back').click();
+    await page.locator('.dc-routing-rib').waitFor();
     await page.locator('#dc-rib-view').selectOption('linux');
     const cliPaths=page.locator('.dc-rib-family[data-family="l2vpn"] [data-as-path]');
     assert(await cliPaths.count()>0);

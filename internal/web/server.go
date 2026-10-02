@@ -121,7 +121,15 @@ func (s *Server) routes() {
 	if err != nil {
 		panic(err)
 	}
-	s.mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(static))))
+	assets := http.StripPrefix("/static/", http.FileServer(http.FS(static)))
+	s.mux.Handle("GET /static/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, ".js") || strings.HasSuffix(r.URL.Path, ".css") {
+			// Modules must revalidate together after UI updates. Fonts and images
+			// retain the file server's ordinary caching behavior.
+			w.Header().Set("Cache-Control", "no-cache")
+		}
+		assets.ServeHTTP(w, r)
+	}))
 
 	s.mux.HandleFunc("GET /language", s.handleLanguage)
 	s.mux.HandleFunc("GET /{$}", s.handleIntro)
